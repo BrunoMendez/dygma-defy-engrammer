@@ -247,14 +247,29 @@
       align-items: center;
       justify-content: space-between;
       flex-wrap: wrap;
-      gap: 12px;
+      gap: 8px 12px;
+      box-sizing: border-box;
     }
     .interactive-controls {
       display: flex;
       align-items: center;
       gap: 8px;
-      flex-wrap: wrap;
-      flex: 1;
+      flex-wrap: nowrap;
+      flex: 1 1 auto;
+      min-height: 34px;
+      min-width: 0;
+    }
+    #master-hover-badge {
+      flex: 0 0 100%;
+      width: 100%;
+      height: 20px;
+      line-height: 20px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 12px;
+      font-weight: 700;
+      color: #38bdf8;
     }
     .interactive-select {
       background: #0f172a;
@@ -292,6 +307,8 @@
       border-bottom: 1px solid rgba(255,255,255,0.06);
       margin-bottom: 8px;
       font-size: 12px;
+      min-height: 44px;
+      box-sizing: border-box;
     }
     .sequence-readout {
       display: flex;
