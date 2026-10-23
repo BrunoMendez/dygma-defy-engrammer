@@ -111,8 +111,8 @@
       <button id="btn-all-layers" class="text-xs px-2 py-1 rounded-md border border-[var(--app-border)] hover:border-amber-500/60 transition">
         All Layers
       </button>
-      <button id="btn-export-ino" class="text-xs font-semibold px-2.5 py-1 rounded-md bg-amber-500 text-black hover:bg-amber-400 transition">
-        .ino &amp; .h
+      <button id="btn-export-ino" class="text-xs font-semibold px-2.5 py-1 rounded-md bg-amber-500 text-black hover:bg-amber-400 transition" title="Download ZIP with EngrammerDefy.ino, config.h, and Dygma_Defy_Engrammer_Layout.json">
+        ⬇ Code (.zip)
       </button>
       <button id="btn-reset-layout" class="text-xs px-2 py-1 rounded-md border border-[var(--app-border)] text-[var(--app-muted-foreground)] hover:text-[var(--app-foreground)] transition" title="Reset to Bruno's Moonlander Engrammer Default">
         Reset
@@ -410,6 +410,9 @@
               <option value="json">MoErgo / Defy Layout JSON</option>
             </select>
             <div class="flex items-center gap-1.5">
+              <button id="btn-download-code-zip" class="text-xs font-semibold px-2.5 py-1 rounded bg-amber-500 text-slate-950 hover:bg-amber-400 transition" title="Download a .zip containing EngrammerDefy.ino, config.h, and Dygma_Defy_Engrammer_Layout.json">
+                ⬇ Download ZIP
+              </button>
               <button id="btn-copy-code" class="text-xs px-2.5 py-1 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30">
                 Copy Code
               </button>
@@ -588,7 +591,7 @@
               </div>
               <div class="space-y-1.5">
                 <button id="btn-download-bundle" class="w-full py-1.5 px-3 rounded-lg font-semibold bg-violet-500/20 text-violet-200 border border-violet-500/40 hover:bg-violet-500/30 transition">
-                  📦 Download .ino + config.h + flash.sh
+                  📦 Download .ino + config.h + flash.sh (.zip)
                 </button>
                 <label class="block w-full text-center py-1.5 px-3 rounded-lg font-semibold border border-[var(--app-border)] hover:border-cyan-400 cursor-pointer transition">
                   <span id="uf2-file-label">📂 Select Compiled `.uf2` File...</span>
@@ -2443,6 +2446,126 @@
       document.getElementById(id).onchange = updateCodePreview;
     });
 
+    const CRC32_TABLE = (() => {
+      const table = new Uint32Array(256);
+      for (let i = 0; i < 256; i++) {
+        let c = i;
+        for (let k = 0; k < 8; k++) {
+          c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+        }
+        table[i] = c >>> 0;
+      }
+      return table;
+    })();
+
+    function computeCrc32(bytes) {
+      let crc = 0xffffffff;
+      for (let i = 0; i < bytes.length; i++) {
+        crc = CRC32_TABLE[(crc ^ bytes[i]) & 0xff] ^ (crc >>> 8);
+      }
+      return (crc ^ 0xffffffff) >>> 0;
+    }
+
+    function createZipBlob(fileEntries) {
+      const encoder = new TextEncoder();
+      const now = new Date();
+      const dosTime = ((now.getHours() & 0x1f) << 11) | ((now.getMinutes() & 0x3f) << 5) | ((now.getSeconds() >> 1) & 0x1f);
+      const dosDate = (((Math.max(1980, now.getFullYear()) - 1980) & 0x7f) << 9) | (((now.getMonth() + 1) & 0x0f) << 5) | (now.getDate() & 0x1f);
+
+      const localParts = [];
+      const centralParts = [];
+      let localOffset = 0;
+      let centralSize = 0;
+
+      for (const entry of fileEntries) {
+        const nameBytes = encoder.encode(entry.name);
+        const dataBytes = entry.content instanceof Uint8Array ? entry.content : encoder.encode(String(entry.content));
+        const crc = computeCrc32(dataBytes);
+        const size = dataBytes.length;
+
+        const localHeader = new Uint8Array(30 + nameBytes.length);
+        const ldv = new DataView(localHeader.buffer);
+        ldv.setUint32(0, 0x04034b50, true);
+        ldv.setUint16(4, 20, true);
+        ldv.setUint16(6, 0x0800, true);
+        ldv.setUint16(8, 0, true);
+        ldv.setUint16(10, dosTime, true);
+        ldv.setUint16(12, dosDate, true);
+        ldv.setUint32(14, crc, true);
+        ldv.setUint32(18, size, true);
+        ldv.setUint32(22, size, true);
+        ldv.setUint16(26, nameBytes.length, true);
+        ldv.setUint16(28, 0, true);
+        localHeader.set(nameBytes, 30);
+
+        localParts.push(localHeader, dataBytes);
+
+        const centralHeader = new Uint8Array(46 + nameBytes.length);
+        const cdv = new DataView(centralHeader.buffer);
+        cdv.setUint32(0, 0x02014b50, true);
+        cdv.setUint16(4, 20, true);
+        cdv.setUint16(6, 20, true);
+        cdv.setUint16(8, 0x0800, true);
+        cdv.setUint16(10, 0, true);
+        cdv.setUint16(12, dosTime, true);
+        cdv.setUint16(14, dosDate, true);
+        cdv.setUint32(16, crc, true);
+        cdv.setUint32(20, size, true);
+        cdv.setUint32(24, size, true);
+        cdv.setUint16(28, nameBytes.length, true);
+        cdv.setUint16(30, 0, true);
+        cdv.setUint16(32, 0, true);
+        cdv.setUint16(34, 0, true);
+        cdv.setUint16(36, 0, true);
+        cdv.setUint32(38, 0, true);
+        cdv.setUint32(42, localOffset, true);
+        centralHeader.set(nameBytes, 46);
+
+        centralParts.push(centralHeader);
+        localOffset += localHeader.length + size;
+        centralSize += centralHeader.length;
+      }
+
+      const eocd = new Uint8Array(22);
+      const edv = new DataView(eocd.buffer);
+      edv.setUint32(0, 0x06054b50, true);
+      edv.setUint16(4, 0, true);
+      edv.setUint16(6, 0, true);
+      edv.setUint16(8, fileEntries.length, true);
+      edv.setUint16(10, fileEntries.length, true);
+      edv.setUint32(12, centralSize, true);
+      edv.setUint32(16, localOffset, true);
+      edv.setUint16(20, 0, true);
+
+      return new Blob([...localParts, ...centralParts, eocd], { type: "application/zip" });
+    }
+
+    function downloadCodeZipBundle() {
+      const jsonContent = JSON.stringify(
+        {
+          keyboard: "Dygma Defy 70",
+          layout: "Glorious Engrammer QWERTY",
+          updatedAt: new Date().toISOString(),
+          layersMeta: LAYERS_META,
+          rgbPalette,
+          layers,
+          underglowLayers
+        },
+        null,
+        2
+      );
+      const zipBlob = createZipBlob([
+        { name: "EngrammerDefy.ino", content: generateKaleidoscopeInoSnippet() },
+        { name: "config.h", content: generateConfigHeaderSnippet() },
+        { name: "Dygma_Defy_Engrammer_Layout.json", content: jsonContent }
+      ]);
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(zipBlob);
+      a.download = "Dygma_Defy_Engrammer_Code.zip";
+      a.click();
+      triggerSaveToast("Downloaded Dygma_Defy_Engrammer_Code.zip (3 files)!", "📦");
+    }
+
     document.getElementById("btn-copy-code").onclick = (e) => {
       updateCodePreview();
       navigator.clipboard.writeText(document.getElementById("code-preview").value);
@@ -2451,13 +2574,8 @@
       setTimeout(() => (e.target.textContent = orig), 1400);
     };
 
-    document.getElementById("btn-export-ino").onclick = () => {
-      const blob = new Blob([generateKaleidoscopeInoSnippet()], { type: "text/plain" });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "EngrammerDefy_Keymap.ino";
-      a.click();
-    };
+    document.getElementById("btn-download-code-zip").onclick = downloadCodeZipBundle;
+    document.getElementById("btn-export-ino").onclick = downloadCodeZipBundle;
 
     document.getElementById("btn-import-json").onclick = () => {
       document.getElementById("file-import-json").click();
@@ -3236,31 +3354,17 @@
     };
 
     document.getElementById("btn-download-bundle").onclick = () => {
-      // Download .ino, config.h, and 1-command flash_defy.sh script
-      const inoBlob = new Blob([generateKaleidoscopeInoSnippet()], { type: "text/plain" });
-      const a1 = document.createElement("a");
-      a1.href = URL.createObjectURL(inoBlob);
-      a1.download = "EngrammerDefy.ino";
-      a1.click();
-
-      setTimeout(() => {
-        const cfgBlob = new Blob([generateConfigHeaderSnippet()], { type: "text/plain" });
-        const a2 = document.createElement("a");
-        a2.href = URL.createObjectURL(cfgBlob);
-        a2.download = "config.h";
-        a2.click();
-      }, 250);
-
-      setTimeout(() => {
-        const sh = `#!/usr/bin/env bash\nset -euo pipefail\necho "Compiling & Flashing Glorious Engrammer for Dygma Defy 70..."\narduino-cli compile --fqbn dygma:rp2040:defy --output-dir ./build .\narduino-cli upload -p "\$(arduino-cli board list | awk '/35ef/ {print \$1; exit}')" --fqbn dygma:rp2040:defy --input-dir ./build\necho "Done!"\n`;
-        const shBlob = new Blob([sh], { type: "text/x-sh" });
-        const a3 = document.createElement("a");
-        a3.href = URL.createObjectURL(shBlob);
-        a3.download = "flash_defy.sh";
-        a3.click();
-      }, 500);
-
-      triggerSaveToast("Downloaded EngrammerDefy.ino, config.h & flash_defy.sh!", "📦");
+      const sh = `#!/usr/bin/env bash\nset -euo pipefail\necho "Compiling & Flashing Glorious Engrammer for Dygma Defy 70..."\narduino-cli compile --fqbn dygma:rp2040:defy --output-dir ./build .\narduino-cli upload -p "\$(arduino-cli board list | awk '/35ef/ {print \$1; exit}')" --fqbn dygma:rp2040:defy --input-dir ./build\necho "Done!"\n`;
+      const zipBlob = createZipBlob([
+        { name: "EngrammerDefy.ino", content: generateKaleidoscopeInoSnippet() },
+        { name: "config.h", content: generateConfigHeaderSnippet() },
+        { name: "flash_defy.sh", content: sh }
+      ]);
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(zipBlob);
+      a.download = "EngrammerDefy_Firmware_Bundle.zip";
+      a.click();
+      triggerSaveToast("Downloaded EngrammerDefy_Firmware_Bundle.zip (3 files)!", "📦");
     };
 
     // Modal controls
