@@ -105,7 +105,7 @@
         <span>⚡ Flash / Sync Keyboard</span>
       </button>
 
-      <a href="visualizer.html#symbol-layer" class="text-xs font-semibold px-2.5 py-1 rounded-md border border-cyan-500/50 bg-cyan-500/15 text-cyan-300 hover:bg-cyan-500/25 transition">
+      <a id="btn-open-visualizer" href="visualizer.html#layers" class="text-xs font-semibold px-2.5 py-1 rounded-md border border-cyan-500/50 bg-cyan-500/15 text-cyan-300 hover:bg-cyan-500/25 transition">
         📖 Visualizer
       </a>
       <button id="btn-all-layers" class="text-xs px-2 py-1 rounded-md border border-[var(--app-border)] hover:border-amber-500/60 transition">
@@ -1248,9 +1248,42 @@
       return m;
     }
 
+    const syncChannel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("dygma_defy_engrammer_sync") : null;
+
+    function getVisualizerSectionForLayer(lIdx) {
+      if (lIdx === 1) return "#symbol-layer";
+      if (lIdx === 2) return "#number-layer";
+      if (lIdx === 3) return "#cursor-layer";
+      if (lIdx === 4) return "#mouse-layer";
+      if (lIdx === 5) return "#function-layer";
+      if (lIdx === 6 || lIdx === 7 || lIdx === 10 || lIdx >= 12) return "#lower-layer";
+      return "#layers";
+    }
+
+    function updateVisualizerLinkHref() {
+      const link = document.getElementById("btn-open-visualizer");
+      if (link) {
+        link.setAttribute("href", `visualizer.html${getVisualizerSectionForLayer(currentLayer)}`);
+      }
+    }
+
     function loadState() {
       try {
-        const raw = localStorage.getItem(STORAGE_KEY);
+        let raw = localStorage.getItem(STORAGE_KEY);
+        if (typeof window.name === "string" && window.name.startsWith("DYGMA_DEFY_STATE:")) {
+          const wnRaw = window.name.slice("DYGMA_DEFY_STATE:".length);
+          if (!raw) {
+            raw = wnRaw;
+          } else {
+            try {
+              const p1 = JSON.parse(raw);
+              const p2 = JSON.parse(wnRaw);
+              if (p2 && p2.updatedAt && (!p1 || !p1.updatedAt || p2.updatedAt > p1.updatedAt)) {
+                raw = wnRaw;
+              }
+            } catch (e) {}
+          }
+        }
         if (raw) {
           const parsed = JSON.parse(raw);
           if (parsed && Array.isArray(parsed.layers) && parsed.layers.length >= 1 && parsed.layers[0].length === 70) {
@@ -1267,6 +1300,7 @@
             if (Array.isArray(parsed.rgbPalette) && parsed.rgbPalette.length === 16) {
               rgbPalette = parsed.rgbPalette;
             }
+            localStorage.setItem(STORAGE_KEY, raw);
             return;
           }
         }
@@ -1281,12 +1315,23 @@
           keyboard: "Dygma Defy 70",
           layout: "Glorious Engrammer QWERTY",
           updatedAt: new Date().toISOString(),
+          lastActiveLayer: currentLayer,
           layers,
           layersMeta: LAYERS_META,
           underglowLayers,
           rgbPalette
         };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        const serialized = JSON.stringify(payload);
+        localStorage.setItem(STORAGE_KEY, serialized);
+        try {
+          window.name = "DYGMA_DEFY_STATE:" + serialized;
+        } catch (e) {}
+        if (syncChannel) {
+          try {
+            syncChannel.postMessage(payload);
+          } catch (e) {}
+        }
+        updateVisualizerLinkHref();
         const badge = document.getElementById("save-status-badge");
         if (badge) {
           const t = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -1377,6 +1422,7 @@
         btn.textContent = m.short;
         btn.onclick = () => {
           currentLayer = idx;
+          updateVisualizerLinkHref();
           renderLayerTabs();
           renderKeyboardStage();
           renderInspector();
@@ -2586,6 +2632,12 @@
     }
 
     document.getElementById("btn-save-changes").onclick = () => saveState(true);
+    const visLinkEl = document.getElementById("btn-open-visualizer");
+    if (visLinkEl) {
+      visLinkEl.addEventListener("click", () => {
+        saveState(false);
+      });
+    }
     document.getElementById("btn-save-disk").onclick = saveToDiskFile;
     document.getElementById("btn-modal-link-file").onclick = saveToDiskFile;
     document.getElementById("btn-save-snapshot").onclick = createNamedSnapshot;
