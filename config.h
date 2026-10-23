@@ -16,6 +16,19 @@
 #define SHIFT_FORGIVENESS     // Forgiving roll into Shift mod-taps
 #define NATURAL_SCROLLING     // Invert mouse scroll wheel directions to match macOS natural scrolling
 
+// Dygma Defy Wireless, Bluetooth & Bazecor Device Settings
+#define TRUE_SLEEP_ENABLED                  // Deep power-down of both keyboard sides after idle timeout
+#define TRUE_SLEEP_TIMEOUT_S            1800 // 30 minutes (Focus: idleleds.true_sleep_time)
+//#define ENERGY_SAVING_MODE                // Auto-dim RGB LEDs when wireless battery < 40% (Focus: wireless.battery.savingMode)
+#define HIGHLIGHT_LAYER_CHANGE              // Dim transparent (___) keys on secondary layers (Focus: led.fade)
+#define LED_BRIGHTNESS_KEY_WIRED        255 // 100% (Focus: led.brightness)
+#define LED_BRIGHTNESS_UG_WIRED         255 // 100% (Focus: led.brightnessUG)
+#define LED_BRIGHTNESS_KEY_WIRELESS     102 // 40%  (Focus: led.brightness.wireless)
+#define LED_BRIGHTNESS_UG_WIRELESS      64  // 25%  (Focus: led.brightnessUG.wireless)
+#define LED_IDLE_TIMEOUT_WIRED_S        600 // 10m  (Focus: idleleds.time_limit)
+#define LED_IDLE_TIMEOUT_WIRELESS_S     300 // 5m   (Focus: idleleds.wireless)
+#define RF_POWER_LEVEL                  1   // 0=Low, 1=Medium, 2=High (Focus: wireless.rf.power)
+
 // =============================================================================
 // 2. TIMING PROFILE DERIVATION (DIFFICULTY_LEVEL -> KALEIDOSCOPE QUKEYS)
 // =============================================================================
@@ -119,7 +132,18 @@ enum CustomMacroId : uint8_t {
   M_CTRL_TAB,       // LCTL(KC_TAB)
   M_GUI_TAB,        // LGUI(KC_TAB)
   M_HYPER,          // KC_HYPR (Ctrl+Alt+Gui+Shift)
-  M_MEH             // KC_MEH  (Ctrl+Alt+Shift)
+  M_MEH,            // KC_MEH  (Ctrl+Alt+Shift)
+
+  // Dygma Defy Wireless, Bluetooth Multi-Host & Battery Level Controls (Focus 54102..54110)
+  M_BAT_LEVEL,      // Show dual-side battery level % on keyboard LED columns (Focus 54102)
+  M_BT_PAIR,        // Enter Bluetooth Pairing Mode on active BT channel (Focus 54109)
+  M_BT_SEL_1,       // Connect to Bluetooth Host Slot #1 (Focus 54103)
+  M_BT_SEL_2,       // Connect to Bluetooth Host Slot #2 (Focus 54104)
+  M_BT_SEL_3,       // Connect to Bluetooth Host Slot #3 (Focus 54105)
+  M_BT_SEL_4,       // Connect to Bluetooth Host Slot #4 (Focus 54106)
+  M_BT_SEL_5,       // Connect to Bluetooth Host Slot #5 (Focus 54107)
+  M_RF_MODE,        // Switch to 2.4GHz Wireless RF Neuron Mode (Focus 54108)
+  M_WL_TOGGLE       // Toggle between Bluetooth LE & 2.4GHz RF (Focus 54110)
 };
 
 // =============================================================================

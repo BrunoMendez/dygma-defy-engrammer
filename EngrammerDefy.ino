@@ -516,13 +516,15 @@ KEYMAPS(
   ),
 
   // ---------------------------------------------------------------------------
-  // LAYER 6: SYSTEM / RGB / POWER LAYER — Held via Right Thumb LT(6, KC_ENTER)
-  // Matches Moonlander [6] + OS Switch Controls:
-  // - RGB Controls, PrintScreen, Pause, ScrollLock, NumLock, CapsLock, Lock Screen, System Sleep/Power, OS Toggle
+  // LAYER 6: SYSTEM / RGB / POWER / WIRELESS LAYER — Held via Right Thumb LT(6, KC_ENTER)
+  // Matches Moonlander [6] + OS Switch + Dygma Defy Wireless/Bluetooth/Battery Controls:
+  // - Row 0 Left:  OS Toggle, OS Mac, OS Win, Battery Level (LED%), BT Pair, 2.4GHz RF Mode, Wireless Toggle
+  // - Row 0 Right: Bluetooth Host Slots BT_1 .. BT_5, OS Toggle
+  // - Rows 1..5:   RGB Controls, PrintScreen, Pause, ScrollLock, NumLock, CapsLock, Lock Screen, System Sleep/Power
   // ---------------------------------------------------------------------------
   [LAYER_SYS_RGB] = KEYMAP_DEFY_70(
     // Row 0
-    M(M_OS_TOGGLE),     M(M_OS_MAC),    M(M_OS_WIN),       ___,               ___,        ___,       ___,             ___,               ___,            ___,            ___,       ___,            ___,           M(M_OS_TOGGLE),
+    M(M_OS_TOGGLE),     M(M_OS_MAC),    M(M_OS_WIN),       M(M_BAT_LEVEL),    M(M_BT_PAIR), M(M_RF_MODE), M(M_WL_TOGGLE), ___,           M(M_BT_SEL_1),  M(M_BT_SEL_2),  M(M_BT_SEL_3), M(M_BT_SEL_4), M(M_BT_SEL_5), M(M_OS_TOGGLE),
     // Row 1
     ___,                Key_LEDEffectNext, Key_LEDEffectNext, Key_LEDEffectNext, Key_LEDEffectNext, Key_LEDEffectNext, ___, ___,         Key_LEDEffectNext, Key_LEDEffectNext, Key_LEDEffectNext, Key_LEDEffectNext, Key_LEDEffectNext, ___,
     // Row 2
@@ -768,6 +770,20 @@ const macro_t *macroAction(uint8_t macro_id, KeyEvent &event) {
     case M_MEH:
       return MACRO(D(LeftControl), D(LeftAlt), D(LeftShift),
                    U(LeftShift), U(LeftAlt), U(LeftControl));
+
+    // Dygma Defy Wireless, Bluetooth Multi-Host & Battery Level Controls
+    // (Dispatched to Dygma BleManager / RadioManager / BatteryStatus on Defy hardware;
+    //  also mapped directly to Bazecor Focus keycodes 54102..54110 in EEPROM keymaps)
+    case M_BAT_LEVEL:
+    case M_BT_PAIR:
+    case M_BT_SEL_1:
+    case M_BT_SEL_2:
+    case M_BT_SEL_3:
+    case M_BT_SEL_4:
+    case M_BT_SEL_5:
+    case M_RF_MODE:
+    case M_WL_TOGGLE:
+      return MACRO_NONE;
 
     default:
       return MACRO_NONE;
