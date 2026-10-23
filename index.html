@@ -341,7 +341,7 @@
       <!-- RIGHT PANEL: COMBOS, CONFIG OVERRIDES & C++ / JSON EXPORTER (5 COLS) -->
       <div class="lg:col-span-5 bg-[var(--app-card)] border border-[var(--app-border)] rounded-xl p-4 flex flex-col gap-3 shadow-sm">
         <div class="flex items-center gap-1.5 border-b border-[var(--app-border)] pb-2">
-          <button data-tab="combos" class="studio-tab text-xs font-semibold px-2.5 py-1 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
+          <button id="tab-btn-combos" data-tab="combos" class="studio-tab text-xs font-semibold px-2.5 py-1 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">
             Combos &amp; Chords (13)
           </button>
           <button data-tab="config" class="studio-tab text-xs font-semibold px-2.5 py-1 rounded border border-transparent hover:border-[var(--app-border)] text-[var(--app-muted-foreground)]">
@@ -352,12 +352,86 @@
           </button>
         </div>
 
-        <!-- TAB 1: COMBOS LIST (HOVER TO HIGHLIGHT ON KEYBOARD) -->
-        <div id="tab-pane-combos" class="flex flex-col gap-1.5 max-h-64 overflow-y-auto pr-1">
-          <p class="text-[11px] text-[var(--app-muted-foreground)] mb-1">
-            Hover any chord below to highlight its physical key pair on the 70-key Dygma Defy matrix:
-          </p>
-          <div id="combos-list" class="flex flex-col gap-1.5"></div>
+        <!-- TAB 1: COMBOS LIST (HOVER TO HIGHLIGHT + ADD / EDIT / DELETE ON KEYBOARD) -->
+        <div id="tab-pane-combos" class="flex flex-col gap-2">
+          <div class="flex items-center justify-between gap-2">
+            <p class="text-[11px] text-[var(--app-muted-foreground)]">
+              Hover any chord to highlight its keys on the keyboard, or add / edit / delete chords:
+            </p>
+            <button id="btn-add-combo" type="button" class="text-xs font-semibold px-2.5 py-1 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30 transition">
+              + Add Combo
+            </button>
+          </div>
+
+          <!-- INLINE COMBO / CHORD EDITOR -->
+          <div id="combo-editor-card" class="hidden flex-col gap-2.5 p-3 rounded-lg border border-cyan-500/40 bg-slate-900/95 text-xs">
+            <div class="flex items-center justify-between gap-2">
+              <span id="combo-editor-title" class="font-bold text-cyan-300">Add New Combo / Chord</span>
+              <button id="btn-pick-combo-keys" type="button" class="text-[11px] font-semibold px-2 py-0.5 rounded border border-cyan-500/40 bg-cyan-500/15 text-cyan-300 hover:bg-cyan-500/25 transition" title="Click keys directly on the 70-key keyboard diagram above to assign Chord Keys">
+                🎯 Click Keys on Keyboard
+              </button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+              <div>
+                <label class="block text-[10px] font-mono uppercase text-[var(--app-muted-foreground)] mb-1">Key 1</label>
+                <select id="combo-key-1" class="w-full text-xs font-mono rounded px-2 py-1 bg-[var(--app-background)] border border-[var(--app-border)] text-[var(--app-foreground)]"></select>
+              </div>
+              <div>
+                <label class="block text-[10px] font-mono uppercase text-[var(--app-muted-foreground)] mb-1">Key 2</label>
+                <select id="combo-key-2" class="w-full text-xs font-mono rounded px-2 py-1 bg-[var(--app-background)] border border-[var(--app-border)] text-[var(--app-foreground)]"></select>
+              </div>
+              <div>
+                <label class="block text-[10px] font-mono uppercase text-[var(--app-muted-foreground)] mb-1">Key 3 (Optional)</label>
+                <select id="combo-key-3" class="w-full text-xs font-mono rounded px-2 py-1 bg-[var(--app-background)] border border-[var(--app-border)] text-[var(--app-foreground)]"></select>
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-[10px] font-mono uppercase text-[var(--app-muted-foreground)] mb-1">Chord Label</label>
+                <input id="combo-edit-label" type="text" placeholder="e.g. Left Bksp + Left Del" class="w-full text-xs rounded px-2 py-1 bg-[var(--app-background)] border border-[var(--app-border)] text-[var(--app-foreground)]" />
+              </div>
+              <div>
+                <label class="block text-[10px] font-mono uppercase text-[var(--app-muted-foreground)] mb-1">Output Action</label>
+                <input id="combo-edit-action" type="text" list="combo-action-presets" placeholder="e.g. CW_TOGG (Caps-Word), CapsLock, TO(8)..." class="w-full text-xs font-mono rounded px-2 py-1 bg-[var(--app-background)] border border-[var(--app-border)] text-[var(--app-foreground)]" />
+                <datalist id="combo-action-presets">
+                  <option value="CW_TOGG (Caps-Word)"></option>
+                  <option value="CapsLock"></option>
+                  <option value="Ctrl + LeftShift"></option>
+                  <option value="Alt + Tab"></option>
+                  <option value="Ctrl + Tab"></option>
+                  <option value="GUI + Tab"></option>
+                  <option value="Hyper (Ctrl+Alt+Gui+Shift)"></option>
+                  <option value="Meh (Ctrl+Alt+Shift)"></option>
+                  <option value="TO(0) — Return to Base"></option>
+                  <option value="TO(8) — Gaming Layer"></option>
+                  <option value="TG(9) — Plain QWERTY"></option>
+                  <option value="Esc"></option>
+                  <option value="Enter"></option>
+                  <option value="Tab"></option>
+                  <option value="Bksp"></option>
+                  <option value="Del"></option>
+                  <option value="Undo"></option>
+                  <option value="Redo"></option>
+                  <option value="Cut"></option>
+                  <option value="Copy"></option>
+                  <option value="Paste"></option>
+                </datalist>
+              </div>
+            </div>
+            <div class="flex items-center justify-between gap-2 pt-1">
+              <span id="combo-pick-hint" class="text-[10px] font-mono text-cyan-300"></span>
+              <div class="flex items-center gap-1.5">
+                <button id="btn-cancel-combo" type="button" class="text-xs px-2.5 py-1 rounded border border-[var(--app-border)] text-[var(--app-muted-foreground)] hover:text-[var(--app-foreground)]">
+                  Cancel
+                </button>
+                <button id="btn-save-combo" type="button" class="text-xs font-bold px-3 py-1 rounded bg-emerald-500 text-slate-950 hover:bg-emerald-400">
+                  ✓ Save Combo
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div id="combos-list" class="flex flex-col gap-1.5 max-h-64 overflow-y-auto pr-1"></div>
         </div>
 
         <!-- TAB 2: ENGRAMMER TUNING PARAMETERS -->
@@ -1161,7 +1235,7 @@
     // =========================================================================
     // 4. MOONLANDER COMBOS DEFINITIONS
     // =========================================================================
-    const COMBOS = [
+    const DEFAULT_COMBOS = [
       { id: "combo0",  keys: ["RTU3", "RTU2"], label: "Right Enter + Right Insert", action: "Ctrl + LeftShift" },
       { id: "combo1",  keys: ["L35",  "L30"],  label: "B + Left OSM(Shift)",        action: "TO(8) — Gaming Layer" },
       { id: "combo2",  keys: ["L24",  "L33"],  label: "F + C",                      action: "TO(0) — Return to Base" },
@@ -1176,6 +1250,10 @@
       { id: "combo12", keys: ["RTU3", "RTU1"], label: "Right Enter + Right Tab",    action: "Meh (Ctrl+Alt+Shift)" },
       { id: "combo13", keys: ["R31",  "R36"],  label: "N + Right OSM(Shift)",       action: "TG(9) — Plain QWERTY" }
     ];
+    let combos = JSON.parse(JSON.stringify(DEFAULT_COMBOS));
+    let editingComboIndex = null;
+    let nextComboKeySlot = 0;
+    let lastAutoComboLabel = "";
 
     const PALETTE = {
       "Alphas & Digits": ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z","1","2","3","4","5","6","7","8","9","0"],
@@ -1323,10 +1401,14 @@
             if (Array.isArray(parsed.rgbPalette) && parsed.rgbPalette.length === 16) {
               rgbPalette = parsed.rgbPalette;
             }
+            if (Array.isArray(parsed.combos)) {
+              combos = parsed.combos;
+            }
             syncLayersHeldKeysFromBase();
             localStorage.setItem(STORAGE_KEY, JSON.stringify({
               ...parsed,
-              layersMeta: LAYERS_META
+              layersMeta: LAYERS_META,
+              combos
             }));
             return;
           }
@@ -1334,6 +1416,7 @@
       } catch (e) {}
       layers = getInitialLayers();
       underglowLayers = layers.map(() => createDefaultUnderglowMap("#2dd4bf"));
+      combos = JSON.parse(JSON.stringify(DEFAULT_COMBOS));
       syncLayersHeldKeysFromBase();
     }
 
@@ -1348,7 +1431,8 @@
           layers,
           layersMeta: LAYERS_META,
           underglowLayers,
-          rgbPalette
+          rgbPalette,
+          combos
         };
         const serialized = JSON.stringify(payload);
         localStorage.setItem(STORAGE_KEY, serialized);
@@ -1385,6 +1469,8 @@
       const banner = document.getElementById("interaction-mode-banner");
       const btnCopyTo = document.getElementById("btn-copy-to-mode");
       const btnSwap = document.getElementById("btn-swap-mode");
+      const btnPickCombo = document.getElementById("btn-pick-combo-keys");
+      const pickHint = document.getElementById("combo-pick-hint");
 
       btnCopyTo.className = `text-xs px-2.5 py-1 rounded border transition ${
         interactionMode === "copy-to"
@@ -1396,6 +1482,23 @@
           ? "bg-indigo-500 text-white font-bold border-indigo-400"
           : "border-[var(--app-border)] hover:border-indigo-400"
       }`;
+      if (btnPickCombo) {
+        btnPickCombo.className = `text-[11px] font-semibold px-2 py-0.5 rounded border transition ${
+          interactionMode === "pick-combo-key"
+            ? "bg-cyan-500 text-slate-950 font-bold border-cyan-400"
+            : "border-cyan-500/40 bg-cyan-500/15 text-cyan-300 hover:bg-cyan-500/25"
+        }`;
+        btnPickCombo.textContent =
+          interactionMode === "pick-combo-key"
+            ? `🟢 Clicking Keyboard → Key ${nextComboKeySlot + 1}`
+            : "🎯 Click Keys on Keyboard";
+      }
+      if (pickHint) {
+        pickHint.textContent =
+          interactionMode === "pick-combo-key"
+            ? `Click any key on the keyboard above to set Key ${nextComboKeySlot + 1}`
+            : "";
+      }
 
       if (interactionMode === "copy-to") {
         const srcPos = KEY_POSITIONS[selectedKeyIndex];
@@ -1404,6 +1507,9 @@
       } else if (interactionMode === "swap-with") {
         const srcPos = KEY_POSITIONS[selectedKeyIndex];
         banner.textContent = `⇄ SWAP MODE: Click any key on the keyboard to swap with [${srcPos.id}] (click button again or Esc to exit)`;
+        banner.classList.remove("hidden");
+      } else if (interactionMode === "pick-combo-key") {
+        banner.textContent = `🎯 COMBO KEY PICKER: Click keys on the keyboard to assign Key ${nextComboKeySlot + 1} for this chord (Esc to exit)`;
         banner.classList.remove("hidden");
       } else {
         banner.classList.add("hidden");
@@ -1775,6 +1881,23 @@
 
           g.addEventListener("click", () => {
             if (paintMode) return;
+            if (interactionMode === "pick-combo-key") {
+              const keyId = KEY_POSITIONS[idx].id;
+              const sel1 = document.getElementById("combo-key-1");
+              const sel2 = document.getElementById("combo-key-2");
+              if (nextComboKeySlot === 0) {
+                sel1.value = keyId;
+                nextComboKeySlot = 1;
+                document.getElementById("combo-pick-hint").textContent = `Key 1 = ${keyId} • Click second key on keyboard...`;
+              } else {
+                sel2.value = keyId;
+                nextComboKeySlot = 0;
+                document.getElementById("combo-pick-hint").textContent = `Picked [${sel1.value} + ${sel2.value}]`;
+                setInteractionMode(null);
+              }
+              syncComboEditorPreview();
+              return;
+            }
             if (interactionMode === "copy-to") {
               if (idx !== selectedKeyIndex) {
                 layers[currentLayer][idx] = { ...layers[currentLayer][selectedKeyIndex] };
@@ -2101,26 +2224,217 @@
       });
     }
 
+    function populateComboKeySelects() {
+      const sel1 = document.getElementById("combo-key-1");
+      const sel2 = document.getElementById("combo-key-2");
+      const sel3 = document.getElementById("combo-key-3");
+      if (!sel1 || !sel2 || !sel3) return;
+      const prev1 = sel1.value;
+      const prev2 = sel2.value;
+      const prev3 = sel3.value;
+      sel1.innerHTML = "";
+      sel2.innerHTML = "";
+      sel3.innerHTML = `<option value="">(None)</option>`;
+      KEY_POSITIONS.forEach((pos, idx) => {
+        const baseTap = layers[0] && layers[0][idx] ? layers[0][idx].tap : "";
+        const label = `${pos.id} — ${baseTap || pos.name}`;
+        [sel1, sel2, sel3].forEach((sel) => {
+          const opt = document.createElement("option");
+          opt.value = pos.id;
+          opt.textContent = label;
+          sel.appendChild(opt);
+        });
+      });
+      if (prev1) sel1.value = prev1;
+      if (prev2) sel2.value = prev2;
+      if (prev3 !== undefined) sel3.value = prev3;
+    }
+
+    function getComboEditorKeys() {
+      const k1 = document.getElementById("combo-key-1").value;
+      const k2 = document.getElementById("combo-key-2").value;
+      const k3 = document.getElementById("combo-key-3").value;
+      const arr = [];
+      if (k1) arr.push(k1);
+      if (k2 && !arr.includes(k2)) arr.push(k2);
+      if (k3 && !arr.includes(k3)) arr.push(k3);
+      return arr;
+    }
+
+    function buildAutoComboLabel(keys) {
+      return keys
+        .map((kId) => {
+          const idx = KEY_POSITIONS.findIndex((p) => p.id === kId);
+          if (idx < 0) return kId;
+          const tap = layers[0] && layers[0][idx] ? layers[0][idx].tap : "";
+          const side = idx < 7 || (idx >= 14 && idx < 21) || (idx >= 28 && idx < 35) || (idx >= 42 && idx < 48) || (idx >= 54 && idx < 59) || (idx >= 64 && idx < 67) ? "L" : "R";
+          return tap && tap !== "___" && tap !== "XXX" ? `${side} ${tap}` : KEY_POSITIONS[idx].name;
+        })
+        .join(" + ");
+    }
+
+    function syncComboEditorPreview() {
+      const keys = getComboEditorKeys();
+      highlightedComboKeys = keys;
+      const labelEl = document.getElementById("combo-edit-label");
+      const autoLbl = buildAutoComboLabel(keys);
+      if (!labelEl.value.trim() || labelEl.value === lastAutoComboLabel) {
+        labelEl.value = autoLbl;
+        lastAutoComboLabel = autoLbl;
+      }
+      renderKeyboardStage();
+    }
+
+    function openComboEditor(idx = null) {
+      populateComboKeySelects();
+      editingComboIndex = idx;
+      nextComboKeySlot = 0;
+      const card = document.getElementById("combo-editor-card");
+      const title = document.getElementById("combo-editor-title");
+      const sel1 = document.getElementById("combo-key-1");
+      const sel2 = document.getElementById("combo-key-2");
+      const sel3 = document.getElementById("combo-key-3");
+      const labelEl = document.getElementById("combo-edit-label");
+      const actionEl = document.getElementById("combo-edit-action");
+      const hintEl = document.getElementById("combo-pick-hint");
+
+      if (idx !== null && combos[idx]) {
+        const c = combos[idx];
+        title.textContent = `Edit Combo #${idx + 1} [${c.keys.join(" + ")}]`;
+        sel1.value = c.keys[0] || KEY_POSITIONS[0].id;
+        sel2.value = c.keys[1] || KEY_POSITIONS[1].id;
+        sel3.value = c.keys[2] || "";
+        labelEl.value = c.label || "";
+        actionEl.value = c.action || "";
+        lastAutoComboLabel = buildAutoComboLabel(c.keys);
+        highlightedComboKeys = [...c.keys];
+      } else {
+        title.textContent = "Add New Combo / Chord";
+        const defaultK1 = KEY_POSITIONS[selectedKeyIndex] ? KEY_POSITIONS[selectedKeyIndex].id : "LTU1";
+        const defaultK2 = defaultK1 === "LTU1" ? "LTU2" : "LTU1";
+        sel1.value = defaultK1;
+        sel2.value = defaultK2;
+        sel3.value = "";
+        const initialKeys = [defaultK1, defaultK2];
+        lastAutoComboLabel = buildAutoComboLabel(initialKeys);
+        labelEl.value = lastAutoComboLabel;
+        actionEl.value = "";
+        highlightedComboKeys = initialKeys;
+      }
+      hintEl.textContent = "";
+      card.classList.remove("hidden");
+      card.classList.add("flex");
+      renderKeyboardStage();
+      renderCombosList();
+      actionEl.focus();
+    }
+
+    function closeComboEditor() {
+      editingComboIndex = null;
+      highlightedComboKeys = [];
+      if (interactionMode === "pick-combo-key") {
+        setInteractionMode(null);
+      }
+      const card = document.getElementById("combo-editor-card");
+      if (card) {
+        card.classList.add("hidden");
+        card.classList.remove("flex");
+      }
+      renderKeyboardStage();
+      renderCombosList();
+    }
+
+    function saveComboFromEditor() {
+      const keys = getComboEditorKeys();
+      if (keys.length < 2) {
+        triggerSaveToast("Select at least 2 distinct keys for a combo!", "⚠️");
+        return;
+      }
+      const label = document.getElementById("combo-edit-label").value.trim() || buildAutoComboLabel(keys);
+      const action = document.getElementById("combo-edit-action").value.trim() || "CW_TOGG (Caps-Word)";
+      const newEntry = { keys, label, action };
+
+      if (editingComboIndex !== null && combos[editingComboIndex]) {
+        combos[editingComboIndex] = newEntry;
+        saveState(true, `Updated combo [${keys.join(" + ")}] → ${action}`);
+      } else {
+        combos.push(newEntry);
+        saveState(true, `Added combo [${keys.join(" + ")}] → ${action}`);
+      }
+      closeComboEditor();
+      updateCodePreview();
+    }
+
+    function deleteComboAt(idx) {
+      const target = combos[idx];
+      if (!target) return;
+      combos.splice(idx, 1);
+      if (editingComboIndex === idx) {
+        closeComboEditor();
+      } else if (editingComboIndex !== null && editingComboIndex > idx) {
+        editingComboIndex--;
+      }
+      highlightedComboKeys = [];
+      saveState(true, `Deleted combo [${target.keys.join(" + ")}]`);
+      renderKeyboardStage();
+      renderCombosList();
+      updateCodePreview();
+    }
+
     function renderCombosList() {
       const list = document.getElementById("combos-list");
+      const tabBtn = document.getElementById("tab-btn-combos");
+      if (tabBtn) {
+        tabBtn.textContent = `Combos & Chords (${combos.length})`;
+      }
+      if (!list) return;
       list.innerHTML = "";
-      COMBOS.forEach((c) => {
+      if (combos.length === 0) {
+        list.innerHTML = `<div class="p-3 rounded border border-dashed border-[var(--app-border)] text-center text-xs text-[var(--app-muted-foreground)]">No combos configured. Click <b>+ Add Combo</b> above to create a chord.</div>`;
+        return;
+      }
+      combos.forEach((c, idx) => {
+        const isEditing = editingComboIndex === idx;
         const row = document.createElement("div");
-        row.className = "flex items-center justify-between px-2.5 py-1.5 rounded border border-[var(--app-border)] bg-[var(--app-background)] text-xs cursor-pointer hover:border-cyan-400 transition";
+        row.className = `flex items-center justify-between gap-2 px-2.5 py-1.5 rounded border text-xs cursor-pointer transition ${
+          isEditing
+            ? "border-cyan-400 bg-cyan-500/10"
+            : "border-[var(--app-border)] bg-[var(--app-background)] hover:border-cyan-400"
+        }`;
         row.innerHTML = `
-          <div>
-            <span class="font-mono text-[10px] text-cyan-400 mr-1.5">[${c.keys.join(" + ")}]</span>
-            <span class="font-medium">${c.label}</span>
+          <div class="min-w-0 flex-1">
+            <span class="font-mono text-[10px] text-cyan-400 mr-1.5">[${escapeXml(c.keys.join(" + "))}]</span>
+            <span class="font-medium">${escapeXml(c.label)}</span>
           </div>
-          <span class="font-mono text-[11px] px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300">${c.action}</span>
+          <div class="flex items-center gap-1.5 shrink-0">
+            <span class="font-mono text-[11px] px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300">${escapeXml(c.action)}</span>
+            <button type="button" data-edit-combo="${idx}" class="px-1.5 py-0.5 rounded border border-[var(--app-border)] text-[var(--app-muted-foreground)] hover:text-cyan-300 hover:border-cyan-400 transition" title="Edit combo">✎</button>
+            <button type="button" data-del-combo="${idx}" class="px-1.5 py-0.5 rounded border border-[var(--app-border)] text-[var(--app-muted-foreground)] hover:text-rose-300 hover:border-rose-400 transition" title="Delete combo">🗑</button>
+          </div>
         `;
         row.onmouseenter = () => {
-          highlightedComboKeys = c.keys;
-          renderKeyboardStage();
+          if (editingComboIndex === null) {
+            highlightedComboKeys = c.keys;
+            renderKeyboardStage();
+          }
         };
         row.onmouseleave = () => {
-          highlightedComboKeys = [];
-          renderKeyboardStage();
+          if (editingComboIndex === null) {
+            highlightedComboKeys = [];
+            renderKeyboardStage();
+          }
+        };
+        row.onclick = (e) => {
+          if (e.target.closest("button")) return;
+          openComboEditor(idx);
+        };
+        row.querySelector(`[data-edit-combo="${idx}"]`).onclick = (e) => {
+          e.stopPropagation();
+          openComboEditor(idx);
+        };
+        row.querySelector(`[data-del-combo="${idx}"]`).onclick = (e) => {
+          e.stopPropagation();
+          deleteComboAt(idx);
         };
         list.appendChild(row);
       });
@@ -2217,6 +2531,21 @@
           }
         });
       });
+      if (combos.length > 0) {
+        out += "\n// Combos & Chords (Kaleidoscope MagicCombo / Chords)\nUSE_MAGIC_COMBOS(\n";
+        combos.forEach((c, idx) => {
+          const addrs = c.keys
+            .map((kId) => {
+              const p = KEY_POSITIONS.find((pos) => pos.id === kId);
+              return p ? p.addr : kId;
+            })
+            .join(", ");
+          const safeId = `COMBO_${idx + 1}_${c.keys.join("_").replace(/[^A-Za-z0-9_]/g, "")}`;
+          out += `  // [${c.keys.join(" + ")}] ${c.label} -> ${c.action}\n`;
+          out += `  [${safeId}] = { .action = ComboAction, .keys = { ${addrs} } }${idx < combos.length - 1 ? "," : ""}\n`;
+        });
+        out += ");\n";
+      }
       return out;
     }
 
@@ -2254,6 +2583,7 @@
             layout: "Glorious Engrammer QWERTY",
             layersMeta: LAYERS_META,
             rgbPalette,
+            combos,
             layers,
             underglowLayers
           },
@@ -2266,6 +2596,28 @@
     // =========================================================================
     // 9. EVENT LISTENERS & INITIALIZATION
     // =========================================================================
+    document.getElementById("btn-add-combo").onclick = () => openComboEditor(null);
+    document.getElementById("btn-cancel-combo").onclick = closeComboEditor;
+    document.getElementById("btn-save-combo").onclick = saveComboFromEditor;
+    document.getElementById("btn-pick-combo-keys").onclick = () => {
+      if (interactionMode === "pick-combo-key") {
+        setInteractionMode(null);
+        document.getElementById("combo-pick-hint").textContent = "";
+      } else {
+        nextComboKeySlot = 0;
+        setInteractionMode("pick-combo-key");
+        document.getElementById("combo-pick-hint").textContent = "Click Key 1 on the keyboard diagram above...";
+      }
+    };
+    ["combo-key-1", "combo-key-2", "combo-key-3"].forEach((id) => {
+      document.getElementById(id).onchange = syncComboEditorPreview;
+    });
+    document.getElementById("combo-edit-action").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        saveComboFromEditor();
+      }
+    });
     document.getElementById("edit-type").onchange = (e) => {
       populateHoldSelect(e.target.value, "");
       applyCurrentInspectorEdit();
@@ -2548,6 +2900,7 @@
           updatedAt: new Date().toISOString(),
           layersMeta: LAYERS_META,
           rgbPalette,
+          combos,
           layers,
           underglowLayers
         },
@@ -2596,11 +2949,21 @@
             if (Array.isArray(data.underglowLayers)) {
               underglowLayers = data.underglowLayers;
             }
+            if (Array.isArray(data.combos)) {
+              combos = data.combos
+                .filter((c) => c && Array.isArray(c.keys) && c.keys.length >= 2)
+                .map((c) => ({
+                  keys: c.keys.map((k) => String(k).trim()).filter(Boolean),
+                  label: String(c.label || ""),
+                  action: String(c.action || "")
+                }));
+            }
             currentLayer = 0;
             saveState();
             renderLayerTabs();
             renderKeyboardStage();
             renderInspector();
+            renderCombosList();
           }
         } catch (err) {}
       };
@@ -2657,7 +3020,8 @@
         layers,
         layersMeta: LAYERS_META,
         underglowLayers,
-        rgbPalette
+        rgbPalette,
+        combos
       };
       if (window.showSaveFilePicker) {
         try {
@@ -2709,7 +3073,8 @@
         layers: JSON.parse(JSON.stringify(layers)),
         layersMeta: JSON.parse(JSON.stringify(LAYERS_META)),
         underglowLayers: JSON.parse(JSON.stringify(underglowLayers)),
-        rgbPalette: [...rgbPalette]
+        rgbPalette: [...rgbPalette],
+        combos: JSON.parse(JSON.stringify(combos))
       });
       saveSnapshotsArray(snaps);
       saveState(true, `Snapshot "${name.trim()}" saved!`);
@@ -2730,12 +3095,16 @@
       if (Array.isArray(found.rgbPalette)) {
         rgbPalette = [...found.rgbPalette];
       }
+      if (Array.isArray(found.combos)) {
+        combos = JSON.parse(JSON.stringify(found.combos));
+      }
       currentLayer = 0;
       saveState(true, `Loaded snapshot "${found.name}"!`);
       renderRgbPaletteBar();
       renderLayerTabs();
       renderKeyboardStage();
       renderInspector();
+      renderCombosList();
     }
 
     function deleteNamedSnapshot(snapId) {
