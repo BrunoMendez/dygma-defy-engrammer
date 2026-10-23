@@ -2056,8 +2056,8 @@
       }
     }
 
-    function drawMasterBase(previewLayer = null, heldKeyId = null, labelText = null) {
-      if (previewLayer === currentPreviewLayer && heldKeyId === currentPreviewKeyId && svgMaster.innerHTML) {
+    function drawMasterBase(previewLayer = null, heldKeyId = null, labelText = null, forceRedraw = false) {
+      if (!forceRedraw && previewLayer === currentPreviewLayer && heldKeyId === currentPreviewKeyId && svgMaster.innerHTML) {
         return;
       }
       currentPreviewLayer = previewLayer;
@@ -2081,41 +2081,47 @@
         masterBadge.textContent = `Showing: ${lName} (Hover any layer key to preview its layer)`;
         masterBadge.style.color = "#38bdf8";
       }
-      bindMasterHotspotEvents(dynamicHotspots);
     }
 
-    function bindMasterHotspotEvents(hotspots) {
-      svgMaster.querySelectorAll(".layer-hotspot").forEach(el => {
-        const targetLayer = Number(el.getAttribute("data-target-layer"));
-        const keyId = el.getAttribute("data-key-id");
-        const sectionId = el.getAttribute("data-section");
-        const hs = hotspots.find(h => h.keyId === keyId);
-        el.addEventListener("mouseenter", () => {
+    function handleMasterPointer(ev) {
+      const hotspotEl = ev.target && ev.target.closest ? ev.target.closest(".layer-hotspot") : null;
+      if (hotspotEl && svgMaster.contains(hotspotEl)) {
+        const targetLayer = Number(hotspotEl.getAttribute("data-target-layer"));
+        const keyId = hotspotEl.getAttribute("data-key-id");
+        if (currentPreviewLayer !== targetLayer || currentPreviewKeyId !== keyId) {
+          const dynamicHotspots = getMasterHotspots(currentMasterBase);
+          const hs = dynamicHotspots.find(h => h.keyId === keyId);
           drawMasterBase(targetLayer, keyId, hs ? hs.label : `Layer ${targetLayer}`);
-        });
-        el.addEventListener("click", () => {
-          if (targetLayer >= 6 && typeof selectAuxLayerTab === "function") {
-            selectAuxLayerTab(targetLayer);
-          }
-          if (sectionId) {
-            const sec = document.querySelector(sectionId);
-            if (sec) sec.scrollIntoView({ behavior: "smooth" });
-          }
-        });
-      });
+        }
+      } else if (currentPreviewLayer !== null || currentPreviewKeyId !== null) {
+        drawMasterBase(null, null, null);
+      }
     }
+
+    svgMaster.addEventListener("mouseover", handleMasterPointer);
+    svgMaster.addEventListener("mousemove", handleMasterPointer);
+
+    svgMaster.addEventListener("click", ev => {
+      const hotspotEl = ev.target && ev.target.closest ? ev.target.closest(".layer-hotspot") : null;
+      if (!hotspotEl || !svgMaster.contains(hotspotEl)) return;
+      const targetLayer = Number(hotspotEl.getAttribute("data-target-layer"));
+      const sectionId = hotspotEl.getAttribute("data-section");
+      if (targetLayer >= 6 && typeof selectAuxLayerTab === "function") {
+        selectAuxLayerTab(targetLayer);
+      }
+      if (sectionId) {
+        const sec = document.querySelector(sectionId);
+        if (sec) sec.scrollIntoView({ behavior: "smooth" });
+      }
+    });
 
     svgMaster.addEventListener("mouseleave", () => {
-      currentPreviewLayer = null;
-      currentPreviewKeyId = null;
-      drawMasterBase(null);
+      drawMasterBase(null, null, null);
     });
 
     masterSelect.addEventListener("change", () => {
       currentMasterBase = Number(masterSelect.value);
-      currentPreviewLayer = null;
-      currentPreviewKeyId = null;
-      drawMasterBase(null);
+      drawMasterBase(null, null, null, true);
     });
     document.getElementById("master-next-base").addEventListener("click", () => {
       masterSelect.selectedIndex = (masterSelect.selectedIndex + 1) % masterSelect.options.length;
@@ -2803,9 +2809,7 @@
         }
       }
       populateAuxLayerBar();
-      currentPreviewLayer = null;
-      currentPreviewKeyId = null;
-      drawMasterBase(null);
+      drawMasterBase(null, null, null, true);
       updateSymbolDiagram();
       sectionControllers.forEach(c => c.renderCurrent());
     }
