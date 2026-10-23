@@ -503,6 +503,11 @@
       </div>
     </div>
     <div class="nav-actions">
+      <span id="vis-sync-badge" style="font-size:11px; font-family:ui-monospace, monospace; padding:4px 9px; border-radius:6px; background:rgba(16,185,129,0.15); color:#6ee7b7; border:1px solid rgba(16,185,129,0.35);">
+        ✓ Default Layout
+      </span>
+      <button id="btn-vis-load-json" class="btn" title="Load a saved Dygma_Defy_Engrammer_Layout.json file from disk">📂 Load .json</button>
+      <input id="vis-file-json" type="file" accept=".json" style="display:none;" />
       <a href="#layers" class="btn">🗺️ Master Layer Map</a>
       <a href="#symbol-layer" class="btn">💎 Symbol Layer</a>
       <a href="#cursor-layer" class="btn">🧭 Cursor Layer</a>
@@ -624,7 +629,7 @@
             <span>💎 Symbol Layer — Programming Symbols &amp; Inward Rolls</span>
             <a href="#symbol-layer" class="permalink">#</a>
           </h2>
-          <span style="font-size:12px; color:#facc15; font-weight:700;">
+          <span id="layer-hold-subtitle-1" style="font-size:12px; color:#facc15; font-weight:700;">
             Activated by holding Right Thumb Primary Key (RTU0: Space / Symbol)
           </span>
         </div>
@@ -770,7 +775,7 @@
             <span>🧭 Cursor Layer — Navigation, Text Selection &amp; Editing</span>
             <a href="#cursor-layer" class="permalink">#</a>
           </h2>
-          <span style="font-size:12px; color:#38bdf8; font-weight:700;">
+          <span id="layer-hold-subtitle-3" style="font-size:12px; color:#38bdf8; font-weight:700;">
             Activated by holding Left Thumb Primary Key (LTU0: Bksp / Cursor)
           </span>
         </div>
@@ -819,7 +824,7 @@
             <span>🔢 Number Layer — 3x3 Numpad, Hexadecimal, Dates &amp; Math</span>
             <a href="#number-layer" class="permalink">#</a>
           </h2>
-          <span style="font-size:12px; color:#ef4444; font-weight:700;">
+          <span id="layer-hold-subtitle-2" style="font-size:12px; color:#ef4444; font-weight:700;">
             Activated by holding Left Thumb Middle Key (LTU1: Del / Number)
           </span>
         </div>
@@ -868,7 +873,7 @@
             <span>⚡ Function Layer — 3x3 F1–F15 Pad &amp; Media Controls</span>
             <a href="#function-layer" class="permalink">#</a>
           </h2>
-          <span style="font-size:12px; color:#f97316; font-weight:700;">
+          <span id="layer-hold-subtitle-5" style="font-size:12px; color:#f97316; font-weight:700;">
             Activated by holding Left Thumb Upper 4th Key (LTU3: Esc / Function)
           </span>
         </div>
@@ -902,7 +907,7 @@
             <span>🖱️ Mouse Layer — Pointer Control &amp; Natural Wheel Scrolling</span>
             <a href="#mouse-layer" class="permalink">#</a>
           </h2>
-          <span style="font-size:12px; color:#f59e0b; font-weight:700;">
+          <span id="layer-hold-subtitle-4" style="font-size:12px; color:#f59e0b; font-weight:700;">
             Activated by holding Right Thumb Middle Key (RTU1: Tab / Mouse)
           </span>
         </div>
@@ -933,14 +938,18 @@
       <section id="lower-layer" class="layer-section">
         <div class="section-header">
           <h2>
-            <span>🔒 Lower, Magic, System, Gaming &amp; Typing Layers</span>
+            <span>🔒 Lower, Magic, System, Gaming, Typing &amp; Custom Layers</span>
             <a href="#lower-layer" class="permalink">#</a>
           </h2>
         </div>
 
+        <div class="category-bar" id="aux-layer-bar">
+          <!-- Populated dynamically with L10, L7, L6, L8, L9 + any custom layers -->
+        </div>
+
         <div class="interactive-prompt">
           <div class="interactive-controls">
-            <strong>Inspect Layer &amp; Example:</strong>
+            <strong>Usage Example:</strong>
             <select id="aux-example-select" class="interactive-select"></select>
             <button class="btn" id="aux-prev-btn">◀ Prev</button>
             <button class="btn" id="aux-next-btn">Next example ▶</button>
@@ -1539,25 +1548,99 @@
     // VISUALIZER ENGINE — SUNAKU-STYLE INTERACTIVE DIAGRAMS & SEQUENCES
     // =========================================================================
     const STORAGE_KEY = "dygma_defy_engrammer_v5";
+    const SYNC_CHANNEL_NAME = "dygma_defy_engrammer_sync";
     const KEY_BY_ID = {};
     KEY_POSITIONS.forEach((kp, idx) => { KEY_BY_ID[kp.id] = { ...kp, index: idx }; });
 
     let layers = getInitialLayers();
     let underglowLayers = [];
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed && Array.isArray(parsed.layers) && parsed.layers.length >= 12) {
-          layers = parsed.layers;
-        }
-        if (parsed && Array.isArray(parsed.underglow)) {
-          underglowLayers = parsed.underglow;
+    let lastActiveLayer = null;
+    let isCustomLoaded = false;
+
+    function syncLayersHeldKeysFromBase() {
+      if (!Array.isArray(layers) || !layers[0]) return;
+      LAYERS_META.forEach((m, idx) => {
+        if (m && idx > 0) m.heldKey = null;
+      });
+      const baseSources = [layers[0], layers[11]].filter(Boolean);
+      baseSources.forEach(baseLayer => {
+        KEY_POSITIONS.forEach((pos, idx) => {
+          const item = baseLayer[idx];
+          if (!item) return;
+          if (item.type === "lt" || item.type === "mo") {
+            const target = Number(item.hold);
+            if (!isNaN(target) && target > 0 && LAYERS_META[target] && !LAYERS_META[target].heldKey) {
+              LAYERS_META[target].heldKey = pos.id;
+            }
+          }
+        });
+      });
+    }
+
+    function applyParsedStudioState(parsed, sourceLabel) {
+      if (!parsed || typeof parsed !== "object") return false;
+      let updated = false;
+      if (Array.isArray(parsed.layers) && parsed.layers.length >= 1) {
+        layers = parsed.layers;
+        updated = true;
+      }
+      if (Array.isArray(parsed.layersMeta) && parsed.layersMeta.length === layers.length) {
+        LAYERS_META.length = 0;
+        parsed.layersMeta.forEach(m => LAYERS_META.push(m));
+      }
+      if (Array.isArray(parsed.underglowLayers)) {
+        underglowLayers = parsed.underglowLayers;
+      } else if (Array.isArray(parsed.underglow)) {
+        underglowLayers = parsed.underglow;
+      }
+      if (typeof parsed.lastActiveLayer === "number") {
+        lastActiveLayer = parsed.lastActiveLayer;
+      }
+      if (updated) {
+        syncLayersHeldKeysFromBase();
+        isCustomLoaded = true;
+        const badge = document.getElementById("vis-sync-badge");
+        if (badge) {
+          badge.textContent = `● Synced with Layout Studio (${sourceLabel || "Live"})`;
+          badge.style.background = "rgba(34,197,94,0.16)";
+          badge.style.borderColor = "rgba(34,197,94,0.45)";
+          badge.style.color = "#4ade80";
         }
       }
-    } catch (e) {}
+      return updated;
+    }
 
-    // Semantic Categories for Symbol Layer (Sunaku's Red/Green/Blue/Purple/Yellow + Teal Spacegrams)
+    function loadStateFromStudio() {
+      let loaded = false;
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          loaded = applyParsedStudioState(JSON.parse(saved), "Saved Layout") || loaded;
+        }
+      } catch (e) {}
+      if (!loaded) {
+        try {
+          if (window.name && window.name.startsWith("DYGMA_DEFY_STATE:")) {
+            const raw = window.name.slice("DYGMA_DEFY_STATE:".length);
+            loaded = applyParsedStudioState(JSON.parse(raw), "Studio Session") || loaded;
+          }
+        } catch (e) {}
+      }
+      if (!loaded) {
+        const badge = document.getElementById("vis-sync-badge");
+        if (badge) {
+          badge.textContent = "● Showing Default Factory Layout";
+          badge.style.background = "rgba(148,163,184,0.14)";
+          badge.style.borderColor = "rgba(148,163,184,0.3)";
+          badge.style.color = "#cbd5e1";
+        }
+      }
+      return loaded;
+    }
+
+    loadStateFromStudio();
+
+    // Semantic Categories for Symbol Layer (fallback by key ID + dynamic by symbol tap character)
     const SYMBOL_SEMANTIC_CATS = {
       // Red: Quotes & Strings
       "L01": "quote", "LTL2": "quote", "LTL3": "quote", "R32": "quote", "R33": "quote", "R34": "quote", "R26": "quote",
@@ -1574,6 +1657,22 @@
       "R22": "space", "R23": "space", "R24": "space", "R25": "space", "R12": "space", "R13": "space", "R14": "space", "R15": "space"
     };
 
+    const SYMBOL_CHAR_CATS = {
+      "`": "quote", "'": "quote", "\"": "quote",
+      "(": "group", ")": "group", "[": "group", "]": "group", "{": "group", "}": "group",
+      "=": "arrow", "_": "arrow", "<": "arrow", "|": "arrow", "-": "arrow", ">": "arrow", "+": "arrow", "&": "arrow",
+      "!": "flip",  "?": "flip",  "~": "flip",  "/": "flip",  "\\": "flip",
+      ";": "vim",   ",": "vim",   "#": "vim",   "^": "vim",   "$": "vim",   "*": "vim",   ".": "vim",   "@": "vim", "%": "vim", ":": "vim",
+      "Space": "space", "Enter": "space", "Tab": "space", "Bksp": "space", "Del": "space"
+    };
+
+    function getSymbolSemanticCat(posId, item) {
+      if (item && item.tap && SYMBOL_CHAR_CATS[item.tap]) {
+        return SYMBOL_CHAR_CATS[item.tap];
+      }
+      return SYMBOL_SEMANTIC_CATS[posId] || null;
+    }
+
     const CAT_COLORS = {
       quote: "#f43f5e", // Red
       arrow: "#22c55e", // Green
@@ -1583,15 +1682,63 @@
       space: "#14b8a6"  // Teal
     };
 
-    // Map literal characters on Symbol Layer to their primary Left/Thumb key ID
-    const CHAR_TO_SYMBOL_KEY = {
+    // Dynamically map characters on Symbol Layer (L1) to their actual current key ID in `layers[1]`
+    const DEFAULT_CHAR_TO_SYMBOL_KEY = {
       "`": "L01", "(": "L02", ")": "L03", ";": "L04", ",": "L05",
       "!": "L10", "[": "L11", "{": "L12", "}": "L13", "]": "L14", "?": "L15",
       "#": "L20", "^": "L21", "=": "L22", "_": "L23", "$": "L24", "*": "L25", ".": "L26",
       "~": "L30", "<": "L31", "|": "L32", "-": "L33", ">": "L34", "/": "L35",
       "&": "LTL1", "'": "LTL2", "\"": "LTL3", "\\": "LTU3",
-      "%": "LTU0", ":": "LTU1", " ": "R24", "\n": "R25"
+      "%": "LTU0", ":": "LTU1", " ": "R24", "\n": "R25",
+      "+": "R23", "@": "LTL0"
     };
+
+    function getCharToSymbolKeyMap() {
+      const map = { ...DEFAULT_CHAR_TO_SYMBOL_KEY };
+      const symLayer = layers[1] || [];
+      KEY_POSITIONS.forEach((pos, idx) => {
+        const item = symLayer[idx];
+        if (!item || item.type === "trans") return;
+        const tap = item.tap || "";
+        if (tap === "Space") map[" "] = pos.id;
+        else if (tap === "Enter") map["\n"] = pos.id;
+        else if (tap.length === 1) {
+          // Prefer left hand / thumb for symbols if duplicate, or overwrite with user's actual key
+          if (pos.hand === "L" || !map[tap]) {
+            map[tap] = pos.id;
+          }
+        }
+      });
+      return map;
+    }
+
+    // Dynamically find which key(s) activate `targetLayer` from Base Layer 0 (or active base layer)
+    function getLayerHeldKeys(layerIdx) {
+      const found = [];
+      const baseCandidates = [
+        typeof currentMasterBase === "number" ? layers[currentMasterBase] : null,
+        layers[0],
+        layers[11]
+      ].filter(Boolean);
+      for (const base of baseCandidates) {
+        for (let i = 0; i < KEY_POSITIONS.length; i++) {
+          const k = base[i];
+          if (k && (k.type === "lt" || k.type === "mo") && Number(k.hold) === Number(layerIdx)) {
+            if (!found.includes(KEY_POSITIONS[i].id)) {
+              found.push(KEY_POSITIONS[i].id);
+            }
+          }
+        }
+        if (found.length > 0) return found;
+      }
+      const fallback = (LAYERS_META[layerIdx] && LAYERS_META[layerIdx].heldKey) || null;
+      return fallback ? [fallback] : [];
+    }
+
+    function getLayerHeldKey(layerIdx) {
+      const all = getLayerHeldKeys(layerIdx);
+      return all.length > 0 ? all[0] : null;
+    }
 
     function getKeyVisualCenter(k) {
       if (k.thumbType) {
@@ -1611,6 +1758,7 @@
 
     // Core SVG Renderer for any Dygma Defy Layer Diagram
     function renderDefyDiagram(svgEl, options) {
+      if (!svgEl) return;
       const {
         layerIdx = 0,
         heldKeys = [],          // Array of keyIds held down (e.g., ["RTU0"])
@@ -1621,8 +1769,8 @@
       } = options;
 
       const layerData = layers[layerIdx] || layers[0];
-      const meta = LAYERS_META[layerIdx] || { heldKey: null };
-      const activeHolds = new Set(heldKeys.length ? heldKeys : (meta.heldKey ? [meta.heldKey] : []));
+      const detectedHeld = getLayerHeldKey(layerIdx);
+      const activeHolds = new Set(heldKeys.length ? heldKeys : (detectedHeld ? [detectedHeld] : []));
       const stepMap = {}; // keyId -> array of step numbers (1-based)
       sequenceSteps.forEach((st, i) => {
         if (!stepMap[st.keyId]) stepMap[st.keyId] = [];
@@ -1660,11 +1808,15 @@
         const steps = stepMap[pos.id] || [];
         const isStep = steps.length > 0;
         const hotspot = hotspotMap[pos.id];
+        const symCat = useSymbolSemantics ? getSymbolSemanticCat(pos.id, item) : null;
 
-        // Determine Key Color
+        // Determine Key Color: ALWAYS respect user's custom `item.color` from Studio first,
+        // unless the user actively clicked a semantic category filter pill on the Symbol Layer!
         let accentColor = item.color || "";
-        if (useSymbolSemantics && SYMBOL_SEMANTIC_CATS[pos.id]) {
-          accentColor = CAT_COLORS[SYMBOL_SEMANTIC_CATS[pos.id]];
+        if (useSymbolSemantics && semanticFilter !== "all" && symCat) {
+          accentColor = CAT_COLORS[symCat];
+        } else if (!accentColor && useSymbolSemantics && symCat) {
+          accentColor = CAT_COLORS[symCat];
         } else if (!accentColor) {
           if (item.type === "mt") accentColor = "#a855f7";
           else if (item.type === "lt" || item.type === "mo" || item.type === "to") accentColor = "#06b6d4";
@@ -1679,8 +1831,7 @@
           opacity = 0.28;
         }
         if (useSymbolSemantics && semanticFilter !== "all") {
-          const kCat = SYMBOL_SEMANTIC_CATS[pos.id];
-          opacity = (kCat === semanticFilter || isHeld) ? 1.0 : 0.22;
+          opacity = (symCat === semanticFilter || isHeld) ? 1.0 : 0.22;
         }
         if (sequenceSteps.length > 0 && !isStep && !isHeld) {
           opacity = Math.min(opacity, 0.42);
@@ -1695,8 +1846,8 @@
           fillInner = accentColor + "24"; // ~14% alpha tint
         }
         if (hotspot) {
-          fillInner = "rgba(168, 85, 247, 0.24)";
-          strokeInner = "#c084fc";
+          fillInner = accentColor ? (accentColor + "38") : "rgba(168, 85, 247, 0.24)";
+          strokeInner = accentColor || "#c084fc";
           strokeWidth = "2.2";
         }
         if (isHeld) {
@@ -1821,7 +1972,7 @@
     function renderSequenceReadout(el, steps, title) {
       if (!el) return;
       if (!steps || steps.length === 0) {
-        el.innerHTML = `<span style="color:var(--text-muted);">Select an interactive example above or click any code chip to animate the keystrokes.</span>`;
+        el.innerHTML = `<span style="color:var(--text-muted);">Showing all 70 keys from your saved layout at 100% brightness. Pick an example above or click any chip to animate keystrokes.</span>`;
         return;
       }
       let out = title ? `<strong style="color:#38bdf8; margin-right:6px;">${escapeXml(title)}:</strong>` : "";
@@ -1841,32 +1992,82 @@
     }
 
     // =========================================================================
-    // 1. MASTER INTERACTIVE LAYER MAP INITIALIZATION
+    // 1. MASTER INTERACTIVE LAYER MAP INITIALIZATION (DYNAMIC HOTSPOTS)
     // =========================================================================
-    const MASTER_HOTSPOTS = [
-      { keyId: "RTU0", targetLayer: 1,  sectionId: "#symbol-layer",   label: "Layer 1: Symbol Layer (Hold Right Space)" },
-      { keyId: "LTU1", targetLayer: 2,  sectionId: "#number-layer",   label: "Layer 2: Number Layer (Hold Left Del)" },
-      { keyId: "LTU0", targetLayer: 3,  sectionId: "#cursor-layer",   label: "Layer 3: Cursor Layer (Hold Left Bksp)" },
-      { keyId: "RTU1", targetLayer: 4,  sectionId: "#mouse-layer",    label: "Layer 4: Mouse Layer (Hold Right Tab)" },
-      { keyId: "LTU3", targetLayer: 5,  sectionId: "#function-layer", label: "Layer 5: Function Layer (Hold Left Esc)" },
-      { keyId: "RTU3", targetLayer: 6,  sectionId: "#system-layer",   label: "Layer 6: System/RGB Layer (Hold Right Enter)" },
-      { keyId: "LTL0", targetLayer: 7,  sectionId: "#magic-layer",    label: "Layer 7: Magic/OS Layer (Hold Left Outer Lower)" },
-      { keyId: "RTL0", targetLayer: 7,  sectionId: "#magic-layer",    label: "Layer 7: Magic/OS Layer (Hold Right Outer Lower)" },
-      { keyId: "LTU2", targetLayer: 10, sectionId: "#lower-layer",    label: "Layer 10: Lower Layer & Layer Locks (Hold Left Ins)" },
-      { keyId: "RTU2", targetLayer: 10, sectionId: "#lower-layer",    label: "Layer 10: Lower Layer & Layer Locks (Hold Right Ins)" }
-    ];
+    const LAYER_TO_SECTION = {
+      1: "#symbol-layer",
+      2: "#number-layer",
+      3: "#cursor-layer",
+      4: "#mouse-layer",
+      5: "#function-layer",
+      6: "#lower-layer",
+      7: "#lower-layer",
+      8: "#lower-layer",
+      9: "#lower-layer",
+      10: "#lower-layer"
+    };
+
+    function getMasterHotspots(baseLayerIdx) {
+      const layerData = layers[baseLayerIdx] || layers[0] || [];
+      const spots = [];
+      KEY_POSITIONS.forEach((pos, idx) => {
+        const item = layerData[idx];
+        if (!item) return;
+        if (item.type === "lt" || item.type === "mo" || item.type === "to") {
+          const target = Number(item.hold);
+          if (!isNaN(target) && layers[target]) {
+            const tMeta = LAYERS_META[target] || { name: `Layer ${target}` };
+            spots.push({
+              keyId: pos.id,
+              targetLayer: target,
+              sectionId: LAYER_TO_SECTION[target] || "#lower-layer",
+              label: `${tMeta.name} (Hold/Tap ${item.tap || pos.id})`
+            });
+          }
+        }
+      });
+      return spots;
+    }
 
     const svgMaster = document.getElementById("svg-master-map");
     const masterSelect = document.getElementById("master-base-select");
     const masterBadge = document.getElementById("master-hover-badge");
     let currentMasterBase = 0;
+    let currentPreviewLayer = null;
+    let currentPreviewKeyId = null;
+
+    function populateMasterSelect() {
+      const prevVal = masterSelect.value;
+      const baseOptions = [0, 11, 8, 9];
+      // Include any custom layers added by the user (> 11) or all layers
+      layers.forEach((_, idx) => {
+        if (!baseOptions.includes(idx)) baseOptions.push(idx);
+      });
+      masterSelect.innerHTML = baseOptions
+        .filter(idx => layers[idx])
+        .map(idx => {
+          const m = LAYERS_META[idx] || { name: `Layer ${idx}` };
+          return `<option value="${idx}">${escapeXml(m.name || `Layer ${idx}`)}</option>`;
+        }).join("");
+      if (prevVal && layers[Number(prevVal)]) {
+        masterSelect.value = prevVal;
+      } else {
+        masterSelect.value = String(currentMasterBase);
+      }
+    }
 
     function drawMasterBase(previewLayer = null, heldKeyId = null, labelText = null) {
+      if (previewLayer === currentPreviewLayer && heldKeyId === currentPreviewKeyId && svgMaster.innerHTML) {
+        return;
+      }
+      currentPreviewLayer = previewLayer;
+      currentPreviewKeyId = heldKeyId;
+      const dynamicHotspots = getMasterHotspots(currentMasterBase);
       if (previewLayer !== null) {
         renderDefyDiagram(svgMaster, {
           layerIdx: previewLayer,
-          heldKeys: heldKeyId ? [heldKeyId] : [],
-          hotspots: MASTER_HOTSPOTS,
+          heldKeys: heldKeyId ? [heldKeyId] : getLayerHeldKeys(previewLayer),
+          hotspots: dynamicHotspots,
           useSymbolSemantics: previewLayer === 1
         });
         masterBadge.textContent = `Previewing: ${labelText} — Click key to jump to section!`;
@@ -1874,25 +2075,28 @@
       } else {
         renderDefyDiagram(svgMaster, {
           layerIdx: currentMasterBase,
-          hotspots: currentMasterBase === 0 || currentMasterBase === 11 ? MASTER_HOTSPOTS : []
+          hotspots: dynamicHotspots
         });
-        const lName = (LAYERS_META[currentMasterBase] || {}).name || "Base Layer";
-        masterBadge.textContent = `Showing: ${lName} (Hover any glowing purple key to preview its layer)`;
+        const lName = (LAYERS_META[currentMasterBase] || {}).name || `Layer ${currentMasterBase}`;
+        masterBadge.textContent = `Showing: ${lName} (Hover any layer key to preview its layer)`;
         masterBadge.style.color = "#38bdf8";
       }
-      bindMasterHotspotEvents();
+      bindMasterHotspotEvents(dynamicHotspots);
     }
 
-    function bindMasterHotspotEvents() {
+    function bindMasterHotspotEvents(hotspots) {
       svgMaster.querySelectorAll(".layer-hotspot").forEach(el => {
         const targetLayer = Number(el.getAttribute("data-target-layer"));
         const keyId = el.getAttribute("data-key-id");
         const sectionId = el.getAttribute("data-section");
-        const hs = MASTER_HOTSPOTS.find(h => h.keyId === keyId);
+        const hs = hotspots.find(h => h.keyId === keyId);
         el.addEventListener("mouseenter", () => {
           drawMasterBase(targetLayer, keyId, hs ? hs.label : `Layer ${targetLayer}`);
         });
         el.addEventListener("click", () => {
+          if (targetLayer >= 6 && typeof selectAuxLayerTab === "function") {
+            selectAuxLayerTab(targetLayer);
+          }
           if (sectionId) {
             const sec = document.querySelector(sectionId);
             if (sec) sec.scrollIntoView({ behavior: "smooth" });
@@ -1902,28 +2106,36 @@
     }
 
     svgMaster.addEventListener("mouseleave", () => {
+      currentPreviewLayer = null;
+      currentPreviewKeyId = null;
       drawMasterBase(null);
     });
 
     masterSelect.addEventListener("change", () => {
       currentMasterBase = Number(masterSelect.value);
+      currentPreviewLayer = null;
+      currentPreviewKeyId = null;
       drawMasterBase(null);
     });
     document.getElementById("master-next-base").addEventListener("click", () => {
       masterSelect.selectedIndex = (masterSelect.selectedIndex + 1) % masterSelect.options.length;
       masterSelect.dispatchEvent(new Event("change"));
     });
-    drawMasterBase(null);
 
     // =========================================================================
     // 2. SYMBOL LAYER EXAMPLES, BIGRAM CHIPS & LIVE ROLL TESTER
     // =========================================================================
     function buildSymbolSequence(chars, customTitle) {
-      const steps = [{ keyId: "RTU0", isHold: true, desc: "Hold Space (Symbol L1)" }];
+      const heldKey = getLayerHeldKey(1) || "RTU0";
+      const hkp = KEY_BY_ID[heldKey];
+      const baseItem = (hkp && layers[0]) ? layers[0][hkp.index] : null;
+      const tapName = (baseItem && baseItem.tap) ? baseItem.tap : heldKey;
+      const charMap = getCharToSymbolKeyMap();
+      const steps = [{ keyId: heldKey, isHold: true, desc: `Hold ${tapName} (${heldKey} → Symbol L1)` }];
       for (const ch of chars) {
-        const kId = CHAR_TO_SYMBOL_KEY[ch];
+        const kId = charMap[ch];
         if (kId) {
-          const disp = ch === " " ? "Space (R24)" : (ch === "\n" ? "Enter (R25)" : `${ch} (${kId})`);
+          const disp = ch === " " ? `Space (${kId})` : (ch === "\n" ? `Enter (${kId})` : `${ch} (${kId})`);
           steps.push({ keyId: kId, isHold: false, desc: `Tap ${disp}` });
         }
       }
@@ -1956,9 +2168,10 @@
     let activeSymTitle = "";
 
     function updateSymbolDiagram() {
+      const heldKey = getLayerHeldKey(1) || "RTU0";
       renderDefyDiagram(svgSymbol, {
         layerIdx: 1,
-        heldKeys: ["RTU0"],
+        heldKeys: [heldKey],
         sequenceSteps: activeSymSequence,
         semanticFilter: activeSymCategory,
         useSymbolSemantics: true
@@ -1974,7 +2187,7 @@
     }
 
     // Populate Symbol Layer dropdown
-    symSelect.innerHTML = `<option value="">Pick a usage example to illustrate ...</option>` +
+    symSelect.innerHTML = `<option value="">Show Full Layer (All 70 Keys Undimmed) — or pick an example ...</option>` +
       SYMBOL_EXAMPLES.map((ex, i) => `<option value="${i}">Example #${i + 1}. ${escapeXml(ex.title)}</option>`).join("");
 
     symSelect.addEventListener("change", () => {
@@ -2150,13 +2363,43 @@
       });
     });
 
-    // Initialize Symbol Layer with Example #1 ("(); zero-arity function calls")
-    symSelect.selectedIndex = 1;
-    symSelect.dispatchEvent(new Event("change"));
+    // Show full Symbol Layer by default so all 70 keys & user edits are clearly visible
+    symSelect.selectedIndex = 0;
 
     // =========================================================================
     // 3. CURSOR, NUMBER, FUNCTION, MOUSE & AUX LAYER INTERACTIVE SECTIONS
     // =========================================================================
+    const sectionControllers = [];
+
+    function resolveDynamicSteps(layerIdx, steps) {
+      const layerData = layers[layerIdx] || [];
+      const baseData = layers[0] || [];
+      const actualHeldKey = getLayerHeldKey(layerIdx);
+      return steps.map((st, stepIdx) => {
+        if (st.isHold && stepIdx === 0 && actualHeldKey) {
+          const hkp = KEY_BY_ID[actualHeldKey];
+          const baseItem = hkp ? baseData[hkp.index] : null;
+          const tapName = (baseItem && baseItem.tap) ? baseItem.tap : actualHeldKey;
+          const lMeta = LAYERS_META[layerIdx] || { short: `L${layerIdx}` };
+          return {
+            ...st,
+            keyId: actualHeldKey,
+            desc: `Hold ${tapName} (${actualHeldKey} → ${lMeta.short || "L" + layerIdx})`
+          };
+        }
+        const kp = KEY_BY_ID[st.keyId];
+        if (!kp) return st;
+        const item = layerData[kp.index];
+        if (!item || item.type === "trans") return st;
+        if (st.isHold) return st;
+        const liveTap = item.tap || st.keyId;
+        return {
+          ...st,
+          desc: `${liveTap} (${st.keyId})`
+        };
+      });
+    }
+
     function setupLayerSection(cfg) {
       const svgEl = document.getElementById(cfg.svgId);
       const selectEl = document.getElementById(cfg.selectId);
@@ -2165,27 +2408,33 @@
       const nextBtn = document.getElementById(cfg.nextId);
       const clearBtn = document.getElementById(cfg.clearId);
 
-      selectEl.innerHTML = `<option value="">Pick a usage example to illustrate ...</option>` +
+      selectEl.innerHTML = `<option value="">Show Full Layer (All 70 Keys Undimmed) — or pick an example ...</option>` +
         cfg.examples.map((ex, i) => `<option value="${i}">Example #${i + 1}. ${escapeXml(ex.title)}</option>`).join("");
+
+      let currentLayerOverride = cfg.defaultLayerIdx;
 
       function renderCurrent() {
         const val = selectEl.value;
         if (val === "") {
-          const defaultLyr = cfg.defaultLayerIdx;
-          const held = (LAYERS_META[defaultLyr] && LAYERS_META[defaultLyr].heldKey) ? [LAYERS_META[defaultLyr].heldKey] : [];
-          renderDefyDiagram(svgEl, { layerIdx: defaultLyr, heldKeys: held });
-          renderSequenceReadout(readoutEl, [], "");
+          const lyr = currentLayerOverride;
+          const heldKey = getLayerHeldKey(lyr);
+          renderDefyDiagram(svgEl, { layerIdx: lyr, heldKeys: heldKey ? [heldKey] : [] });
+          const lyrMeta = LAYERS_META[lyr] || { name: `Layer ${lyr}` };
+          if (readoutEl) {
+            readoutEl.innerHTML = `<strong style="color:#38bdf8; margin-right:6px;">${escapeXml(lyrMeta.name)}:</strong> <span style="color:var(--text-muted);">Showing all 70 keys from your saved layout. Pick an example above to animate keystrokes.</span>`;
+          }
           return;
         }
         const ex = cfg.examples[Number(val)];
-        const lyr = ex.layerIdx !== undefined ? ex.layerIdx : cfg.defaultLayerIdx;
-        const held = ex.steps.filter(s => s.isHold).map(s => s.keyId);
+        const lyr = ex.layerIdx !== undefined ? ex.layerIdx : currentLayerOverride;
+        const liveSteps = resolveDynamicSteps(lyr, ex.steps);
+        const held = liveSteps.filter(s => s.isHold).map(s => s.keyId);
         renderDefyDiagram(svgEl, {
           layerIdx: lyr,
           heldKeys: held,
-          sequenceSteps: ex.steps
+          sequenceSteps: liveSteps
         });
-        renderSequenceReadout(readoutEl, ex.steps, ex.title);
+        renderSequenceReadout(readoutEl, liveSteps, ex.title);
       }
 
       selectEl.addEventListener("change", renderCurrent);
@@ -2204,8 +2453,21 @@
         renderCurrent();
       });
 
-      selectEl.selectedIndex = 1;
-      renderCurrent();
+      selectEl.selectedIndex = 0;
+      const ctrl = {
+        cfg,
+        renderCurrent,
+        setLayerOverride(lyrIdx) {
+          currentLayerOverride = lyrIdx;
+          selectEl.selectedIndex = 0;
+          renderCurrent();
+        },
+        getLayerOverride() {
+          return currentLayerOverride;
+        }
+      };
+      sectionControllers.push(ctrl);
+      return ctrl;
     }
 
     // Cursor Layer Examples (Sunaku's Cursor Layer Suite adapted to Defy 70)
@@ -2415,8 +2677,8 @@
       ]
     });
 
-    // Aux Layers (Lower, Magic, System, Gaming, Typing)
-    setupLayerSection({
+    // Aux Layers (Lower, Magic, System, Gaming, Typing + any custom layers)
+    const auxController = setupLayerSection({
       svgId: "svg-aux-layer",
       selectId: "aux-example-select",
       readoutId: "aux-seq-readout",
@@ -2480,6 +2742,134 @@
         }
       ]
     });
+
+    const auxLayerBar = document.getElementById("aux-layer-bar");
+    function selectAuxLayerTab(layerIdx) {
+      auxController.setLayerOverride(layerIdx);
+      if (auxLayerBar) {
+        auxLayerBar.querySelectorAll(".cat-pill").forEach(btn => {
+          btn.classList.toggle("active", Number(btn.getAttribute("data-layer")) === layerIdx);
+        });
+      }
+    }
+
+    function populateAuxLayerBar() {
+      if (!auxLayerBar) return;
+      const auxIndices = [10, 7, 6, 8, 9, 11];
+      layers.forEach((_, idx) => {
+        if (idx >= 6 && !auxIndices.includes(idx)) auxIndices.push(idx);
+      });
+      const currentAux = auxController.getLayerOverride();
+      auxLayerBar.innerHTML = auxIndices
+        .filter(idx => layers[idx])
+        .map(idx => {
+          const m = LAYERS_META[idx] || { short: `L${idx}`, name: `Layer ${idx}` };
+          const activeCls = idx === currentAux ? "active" : "";
+          return `<button class="cat-pill ${activeCls}" data-layer="${idx}" style="border-color:rgba(56,189,248,0.4); color:#38bdf8;">${escapeXml(m.name || m.short || `Layer ${idx}`)}</button>`;
+        }).join("");
+      auxLayerBar.querySelectorAll(".cat-pill").forEach(btn => {
+        btn.addEventListener("click", () => {
+          selectAuxLayerTab(Number(btn.getAttribute("data-layer")));
+        });
+      });
+    }
+
+    function updateLayerHoldSubtitles() {
+      const base = layers[0] || [];
+      [1, 2, 3, 4, 5].forEach(lIdx => {
+        const el = document.getElementById(`layer-hold-subtitle-${lIdx}`);
+        if (!el) return;
+        const heldKey = getLayerHeldKey(lIdx);
+        const lMeta = LAYERS_META[lIdx] || { short: `L${lIdx}`, name: `Layer ${lIdx}` };
+        if (heldKey && KEY_BY_ID[heldKey]) {
+          const kp = KEY_BY_ID[heldKey];
+          const baseItem = base[kp.index];
+          const tapLabel = (baseItem && baseItem.tap) ? baseItem.tap : heldKey;
+          el.textContent = `Activated by holding ${kp.name} (${heldKey}: ${tapLabel} → ${lMeta.short || "L" + lIdx})`;
+        }
+      });
+    }
+
+    function refreshAllVisualizerDiagrams() {
+      syncLayersHeldKeysFromBase();
+      updateLayerHoldSubtitles();
+      populateMasterSelect();
+      if (lastActiveLayer !== null && layers[lastActiveLayer]) {
+        if ([0, 11].includes(lastActiveLayer)) {
+          currentMasterBase = lastActiveLayer;
+          masterSelect.value = String(currentMasterBase);
+        } else if (lastActiveLayer >= 6) {
+          auxController.setLayerOverride(lastActiveLayer);
+        }
+      }
+      populateAuxLayerBar();
+      currentPreviewLayer = null;
+      currentPreviewKeyId = null;
+      drawMasterBase(null);
+      updateSymbolDiagram();
+      sectionControllers.forEach(c => c.renderCurrent());
+    }
+
+    refreshAllVisualizerDiagrams();
+
+    // =========================================================================
+    // 4. LIVE SYNC LISTENERS (BroadcastChannel, storage, focus, JSON import)
+    // =========================================================================
+    try {
+      const bc = new BroadcastChannel(SYNC_CHANNEL_NAME);
+      bc.addEventListener("message", ev => {
+        if (!ev || !ev.data) return;
+        const payload = (ev.data.type === "layout_saved" && ev.data.payload) ? ev.data.payload : ev.data;
+        if (applyParsedStudioState(payload, "Live Broadcast")) {
+          refreshAllVisualizerDiagrams();
+        }
+      });
+    } catch (e) {}
+
+    window.addEventListener("storage", ev => {
+      if (ev.key === STORAGE_KEY && ev.newValue) {
+        try {
+          if (applyParsedStudioState(JSON.parse(ev.newValue), "Live Storage")) {
+            refreshAllVisualizerDiagrams();
+          }
+        } catch (e) {}
+      }
+    });
+
+    window.addEventListener("pageshow", () => {
+      if (loadStateFromStudio()) refreshAllVisualizerDiagrams();
+    });
+    window.addEventListener("focus", () => {
+      if (loadStateFromStudio()) refreshAllVisualizerDiagrams();
+    });
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden && loadStateFromStudio()) {
+        refreshAllVisualizerDiagrams();
+      }
+    });
+
+    const btnLoadJson = document.getElementById("btn-vis-load-json");
+    const fileInputJson = document.getElementById("vis-file-json");
+    if (btnLoadJson && fileInputJson) {
+      btnLoadJson.addEventListener("click", () => fileInputJson.click());
+      fileInputJson.addEventListener("change", ev => {
+        const file = ev.target.files && ev.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const parsed = JSON.parse(String(reader.result || ""));
+            if (applyParsedStudioState(parsed, file.name)) {
+              try { localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed)); } catch (e) {}
+              refreshAllVisualizerDiagrams();
+            }
+          } catch (err) {
+            alert("Could not parse layout JSON file: " + err.message);
+          }
+        };
+        reader.readAsText(file);
+      });
+    }
   </script>
 </body>
 </html>

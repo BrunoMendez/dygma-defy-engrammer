@@ -1267,6 +1267,26 @@
       }
     }
 
+    function syncLayersHeldKeysFromBase() {
+      if (!Array.isArray(layers) || !layers[0]) return;
+      LAYERS_META.forEach((m, idx) => {
+        if (m && idx > 0) m.heldKey = null;
+      });
+      const baseSources = [layers[0], layers[11]].filter(Boolean);
+      baseSources.forEach((baseLayer) => {
+        KEY_POSITIONS.forEach((pos, idx) => {
+          const item = baseLayer[idx];
+          if (!item) return;
+          if (item.type === "lt" || item.type === "mo") {
+            const target = Number(item.hold);
+            if (!isNaN(target) && target > 0 && LAYERS_META[target] && !LAYERS_META[target].heldKey) {
+              LAYERS_META[target].heldKey = pos.id;
+            }
+          }
+        });
+      });
+    }
+
     function loadState() {
       try {
         let raw = localStorage.getItem(STORAGE_KEY);
@@ -1300,17 +1320,23 @@
             if (Array.isArray(parsed.rgbPalette) && parsed.rgbPalette.length === 16) {
               rgbPalette = parsed.rgbPalette;
             }
-            localStorage.setItem(STORAGE_KEY, raw);
+            syncLayersHeldKeysFromBase();
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({
+              ...parsed,
+              layersMeta: LAYERS_META
+            }));
             return;
           }
         }
       } catch (e) {}
       layers = getInitialLayers();
       underglowLayers = layers.map(() => createDefaultUnderglowMap("#2dd4bf"));
+      syncLayersHeldKeysFromBase();
     }
 
     function saveState(showToast = false, customMsg = "") {
       try {
+        syncLayersHeldKeysFromBase();
         const payload = {
           keyboard: "Dygma Defy 70",
           layout: "Glorious Engrammer QWERTY",
@@ -1328,7 +1354,7 @@
         } catch (e) {}
         if (syncChannel) {
           try {
-            syncChannel.postMessage(payload);
+            syncChannel.postMessage({ type: "layout_saved", payload });
           } catch (e) {}
         }
         updateVisualizerLinkHref();
@@ -1783,11 +1809,18 @@
     });
 
     function renderKeyboardStage() {
+      syncLayersHeldKeysFromBase();
       const meta = LAYERS_META[currentLayer] || LAYERS_META[0];
       document.getElementById("layer-badge").textContent = `L${currentLayer}`;
       document.getElementById("layer-title").textContent = meta.name;
-      document.getElementById("layer-trigger-info").textContent =
-        meta.heldKey ? `• Activated by holding thumb key [${meta.heldKey}]` : "";
+      let triggerText = "";
+      if (meta.heldKey) {
+        const heldIdx = KEY_POSITIONS.findIndex((p) => p.id === meta.heldKey);
+        const baseBinding = heldIdx >= 0 && layers[0] ? layers[0][heldIdx] : null;
+        const tapInfo = baseBinding && baseBinding.tap ? ` (${baseBinding.tap})` : "";
+        triggerText = `• Activated by holding key [${meta.heldKey}]${tapInfo}`;
+      }
+      document.getElementById("layer-trigger-info").textContent = triggerText;
 
       const container = document.getElementById("keys-container");
       container.innerHTML = "";
@@ -1795,6 +1828,7 @@
     }
 
     function renderAllLayersView() {
+      syncLayersHeldKeysFromBase();
       const wrap = document.getElementById("all-layers-view");
       wrap.innerHTML = "";
       LAYERS_META.forEach((m, lIdx) => {
