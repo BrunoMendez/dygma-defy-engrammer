@@ -4266,15 +4266,37 @@
         return;
       }
       try {
-        serialPort = await navigator.serial.requestPort({
+        if (serialPort) {
+          try {
+            await serialPort.close();
+          } catch (e) {}
+          serialPort = null;
+        }
+        const port = await navigator.serial.requestPort({
           filters: [{ usbVendorId: 0x35ef }]
         });
-        await serialPort.open({ baudRate: 115200 });
+        if (!port.readable || !port.writable) {
+          await port.open({ baudRate: 115200 });
+        }
+        try {
+          await port.setSignals({ dataTerminalReady: true, requestToSend: true });
+        } catch (sigErr) {}
+        serialPort = port;
         updateSerialUI(true);
-        appendSerialLog("[Connected] Dygma Defy Neuron opened at 115200 baud.");
+        appendSerialLog("[Connected] Dygma Defy Neuron opened at 115200 baud (DTR/RTS active).");
         await queryNeuronStatus();
       } catch (err) {
-        appendSerialLog(`[Connect Cancelled/Failed] ${err.message || err}`);
+        serialPort = null;
+        updateSerialUI(false);
+        const msg = err && (err.message || String(err));
+        appendSerialLog(`[Connect Cancelled/Failed] ${msg}`);
+        if (String(msg).includes("Failed to open serial port")) {
+          appendSerialLog(
+            "  ↳ Tip 1: Close Bazecor completely (including tray/background) and any other tab using the Neuron — serial ports allow only 1 app at a time.\n" +
+            "  ↳ Tip 2 (Linux / Bazzite): Grant serial access via Dygma udev rules (/etc/udev/rules.d/60-dygma.rules) or quick test: sudo chmod a+rw /dev/ttyACM0 (and if Chrome is a Flatpak, allow --device=all in Flatseal).\n" +
+            "  ↳ Tip 3: Ensure the USB cable is plugged into the Neuron (or wired Neuron mode), not Bluetooth-only."
+          );
+        }
       }
     }
 
