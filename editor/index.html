@@ -4113,11 +4113,12 @@
       return parseInt(m[1], 10) * 16 + parseInt(m[2], 10);
     }
 
-    function bindingToFocusCode(b) {
+    function bindingToFocusCode(b, maxLayers = 10) {
       if (!b || b.type === "trans") return 65535;
       if (b.type === "none") return 0;
-      if (b.type === "mo") return 17450 + (parseInt(b.hold, 10) || 0);
-      if (b.type === "to") return 17492 + (parseInt(b.hold, 10) || 0);
+      const clampLayer = (val) => Math.max(0, Math.min(maxLayers - 1, parseInt(val, 10) || 0));
+      if (b.type === "mo") return 17450 + clampLayer(b.hold);
+      if (b.type === "to") return 17492 + clampLayer(b.hold);
       if (b.type === "osm") return FOCUS_OSM_CODES[b.hold] || 49154;
       const baseTap = FOCUS_HID_CODES[b.tap] || 4;
       if (b.type === "mt" && baseTap < 256) {
@@ -4125,7 +4126,7 @@
         return modBase + baseTap;
       }
       if (b.type === "lt" && baseTap < 256) {
-        const lyr = Math.max(1, Math.min(8, parseInt(b.hold, 10) || 1));
+        const lyr = Math.max(1, Math.min(Math.min(8, maxLayers - 1), parseInt(b.hold, 10) || 1));
         return 51218 + (lyr - 1) * 256 + baseTap;
       }
       return baseTap;
@@ -4190,17 +4191,21 @@
       return bestIdx;
     }
 
-    function serializeFocusKeymapCustom() {
+    function serializeFocusKeymapCustom(targetTokenCount = 800) {
+      const maxLayers = Math.max(1, Math.floor(targetTokenCount / 80));
       const tokens = [];
-      layers.forEach((lyr) => {
-        const matrix80 = new Array(80).fill(0);
-        lyr.forEach((binding, kIdx) => {
-          const mIdx = getMatrixIndexFromAddr(KEY_POSITIONS[kIdx].addr);
-          matrix80[mIdx] = bindingToFocusCode(binding);
-        });
+      for (let lIdx = 0; lIdx < maxLayers; lIdx++) {
+        const lyr = layers[lIdx];
+        const matrix80 = new Array(80).fill(65535);
+        if (lyr) {
+          lyr.forEach((binding, kIdx) => {
+            const mIdx = getMatrixIndexFromAddr(KEY_POSITIONS[kIdx].addr);
+            matrix80[mIdx] = bindingToFocusCode(binding, maxLayers);
+          });
+        }
         tokens.push(...matrix80);
-      });
-      return tokens.join(" ");
+      }
+      return tokens.slice(0, targetTokenCount).join(" ");
     }
 
     function serializeFocusPalette() {
@@ -4212,21 +4217,25 @@
       return vals.join(" ");
     }
 
-    function serializeFocusColormap() {
+    function serializeFocusColormap(targetTokenCount = 1760, maxLayers = 10) {
+      const ledsPerLayer = Math.max(70, Math.floor(targetTokenCount / maxLayers));
       const leds = [];
-      layers.forEach((lyr, lIdx) => {
-        const layerLeds = new Array(178).fill(15);
-        lyr.forEach((binding, kIdx) => {
-          const c = getKeyAccentColor(KEY_POSITIONS[kIdx], binding);
-          layerLeds[kIdx] = nearestPaletteIndex(c);
-        });
+      for (let lIdx = 0; lIdx < maxLayers; lIdx++) {
+        const lyr = layers[lIdx];
+        const layerLeds = new Array(ledsPerLayer).fill(15);
+        if (lyr) {
+          lyr.forEach((binding, kIdx) => {
+            const c = getKeyAccentColor(KEY_POSITIONS[kIdx], binding);
+            layerLeds[kIdx] = nearestPaletteIndex(c);
+          });
+        }
         const ug = underglowLayers[lIdx] || {};
-        for (let sId = 70; sId < 178; sId++) {
+        for (let sId = 70; sId < ledsPerLayer; sId++) {
           layerLeds[sId] = nearestPaletteIndex(ug[sId] || "#2dd4bf");
         }
         leds.push(...layerLeds);
-      });
-      return leds.join(" ");
+      }
+      return leds.slice(0, targetTokenCount).join(" ");
     }
 
     let serialPort = null;
@@ -4435,12 +4444,23 @@
       }
       try {
         appendSerialLog("=== Pushing Layout, Palette, Colormap & Device Settings to Dygma Defy ===");
+        // Query existing Neuron EEPROM slice lengths first so we NEVER overflow EEPROM bounds!
+        const existingKmRaw = await sendFocusCommand("keymap.custom", 3500);
+        const existingKmNums = existingKmRaw.trim().split(/\s+/).map(Number).filter(Number.isFinite);
+        const kmTokenCount = existingKmNums.length >= 80 ? existingKmNums.length : 800;
+        const maxDeviceLayers = Math.max(1, Math.floor(kmTokenCount / 80));
+
+        const existingCmRaw = await sendFocusCommand("colormap.map", 3500);
+        const existingCmNums = existingCmRaw.trim().split(/\s+/).map(Number).filter(Number.isFinite);
+        const cmTokenCount = existingCmNums.length >= 70 ? existingCmNums.length : maxDeviceLayers * 176;
+
+        appendSerialLog(`[Safety Check] Neuron EEPROM capacity: ${maxDeviceLayers} layers (${kmTokenCount} keycodes, ${cmTokenCount} LED slots).`);
         await sendFocusCommand(`keymap.onlyCustom true`);
-        await sendFocusCommand(`keymap.custom ${serializeFocusKeymapCustom()}`, 3500);
+        await sendFocusCommand(`keymap.custom ${serializeFocusKeymapCustom(kmTokenCount)}`, 4000);
         await sendFocusCommand(`palette ${serializeFocusPalette()}`, 2500);
-        await sendFocusCommand(`colormap.map ${serializeFocusColormap()}`, 3500);
+        await sendFocusCommand(`colormap.map ${serializeFocusColormap(cmTokenCount, maxDeviceLayers)}`, 4000);
         await pushDeviceSettingsToDefy();
-        triggerSaveToast("⚡ Flashed Keymap, RGB & Device Settings live to Dygma Defy!", "⚡");
+        triggerSaveToast(`⚡ Safely synced ${maxDeviceLayers} layers & RGB to Dygma Defy!`, "⚡");
       } catch (err) {
         appendSerialLog(`[Push Failed] ${err.message}`);
       }
@@ -4515,6 +4535,21 @@
 
     document.getElementById("btn-flash-uf2-drive").onclick = async () => {
       const status = document.getElementById("uf2-status-box");
+      if (!selectedUf2File) {
+        status.textContent = "⚠️ Safety Block: You must select a compiled official Dygma Defy .uf2 binary in Step 1 first. Never flash uncompiled source files (for Wireless Defy, use Bazecor's Firmware Update instead).";
+        alert("Please select a valid compiled Dygma Defy .uf2 binary first, or use Bazecor -> Firmware Update.");
+        return;
+      }
+      const buf = await selectedUf2File.arrayBuffer();
+      if (buf.byteLength < 512 || buf.byteLength % 512 !== 0) {
+        status.textContent = "⚠️ Safety Block: Selected file is not a valid 512-byte aligned UF2 firmware image.";
+        return;
+      }
+      const dv = new DataView(buf);
+      if (dv.getUint32(0, true) !== 0x0a324655 || dv.getUint32(4, true) !== 0x9e5d5157) {
+        status.textContent = "⚠️ Safety Block: Invalid UF2 magic header. Only flash official Dygma Defy UF2 binaries.";
+        return;
+      }
       if (!window.showDirectoryPicker) {
         status.textContent = "Your browser does not support showDirectoryPicker. Copy the .uf2 file onto the mounted RPI-RP2 USB volume manually.";
         return;
@@ -4522,17 +4557,12 @@
       try {
         status.textContent = "Select the mounted 'RPI-RP2' USB bootloader drive in the folder dialog...";
         const dirHandle = await window.showDirectoryPicker({ mode: "readwrite" });
-        const fileName = selectedUf2File ? selectedUf2File.name : "EngrammerDefy_Firmware.uf2";
+        const fileName = selectedUf2File.name;
         const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
         const writable = await fileHandle.createWritable();
-        if (selectedUf2File) {
-          await writable.write(await selectedUf2File.arrayBuffer());
-        } else {
-          // Write generated Kaleidoscope source bundle if no precompiled .uf2 was chosen
-          await writable.write(new TextEncoder().encode(generateKaleidoscopeInoSnippet()));
-        }
+        await writable.write(buf);
         await writable.close();
-        status.textContent = `✅ Successfully wrote ${fileName} to ${dirHandle.name}! Your Dygma Defy will automatically reboot into the new firmware.`;
+        status.textContent = `✅ Successfully wrote verified UF2 binary ${fileName} to ${dirHandle.name}!`;
         triggerSaveToast(`Flashed ${fileName} to ${dirHandle.name}!`, "🚀");
       } catch (err) {
         if (err && err.name !== "AbortError") {
