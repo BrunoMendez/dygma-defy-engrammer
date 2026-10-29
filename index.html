@@ -4235,6 +4235,53 @@
       return DEFY_LED_MAP[r][c];
     }
 
+    function resolveEngrammerFocusAlias(tapStr, maxLayers = 10) {
+      const osEl = document.getElementById("cfg-os");
+      const isMac = !osEl || osEl.value === "M";
+      const pri = isMac ? 4096 : 256; // Gui (Cmd) on macOS, Ctrl on Win/Linux
+      const map = {
+        Copy: pri + 6,
+        Cut: pri + 27,
+        Paste: pri + 25,
+        Undo: pri + 29,
+        Redo: isMac ? 4096 + 2048 + 29 : 256 + 28,
+        SelAll: pri + 4,
+        SelLine: pri + 15,
+        SelWord: pri + 7,
+        Find: pri + 9,
+        FindNxt: isMac ? 4096 + 10 : 60,
+        FindPrv: isMac ? 4096 + 2048 + 10 : 2048 + 60,
+        Replace: isMac ? 4096 + 512 + 9 : 256 + 11,
+        GotoLn: isMac ? 4096 + 15 : 256 + 10,
+        QuickOpn: pri + 19,
+        LockScr: isMac ? 4096 + 256 + 20 : 4096 + 15,
+        "Opt+S+Rt": (isMac ? 512 : 256) + 2048 + 79,
+        CW_TOGG: 57,
+        Power: 20865,
+        "LED+": 23663,
+        "LED-": 23664,
+        RGB_VAI: 23663,
+        RGB_VAD: 23664,
+        RGB_SPI: 17152,
+        RGB_HUI: 17152,
+        RGB_SAI: 17152,
+        RGB_SPD: 17153,
+        RGB_HUD: 17153,
+        RGB_SAD: 17153,
+        "KP_,": 54,
+        "KP_=": 46,
+        "..": 55,
+        "```": 53,
+        OS_MAC: 17492,
+        OS_WIN: 17492 + Math.max(0, Math.min(maxLayers - 1, 11)),
+        OS_TOGG: 17408 + Math.max(0, Math.min(maxLayers - 1, 11)),
+        Accel0: 0,
+        Accel1: 0,
+        Accel2: 0
+      };
+      return map[tapStr];
+    }
+
     function bindingToFocusCode(b, maxLayers = 10) {
       if (!b || b.type === "trans") return 65535;
       if (b.type === "none") return 0;
@@ -4273,6 +4320,11 @@
       }
       if (/^BT_[1-5]$/.test(tapStr)) return 54109; // Stock Bazecor uses BT_PAIR + number keys for host selection
 
+      const aliasCode = resolveEngrammerFocusAlias(tapStr, maxLayers);
+      if (aliasCode !== undefined && b.type !== "mt" && b.type !== "lt") {
+        return aliasCode;
+      }
+
       if (FOCUS_HID_CODES[tapStr] === undefined) {
         const modComboMatch = /^((?:(?:C|A|AGr|S|G)-)+)(.+)$/.exec(tapStr);
         if (modComboMatch) {
@@ -4291,14 +4343,22 @@
         }
       }
 
-      const baseTap = FOCUS_HID_CODES[tapStr] !== undefined ? FOCUS_HID_CODES[tapStr] : 4;
-      if (b.type === "mt" && baseTap < 256) {
+      const baseTap =
+        FOCUS_HID_CODES[tapStr] !== undefined
+          ? FOCUS_HID_CODES[tapStr]
+          : aliasCode !== undefined
+          ? aliasCode
+          : 0;
+      if (b.type === "mt" && baseTap > 0 && baseTap < 256) {
         const modBase = FOCUS_DUAL_MOD_BASE[b.hold] || 49169;
         return modBase + baseTap;
       }
-      if (b.type === "lt" && baseTap < 256) {
-        const lyr = Math.max(0, Math.min(Math.min(7, maxLayers - 1), parseInt(b.hold, 10) || 0));
-        return 51218 + lyr * 256 + baseTap;
+      if (b.type === "lt" && baseTap > 0 && baseTap < 256) {
+        const rawLyr = parseInt(b.hold, 10) || 0;
+        if (rawLyr >= 0 && rawLyr < Math.min(8, maxLayers)) {
+          return 51218 + rawLyr * 256 + baseTap;
+        }
+        return baseTap;
       }
       return baseTap;
     }
@@ -4495,6 +4555,10 @@
     }
 
     let serialPort = null;
+    let serialReader = null;
+    let serialRxBuffer = "";
+    let serialResponseWaiter = null;
+    let serialMutex = Promise.resolve();
     let autoSyncTimer = null;
 
     function appendSerialLog(line) {
@@ -4524,6 +4588,51 @@
       }
     }
 
+    function tryResolveFocusFrame() {
+      if (!serialResponseWaiter) return;
+      const m = /(?:^|\r?\n)\.\r?\n/.exec(serialRxBuffer);
+      if (m) {
+        const payload = serialRxBuffer.slice(0, m.index);
+        serialRxBuffer = serialRxBuffer.slice(m.index + m[0].length);
+        const w = serialResponseWaiter;
+        serialResponseWaiter = null;
+        w.resolve(payload);
+      }
+    }
+
+    async function startSerialReadLoop(port) {
+      if (!port || !port.readable || serialReader) return;
+      const decoder = new TextDecoder();
+      try {
+        serialReader = port.readable.getReader();
+        while (serialPort === port) {
+          const { value, done } = await serialReader.read();
+          if (done) break;
+          if (value) {
+            serialRxBuffer += decoder.decode(value, { stream: true });
+            tryResolveFocusFrame();
+          }
+        }
+      } catch (err) {
+        if (serialPort === port) {
+          appendSerialLog(`[Serial Stream Notice] ${err && (err.message || err)}`);
+        }
+      } finally {
+        if (serialReader) {
+          try {
+            serialReader.releaseLock();
+          } catch (e) {}
+          serialReader = null;
+        }
+        if (serialResponseWaiter) {
+          const w = serialResponseWaiter;
+          serialResponseWaiter = null;
+          w.resolve(serialRxBuffer);
+          serialRxBuffer = "";
+        }
+      }
+    }
+
     async function connectDygmaSerial() {
       if (!("serial" in navigator)) {
         appendSerialLog("[Error] WebSerial API not available. Use Chrome, Edge, or Brave over localhost/HTTPS.");
@@ -4532,10 +4641,7 @@
       }
       try {
         if (serialPort) {
-          try {
-            await serialPort.close();
-          } catch (e) {}
-          serialPort = null;
+          await disconnectDygmaSerial();
         }
         const port = await navigator.serial.requestPort({
           filters: [{ usbVendorId: 0x35ef }]
@@ -4547,6 +4653,8 @@
           await port.setSignals({ dataTerminalReady: true, requestToSend: true });
         } catch (sigErr) {}
         serialPort = port;
+        serialRxBuffer = "";
+        startSerialReadLoop(port);
         updateSerialUI(true);
         appendSerialLog("[Connected] Dygma Defy Neuron opened at 115200 baud (DTR/RTS active).");
         await queryNeuronStatus();
@@ -4566,55 +4674,74 @@
     }
 
     async function disconnectDygmaSerial() {
-      if (serialPort) {
+      const portToClose = serialPort;
+      serialPort = null;
+      if (serialReader) {
         try {
-          await serialPort.close();
+          await serialReader.cancel();
         } catch (e) {}
-        serialPort = null;
+        try {
+          serialReader.releaseLock();
+        } catch (e) {}
+        serialReader = null;
       }
+      if (portToClose) {
+        try {
+          await portToClose.close();
+        } catch (e) {}
+      }
+      serialRxBuffer = "";
       updateSerialUI(false);
       appendSerialLog("[Disconnected] Serial port closed.");
     }
 
-    async function sendFocusCommand(cmdLine, timeoutMs = 2200) {
-      if (!serialPort || !serialPort.writable || !serialPort.readable) {
-        throw new Error("Dygma Defy is not connected over WebSerial.");
-      }
-      const preview = cmdLine.length > 90 ? cmdLine.slice(0, 90) + `... (${cmdLine.length} bytes)` : cmdLine;
-      appendSerialLog(`TX > ${preview}`);
-
-      const writer = serialPort.writable.getWriter();
-      const encoder = new TextEncoder();
-      await writer.write(encoder.encode(cmdLine.trim() + "\n"));
-      writer.releaseLock();
-
-      const reader = serialPort.readable.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      const deadline = Date.now() + timeoutMs;
-
-      try {
-        while (Date.now() < deadline) {
-          const { value, done } = await Promise.race([
-            reader.read(),
-            new Promise((resolve) => setTimeout(() => resolve({ timeout: true }), 450))
-          ]);
-          if (done) break;
-          if (value) {
-            buffer += decoder.decode(value, { stream: true });
-            if (buffer.includes("\r\n.\r\n") || buffer.endsWith(".\r\n") || buffer.endsWith("\n.\n")) {
-              break;
-            }
-          }
+    function sendFocusCommand(cmdLine, timeoutMs = 2500) {
+      const run = async () => {
+        if (!serialPort || !serialPort.writable || !serialPort.readable) {
+          throw new Error("Dygma Defy is not connected over WebSerial.");
         }
-      } finally {
-        reader.releaseLock();
-      }
+        if (!serialReader) {
+          startSerialReadLoop(serialPort);
+        }
+        const preview = cmdLine.length > 90 ? cmdLine.slice(0, 90) + `... (${cmdLine.length} bytes)` : cmdLine;
+        appendSerialLog(`TX > ${preview}`);
 
-      const cleaned = buffer.replace(/\r?\n\.\r?\n?$/, "").trim();
-      const rxPreview = cleaned.length > 120 ? cleaned.slice(0, 120) + "..." : cleaned || "(OK)";
-      appendSerialLog(`RX < ${rxPreview}`);
-      return cleaned;
+        // Clear stale unsolicited bytes before sending command
+        serialRxBuffer = "";
+
+        const responsePromise = new Promise((resolve) => {
+          const timer = setTimeout(() => {
+            if (serialResponseWaiter && serialResponseWaiter.timer === timer) {
+              serialResponseWaiter = null;
+              const partial = serialRxBuffer.replace(/(?:^|\r?\n)\.\r?\n?$/, "").trim();
+              serialRxBuffer = "";
+              resolve(partial);
+            }
+          }, timeoutMs);
+          serialResponseWaiter = {
+            timer,
+            resolve: (rawPayload) => {
+              clearTimeout(timer);
+              resolve(String(rawPayload || "").trim());
+            }
+          };
+        });
+
+        const writer = serialPort.writable.getWriter();
+        try {
+          await writer.write(new TextEncoder().encode(cmdLine.trim() + "\n"));
+        } finally {
+          writer.releaseLock();
+        }
+
+        const cleaned = await responsePromise;
+        const rxPreview = cleaned.length > 120 ? cleaned.slice(0, 120) + "..." : cleaned || "(OK)";
+        appendSerialLog(`RX < ${rxPreview}`);
+        return cleaned;
+      };
+      const queued = serialMutex.then(run, run);
+      serialMutex = queued.catch(() => {});
+      return queued;
     }
 
     async function refreshBatteryFromDefy(showToast = false) {
@@ -4701,20 +4828,26 @@
       try {
         appendSerialLog("=== Pushing Layout, Palette, Colormap & Device Settings to Dygma Defy ===");
         // Query existing Neuron EEPROM slice lengths first so we NEVER overflow EEPROM bounds!
-        const existingKmRaw = await sendFocusCommand("keymap.custom", 3500);
+        const existingKmRaw = await sendFocusCommand("keymap.custom", 4500);
         const existingKmNums = existingKmRaw.trim().split(/\s+/).map(Number).filter(Number.isFinite);
         const kmTokenCount = existingKmNums.length >= 80 ? existingKmNums.length : 800;
         const maxDeviceLayers = Math.max(1, Math.floor(kmTokenCount / 80));
 
-        const existingCmRaw = await sendFocusCommand("colormap.map", 3500);
+        const existingCmRaw = await sendFocusCommand("colormap.map", 4500);
         const existingCmNums = existingCmRaw.trim().split(/\s+/).map(Number).filter(Number.isFinite);
         const cmTokenCount = existingCmNums.length >= 70 ? existingCmNums.length : maxDeviceLayers * 178;
 
         appendSerialLog(`[Safety Check] Neuron EEPROM capacity: ${maxDeviceLayers} layers (${kmTokenCount} keycodes, ${cmTokenCount} LED slots).`);
-        await sendFocusCommand(`keymap.onlyCustom true`);
-        await sendFocusCommand(`keymap.custom ${serializeFocusKeymapCustom(kmTokenCount, existingKmNums)}`, 4000);
-        await sendFocusCommand(`palette ${serializeFocusPalette()}`, 2500);
-        await sendFocusCommand(`colormap.map ${serializeFocusColormap(cmTokenCount, maxDeviceLayers, existingCmNums)}`, 4000);
+        if (layers.length > maxDeviceLayers) {
+          appendSerialLog(`[Note] Stock Neuron EEPROM stores ${maxDeviceLayers} layers (L0..L${maxDeviceLayers - 1}) and DualUse LT supports L0..L7; layers L${maxDeviceLayers}+ require custom firmware.`);
+        }
+        await sendFocusCommand("keymap.onlyCustom 1");
+        await sendFocusCommand("settings.defaultLayer 0");
+        await sendFocusCommand(`keymap.custom ${serializeFocusKeymapCustom(kmTokenCount, existingKmNums)}`, 5000);
+        await sendFocusCommand(`palette ${serializeFocusPalette()}`, 3000);
+        await sendFocusCommand(`colormap.map ${serializeFocusColormap(cmTokenCount, maxDeviceLayers, existingCmNums)}`, 5000);
+        await sendFocusCommand(`qukeys.holdTimeout ${getQukeysThresholdMs()}`);
+        await sendFocusCommand("qukeys.overlapThreshold 80");
         await pushDeviceSettingsToDefy();
         triggerSaveToast(`⚡ Safely synced ${maxDeviceLayers} layers & RGB to Dygma Defy!`, "⚡");
       } catch (err) {
@@ -4846,6 +4979,25 @@
       return numLayers;
     }
 
+    function autoBackupStudioBeforePull() {
+      try {
+        if (!Array.isArray(layers) || layers.length === 0) return;
+        const snaps = getSnapshots().filter((s) => s.id !== "snap_pre_pull_auto");
+        snaps.unshift({
+          id: "snap_pre_pull_auto",
+          name: "Auto-Backup (Before Keyboard Read)",
+          savedAt: new Date().toLocaleString(),
+          layers: JSON.parse(JSON.stringify(layers)),
+          layersMeta: JSON.parse(JSON.stringify(LAYERS_META)),
+          underglowLayers: JSON.parse(JSON.stringify(underglowLayers)),
+          rgbPalette: [...rgbPalette],
+          combos: JSON.parse(JSON.stringify(combos)),
+          deviceSettings: JSON.parse(JSON.stringify(deviceSettings))
+        });
+        saveSnapshotsArray(snaps);
+      } catch (e) {}
+    }
+
     async function pullFromDygmaDefy() {
       if (!serialPort) {
         await connectDygmaSerial();
@@ -4853,9 +5005,17 @@
       }
       try {
         appendSerialLog("=== Reading Keymap, RGBW Palette & LED Colormap from Dygma Defy ===");
-        const kmRaw = await sendFocusCommand("keymap.custom", 3500);
-        const palRaw = await sendFocusCommand("palette", 2500);
-        const cmRaw = await sendFocusCommand("colormap.map", 3500);
+        autoBackupStudioBeforePull();
+        const onlyCustomRaw = await sendFocusCommand("keymap.onlyCustom");
+        let kmRaw = await sendFocusCommand("keymap.custom", 4500);
+        if (onlyCustomRaw.trim() === "0") {
+          const defRaw = await sendFocusCommand("keymap.default", 4500);
+          if (defRaw && defRaw.trim().split(/\s+/).length >= 80) {
+            kmRaw = `${defRaw.trim()} ${kmRaw.trim()}`.trim();
+          }
+        }
+        const palRaw = await sendFocusCommand("palette", 3000);
+        const cmRaw = await sendFocusCommand("colormap.map", 4500);
         const pulledCount = applyPulledFocusData(kmRaw, palRaw, cmRaw);
         if (!pulledCount) {
           appendSerialLog("[Pull Warning] Neuron returned fewer than 80 keymap tokens.");
