@@ -1740,7 +1740,7 @@
       for (const base of baseCandidates) {
         for (let i = 0; i < KEY_POSITIONS.length; i++) {
           const k = base[i];
-          if (k && (k.type === "lt" || k.type === "mo") && Number(k.hold) === Number(layerIdx)) {
+          if (k && (k.type === "lt" || k.type === "mo" || k.type === "osl") && Number(k.hold) === Number(layerIdx)) {
             if (!found.includes(KEY_POSITIONS[i].id)) {
               found.push(KEY_POSITIONS[i].id);
             }
@@ -2030,7 +2030,7 @@
       KEY_POSITIONS.forEach((pos, idx) => {
         const item = layerData[idx];
         if (!item) return;
-        if (item.type === "lt" || item.type === "mo" || item.type === "to") {
+        if (item.type === "lt" || item.type === "mo" || item.type === "to" || item.type === "osl") {
           const target = Number(item.hold);
           if (!isNaN(target) && layers[target]) {
             const tMeta = LAYERS_META[target] || { name: `Layer ${target}` };

@@ -68,10 +68,10 @@
       filter: brightness(1.22);
     }
     .svg-key-group.trans-key {
-      opacity: 0.42;
+      opacity: 0.55;
     }
     .svg-key-group.dimmed-trans-key {
-      opacity: 0.16;
+      opacity: 0.48;
     }
     .svg-key-group.trans-key:hover,
     .svg-key-group.trans-key.selected,
@@ -346,6 +346,7 @@
               <option value="lt">Thumb Layer-Tap (Qukey LT)</option>
               <option value="mo">Momentary Layer (MO / ShiftTo)</option>
               <option value="to">Move To Layer (TO / Lock)</option>
+              <option value="osl">One-Shot Layer (OSL)</option>
               <option value="osm">One-Shot Modifier (OSM)</option>
               <option value="macro">Engrammer Custom Macro</option>
               <option value="mouse">Mouse / Scroll Wheel</option>
@@ -495,7 +496,7 @@
             <div class="flex flex-wrap items-center justify-between gap-2">
               <span class="font-bold text-[11px] uppercase tracking-wider text-emerald-400">🔋 Dual-Side Battery Status</span>
               <div class="flex items-center gap-1.5">
-                <button id="btn-led-battery-check" type="button" class="text-[11px] font-semibold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30 transition" title="Show battery level on the keyboard LEDs (Keycode 54102 / wireless.battery.forceRead)">
+                <button id="btn-led-battery-check" type="button" class="text-[11px] font-semibold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30 transition" title="Show battery level on the keyboard LEDs (Keycode 54108 / wireless.battery.forceRead)">
                   🔦 Show on Keyboard LEDs
                 </button>
                 <button id="btn-refresh-battery" type="button" class="text-[11px] px-2 py-0.5 rounded border border-[var(--app-border)] text-[var(--app-muted-foreground)] hover:text-[var(--app-foreground)] hover:border-cyan-400 transition" title="Query live battery percentages from Dygma Defy over WebSerial">
@@ -1221,10 +1222,11 @@
     const lt    = (tap, lyr, c)  => ({ type: "lt",    tap, hold: String(lyr), color: c || "#06b6d4" });
     const mo    = (lyr, c)       => ({ type: "mo",    tap: `MO(${lyr})`, hold: String(lyr), color: c || "" });
     const to    = (lyr, c)       => ({ type: "to",    tap: `TO(${lyr})`, hold: String(lyr), color: c || "" });
+    const osl   = (lyr, c)       => ({ type: "osl",   tap: `OSL(${lyr})`, hold: String(lyr), color: c || "" });
     const osm   = (mod, c)       => ({ type: "osm",   tap: "OSM", hold: mod, color: c || "#22c55e" });
     const dual  = (tap, hold, c) => ({ type: "dual",  tap, hold, color: c || "#f59e0b" });
     const morph = (tap, shf, c)  => ({ type: "morph", tap, hold: shf, color: c || "#f59e0b" });
-    const mac   = (name, sub, c) => ({ type: "macro", tap: name, hold: sub || "MACRO", color: c || "" });
+    const mac   = (name, sub, c) => ({ type: "macro", tap: name, hold: sub === undefined ? "MACRO" : sub, color: c || "" });
     const mse   = (name, sub, c) => ({ type: "mouse", tap: name, hold: sub || "MOUSE", color: c || "" });
     const trns  = ()             => ({ type: "trans", tap: "___", hold: "", color: "" });
 
@@ -1513,8 +1515,8 @@
     const PALETTE = {
       "Alphas & Digits": ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z","1","2","3","4","5","6","7","8","9","0"],
       "Symbols": ["=","-","'","\\","[","]","`",";",",",".","/","!","@","#","$","%","^","&","*","(",")","_","+","{","}","|",":","\"","<",">","?","~"],
-      "Navigation": ["Esc","Tab","S-Tab","Enter","Space","Bksp","Del","Ins","Left","Up","Down","Right","Home","End","PgUp","PgDn","Caps"],
-      "F-Keys & Media": ["F1","F2","F3","F4","F5","F6","F7","F8","F9","F10","F11","F12","F13","F14","F15","Play/Pse","PrevTrk","NextTrk","Stop","Mute","VolDn","VolUp"],
+      "Navigation": ["Esc","Tab","S-Tab","Enter","Space","Bksp","Del","Ins","Menu","PrtSc","ScrlLk","Pause","Left","Up","Down","Right","Home","End","PgUp","PgDn","Caps"],
+      "F-Keys & Media": ["F1","F2","F3","F4","F5","F6","F7","F8","F9","F10","F11","F12","F13","F14","F15","Play/Pse","PrevTrk","NextTrk","Stop","Shuffle","Eject","Mute","VolDn","VolUp","BriUp","BriDn","Sleep","ShutDn","LED Next","LED Prev","LED Togg"],
       "Engrammer Macros": [
         { type:"macro", tap:"CW_TOGG", hold:"CapsWord" },
         { type:"macro", tap:"..",      hold:"ST_M0" },
@@ -1539,6 +1541,7 @@
       "Wireless & Battery": [
         { type:"macro", tap:"BatLvl",  hold:"LED%",    color:"#10b981" },
         { type:"macro", tap:"BT_PAIR", hold:"Pair",    color:"#06b6d4" },
+        { type:"macro", tap:"EngySt",  hold:"Energy",  color:"#10b981" },
         { type:"macro", tap:"BT_1",    hold:"Host 1",  color:"#06b6d4" },
         { type:"macro", tap:"BT_2",    hold:"Host 2",  color:"#06b6d4" },
         { type:"macro", tap:"BT_3",    hold:"Host 3",  color:"#06b6d4" },
@@ -1603,6 +1606,7 @@
     let layers = [];
     let underglowLayers = []; // Array of { [stripId]: "#hex" } per layer
     let rgbPalette = [...DEFAULT_RGB_PALETTE];
+    let rgbwPaletteRaw = null; // Optional 16x [R,G,B,W] array pulled from Bazecor palette
     let selectedSwatchIdx = 4; // Default to Cyan/Teal (#2dd4bf)
     let paintMode = false;
     let isPaintingDrag = false;
@@ -1660,7 +1664,7 @@
         KEY_POSITIONS.forEach((pos, idx) => {
           const item = baseLayer[idx];
           if (!item) return;
-          if (item.type === "lt" || item.type === "mo") {
+          if (item.type === "lt" || item.type === "mo" || item.type === "osl") {
             const target = Number(item.hold);
             if (!isNaN(target) && target > 0 && LAYERS_META[target] && !LAYERS_META[target].heldKey) {
               LAYERS_META[target].heldKey = pos.id;
@@ -1702,6 +1706,12 @@
             }
             if (Array.isArray(parsed.rgbPalette) && parsed.rgbPalette.length === 16) {
               rgbPalette = parsed.rgbPalette;
+            }
+            if (Array.isArray(parsed.rgbwPaletteRaw) && parsed.rgbwPaletteRaw.length === 16) {
+              rgbwPaletteRaw = parsed.rgbwPaletteRaw;
+            }
+            if (Number.isFinite(parsed.lastActiveLayer) && parsed.lastActiveLayer >= 0 && parsed.lastActiveLayer < layers.length) {
+              currentLayer = parsed.lastActiveLayer;
             }
             if (Array.isArray(parsed.combos)) {
               combos = parsed.combos;
@@ -1745,6 +1755,7 @@
           layersMeta: LAYERS_META,
           underglowLayers,
           rgbPalette,
+          rgbwPaletteRaw,
           combos,
           deviceSettings
         };
@@ -1894,11 +1905,19 @@
         .replace(/"/g, "&quot;");
     }
 
+    function isOffColor(hex) {
+      const h = String(hex || "").trim().toLowerCase();
+      return h === "#000000" || h === "#0f172a";
+    }
+
     function getKeyAccentColor(pos, binding) {
-      if (binding.color) return binding.color;
+      if (binding.color) {
+        if (isOffColor(binding.color)) return "#1e293b";
+        return binding.color;
+      }
       if (binding.type === "mt") return "#2dd4bf";     // Teal/Cyan Home-Row Mod
       if (binding.type === "lt") return "#22c55e";     // Green Layer-Tap (like Bazecor Space)
-      if (binding.type === "mo" || binding.type === "to") return "#eab308"; // Yellow/Amber Layer Shift
+      if (binding.type === "mo" || binding.type === "to" || binding.type === "osl") return "#eab308"; // Yellow/Amber Layer Shift
       if (binding.type === "osm") return "#c084fc";    // Lavender/Purple One-Shot Mod
       if (binding.type === "morph" || binding.type === "dual") return "#38bdf8"; // Sky Blue Shift-Morph / Dual
       if (binding.type === "macro") return "#f472b6";  // Pink Macro
@@ -1921,6 +1940,9 @@
       if (binding.type === "lt" || binding.type === "mo" || binding.type === "to") {
         return { text: `L${binding.hold}`, bg: "rgba(16, 185, 129, 0.32)", fg: "#6ee7b7", border: "rgba(52, 211, 153, 0.5)" };
       }
+      if (binding.type === "osl") {
+        return { text: `1Shot L${binding.hold}`, bg: "rgba(234, 179, 8, 0.30)", fg: "#fde047", border: "rgba(250, 204, 21, 0.55)" };
+      }
       if (binding.type === "osm") {
         return { text: binding.hold, bg: "rgba(245, 158, 11, 0.32)", fg: "#fcd34d", border: "rgba(251, 191, 36, 0.5)" };
       }
@@ -1941,13 +1963,15 @@
       if (len <= 2) return 13.5;
       if (len <= 4) return 11.5;
       if (len <= 6) return 10;
-      return 8.8;
+      if (len <= 8) return 8.8;
+      return 7.8;
     }
 
-    function buildKeyLabelsSVG(cx, cy, pos, binding, isHeldOrigin, rotDeg) {
+    function buildKeyLabelsSVG(cx, cy, pos, binding, isHeldOrigin, rotDeg, isUnlitOffKey = false) {
       const badge = getHoldBadgeInfo(binding, isHeldOrigin);
       const tapFont = fitTapFontSize(binding.tap);
       const tapY = badge ? cy - 2 : cy + 2;
+      const tapFill = isUnlitOffKey && binding.type === "none" ? "#64748b" : "#f8fafc";
 
       let inner = "";
       if (showCoords) {
@@ -1957,7 +1981,7 @@
         inner += `<text x="${cx}" y="${cy - 15.5}" text-anchor="middle" dominant-baseline="middle" font-size="6.8" font-weight="700" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#94a3b8" pointer-events="none">${escapeXml(binding.type.toUpperCase())}</text>`;
       }
 
-      inner += `<text x="${cx}" y="${tapY}" text-anchor="middle" dominant-baseline="middle" font-size="${tapFont}" font-weight="700" fill="#f8fafc" pointer-events="none">${escapeXml(binding.tap)}</text>`;
+      inner += `<text x="${cx}" y="${tapY}" text-anchor="middle" dominant-baseline="middle" font-size="${tapFont}" font-weight="700" fill="${tapFill}" pointer-events="none">${escapeXml(binding.tap)}</text>`;
 
       if (badge) {
         const bw = Math.max(24, Math.min(48, badge.text.length * 5.0 + 8));
@@ -2064,16 +2088,21 @@
           }
         }
 
+        const isExplicitlyOff = Boolean(binding.color && isOffColor(binding.color));
+        const hasExplicitLitColor = Boolean(binding.color && !isOffColor(binding.color));
         const baseAccent = getKeyAccentColor(pos, binding);
         const accent = btPairColor || batLedColor || baseAccent;
         const effectiveShowRgb = showRgb && keyBrScale > 0.01;
-        let rimStroke = effectiveShowRgb ? accent : "#475569";
-        let rimWidth = effectiveShowRgb ? "1.6" : "1.2";
+        const keyShowRgb =
+          Boolean(btPairColor || (batLedColor && batLedColor !== "#1e293b")) ||
+          (effectiveShowRgb && !isExplicitlyOff);
+        let rimStroke = keyShowRgb ? accent : "#334155";
+        let rimWidth = keyShowRgb ? "1.6" : "1.2";
         let faceStroke = "rgba(255,255,255,0.14)";
         let faceStrokeW = "1";
         let glowColor = accent;
-        let glowOpacity = effectiveShowRgb
-          ? ((highlightLayerActive && binding.type !== "trans" ? 0.62 : 0.42) * keyBrScale).toFixed(2)
+        let glowOpacity = keyShowRgb
+          ? ((highlightLayerActive && (binding.type !== "trans" || hasExplicitLitColor) ? 0.62 : 0.42) * keyBrScale).toFixed(2)
           : "0.0";
 
         if (btPairColor) {
@@ -2121,7 +2150,7 @@
         }
 
         const transClass =
-          binding.type === "trans"
+          binding.type === "trans" && !hasExplicitLitColor
             ? highlightLayerActive
               ? " dimmed-trans-key"
               : " trans-key"
@@ -2142,7 +2171,7 @@
             html += `<g transform="translate(0, 4)" filter="url(#key-glow-${layerIndex})"><path d="${thumb.base}" fill="${glowColor}" fill-opacity="${glowOpacity}" /></g>`;
           }
           html += `<path d="${thumb.base}" fill="#242c3d" />`;
-          if (effectiveShowRgb) {
+          if (keyShowRgb) {
             html += `<path d="${thumb.base}" fill="${accent}" fill-opacity="${fillOpBase}" />`;
           }
           html += `<path d="${thumb.base}" fill="url(#lens-key-sheen-${layerIndex})" fill-opacity="0.18" />`;
@@ -2150,19 +2179,19 @@
 
           html += `<g transform="translate(4, 0)">`;
           html += `<g transform="translate(0, 7)"><path d="${thumb.inner}" fill="#111622" />`;
-          if (effectiveShowRgb) {
+          if (keyShowRgb) {
             html += `<path d="${thumb.inner}" fill="${accent}" fill-opacity="${fillOpWell}" />`;
           }
           html += `</g>`;
           html += `<path d="${thumb.inner}" fill="#171c28" />`;
-          if (effectiveShowRgb) {
+          if (keyShowRgb) {
             html += `<path d="${thumb.inner}" fill="${accent}" fill-opacity="${fillOpCap}" />`;
           }
           html += `<path d="${thumb.inner}" fill="url(#lens-key-sheen-${layerIndex})" fill-opacity="0.22" />`;
           html += `<path d="${thumb.inner}" fill="none" stroke="${faceStroke}" stroke-width="${faceStrokeW}" />`;
           html += `</g>`;
 
-          html += buildKeyLabelsSVG(lcx, lcy, pos, binding, isHeldOrigin, rot);
+          html += buildKeyLabelsSVG(lcx, lcy, pos, binding, isHeldOrigin, rot, isExplicitlyOff);
           html += `</g>`;
         } else {
           const cx = x + 4 + (w - 8) / 2;
@@ -2173,25 +2202,25 @@
             html += `<rect x="${x}" y="${y + 4}" width="${w}" height="${h}" rx="5" fill="${glowColor}" fill-opacity="${glowOpacity}" filter="url(#key-glow-${layerIndex})" />`;
           }
           html += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="5" fill="#242c3d" />`;
-          if (effectiveShowRgb) {
+          if (keyShowRgb) {
             html += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="5" fill="${accent}" fill-opacity="${fillOpBase}" />`;
           }
           html += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="5" fill="url(#lens-key-sheen-${layerIndex})" fill-opacity="0.18" />`;
           html += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="5" fill="none" stroke="${rimStroke}" stroke-width="${rimWidth}" />`;
 
           html += `<rect x="${x + 4}" y="${y + 7}" width="${w - 8}" height="${h - 8}" rx="4" fill="#111622" />`;
-          if (effectiveShowRgb) {
+          if (keyShowRgb) {
             html += `<rect x="${x + 4}" y="${y + 7}" width="${w - 8}" height="${h - 8}" rx="4" fill="${accent}" fill-opacity="${fillOpWell}" />`;
           }
 
           html += `<rect x="${x + 4}" y="${y}" width="${w - 8}" height="${h - 8}" rx="4" fill="#171c28" />`;
-          if (effectiveShowRgb) {
+          if (keyShowRgb) {
             html += `<rect x="${x + 4}" y="${y}" width="${w - 8}" height="${h - 8}" rx="4" fill="${accent}" fill-opacity="${fillOpCap}" />`;
           }
           html += `<rect x="${x + 4}" y="${y}" width="${w - 8}" height="${h - 8}" rx="4" fill="url(#lens-key-sheen-${layerIndex})" fill-opacity="0.22" />`;
           html += `<rect x="${x + 4}" y="${y}" width="${w - 8}" height="${h - 8}" rx="4" fill="none" stroke="${faceStroke}" stroke-width="${faceStrokeW}" />`;
 
-          html += buildKeyLabelsSVG(cx, cy, pos, binding, isHeldOrigin, 0);
+          html += buildKeyLabelsSVG(cx, cy, pos, binding, isHeldOrigin, 0, isExplicitlyOff);
           html += `</g>`;
         }
       });
@@ -2386,7 +2415,7 @@
           if (m === currentHold) opt.selected = true;
           sel.appendChild(opt);
         });
-      } else if (type === "lt" || type === "mo" || type === "to") {
+      } else if (type === "lt" || type === "mo" || type === "to" || type === "osl") {
         wrapSec.classList.remove("hidden");
         sel.classList.remove("hidden");
         customShiftInput.classList.add("hidden");
@@ -2424,7 +2453,7 @@
       colorEl.value = getKeyAccentColor(pos, binding);
 
       const jumpBtn = document.getElementById("btn-jump-layer");
-      if (binding.type === "lt" || binding.type === "mo" || binding.type === "to") {
+      if (binding.type === "lt" || binding.type === "mo" || binding.type === "to" || binding.type === "osl") {
         jumpBtn.classList.remove("hidden");
         jumpBtn.textContent = `Jump to Layer ${binding.hold} →`;
         jumpBtn.onclick = () => {
@@ -2461,6 +2490,9 @@
       } else if (type === "to") {
         cur.hold = holdSelectVal || "0";
         cur.tap = `TO(${cur.hold})`;
+      } else if (type === "osl") {
+        cur.hold = holdSelectVal || "1";
+        cur.tap = `OSL(${cur.hold})`;
       } else if (type === "osm") {
         cur.tap = "OSM";
         cur.hold = holdSelectVal || "LShift";
@@ -2585,7 +2617,7 @@
           kb.textContent = item;
           kb.onclick = () => {
             const cur = layers[currentLayer][selectedKeyIndex];
-            if (cur.type === "trans" || cur.type === "none" || cur.type === "mo" || cur.type === "to" || cur.type === "osm") {
+            if (cur.type === "trans" || cur.type === "none" || cur.type === "mo" || cur.type === "to" || cur.type === "osl" || cur.type === "osm") {
               cur.type = "kp";
               cur.hold = "";
             }
@@ -3110,6 +3142,7 @@
       "Caps": "Key_CapsLock", "Esc": "Key_Escape", "Tab": "Key_Tab", "S-Tab": "LSHIFT(Key_Tab)",
       "Enter": "Key_Enter", "Space": "Key_Spacebar", "Bksp": "Key_Backspace", "Del": "Key_Delete",
       "Ins": "Key_Insert", "PgUp": "Key_PageUp", "PgDn": "Key_PageDown", "Home": "Key_Home", "End": "Key_End",
+      "Menu": "Key_Menu", "App": "Key_Menu", "PrtSc": "Key_PrintScreen", "ScrlLk": "Key_ScrollLock", "Pause": "Key_Pause", "<>": "Key_NonUsBackslashAndPipe",
       "Left": "Key_LeftArrow", "Up": "Key_UpArrow", "Down": "Key_DownArrow", "Right": "Key_RightArrow",
       "=": "Key_Equals", "-": "Key_Minus", "'": "Key_Quote", "\\": "Key_Backslash",
       "[": "Key_LeftBracket", "]": "Key_RightBracket", "`": "Key_Backtick", ";": "Key_Semicolon",
@@ -3126,7 +3159,14 @@
       "Find": "M(M_FIND)", "FindNxt": "M(M_FIND_NEXT)", "FindPrv": "M(M_FIND_PREV)", "Replace": "M(M_FIND_REPLACE)",
       "GotoLn": "M(M_GOTO_LINE)", "QuickOpn": "M(M_QUICK_OPEN)", "LockScr": "M(M_LOCK_SCREEN)",
       "OS_TOGG": "M(M_OS_TOGGLE)", "OS_MAC": "M(M_OS_MAC)", "OS_WIN": "M(M_OS_WIN)",
-      "BatLvl": "M(M_BAT_LEVEL)", "BT_PAIR": "M(M_BT_PAIR)",
+      "LED Next": "Key_LEDEffectNext", "LED Prev": "Key_LEDEffectPrevious", "LED Togg": "Key_LEDToggle",
+      "RGB_MOD": "Key_LEDEffectNext", "RGB_TOG": "Key_LEDToggle",
+      "Play/Pse": "Consumer_PlaySlashPause", "NextTrk": "Consumer_ScanNextTrack", "PrevTrk": "Consumer_ScanPreviousTrack",
+      "Stop": "Consumer_Stop", "Eject": "Consumer_Eject", "Shuffle": "Consumer_RandomPlay",
+      "Mute": "Consumer_Mute", "VolUp": "Consumer_VolumeIncrement", "VolDn": "Consumer_VolumeDecrement",
+      "BriUp": "Consumer_DisplayBrightnessIncrement", "BriDn": "Consumer_DisplayBrightnessDecrement",
+      "Sleep": "System_Sleep", "ShutDn": "System_PowerDown", "Calc": "Consumer_AL_Calculator", "Camera": "Consumer_Snapshot",
+      "BatLvl": "M(M_BAT_LEVEL)", "BT_PAIR": "M(M_BT_PAIR)", "EngySt": "M(M_BAT_LEVEL)",
       "BT_1": "M(M_BT_SEL_1)", "BT_2": "M(M_BT_SEL_2)", "BT_3": "M(M_BT_SEL_3)", "BT_4": "M(M_BT_SEL_4)", "BT_5": "M(M_BT_SEL_5)",
       "RF_MODE": "M(M_RF_MODE)", "WL_TOGG": "M(M_WL_TOGGLE)",
       "WhlUp": "ENGRAMMER_WH_UP", "WhlDn": "ENGRAMMER_WH_DOWN", "WhlLt": "ENGRAMMER_WH_LEFT", "WhlRt": "ENGRAMMER_WH_RIGHT",
@@ -3144,7 +3184,11 @@
       if (b.type === "trans") return "___";
       if (b.type === "none") return "XXX";
       if (b.type === "mo") return `ShiftToLayer(${b.hold})`;
-      if (b.type === "to") return b.hold === "0" ? "M(M_TO_BASE)" : `MoveToLayer(${b.hold})`;
+      if (b.type === "to") {
+        if (String(b.tap || "").startsWith("TG(")) return `LockLayer(${b.hold})`;
+        return b.hold === "0" ? "M(M_TO_BASE)" : `MoveToLayer(${b.hold})`;
+      }
+      if (b.type === "osl") return `OSL(${b.hold})`;
       if (b.type === "osm") {
         const m = KALEIDOSCOPE_KEY_MAP[b.hold] || "Key_LeftShift";
         return `OSM(${m.replace("Key_", "")})`;
@@ -3337,6 +3381,7 @@
     // RGB Palette & Underglow Studio Bar Controls
     document.getElementById("rgb-custom-picker").oninput = (e) => {
       rgbPalette[selectedSwatchIdx] = e.target.value;
+      if (Array.isArray(rgbwPaletteRaw)) rgbwPaletteRaw[selectedSwatchIdx] = null;
       renderRgbPaletteBar();
       saveState();
     };
@@ -3686,6 +3731,18 @@
       reader.onload = (ev) => {
         try {
           const data = JSON.parse(ev.target.result);
+          // Support importing native Bazecor backup JSON files directly!
+          if (data && Array.isArray(data.backup)) {
+            const cmdMap = {};
+            data.backup.forEach((entry) => {
+              if (entry && entry.command) cmdMap[entry.command] = entry.data;
+            });
+            if (cmdMap["keymap.custom"]) {
+              currentLayer = 0;
+              applyPulledFocusData(cmdMap["keymap.custom"], cmdMap["palette"] || "", cmdMap["colormap.map"] || "");
+              return;
+            }
+          }
           if (data && Array.isArray(data.layers) && data.layers.length >= 1) {
             layers = data.layers;
             if (Array.isArray(data.layersMeta) && data.layersMeta.length === layers.length) {
@@ -3774,6 +3831,7 @@
         layersMeta: LAYERS_META,
         underglowLayers,
         rgbPalette,
+        rgbwPaletteRaw,
         combos,
         deviceSettings
       };
@@ -4102,7 +4160,7 @@
     // =========================================================================
     // 12. BAZECOR REAL-TIME WEBSERIAL FOCUS PROTOCOL ENGINE (0x35EF)
     // =========================================================================
-    // Exact 16-bit Focus Keycodes from DygmaLab/Bazecor src/api/keymap/db/*.ts
+    // Exact 16-bit Focus Keycodes from DygmaLab/Bazecor src/api/keymap/db/*.ts & src/lens/renderer/keycodes.ts
     const FOCUS_HID_CODES = {
       A:4, B:5, C:6, D:7, E:8, F:9, G:10, H:11, I:12, J:13, K:14, L:15, M:16,
       N:17, O:18, P:19, Q:20, R:21, S:22, T:23, U:24, V:25, W:26, X:27, Y:28, Z:29,
@@ -4110,10 +4168,12 @@
       Enter:40, Esc:41, Bksp:42, Tab:43, Space:44,
       "-":45, "=":46, "[":47, "]":48, "\\":49, ";":51, "'":52, "`":53, ",":54, ".":55, "/":56, Caps:57,
       F1:58, F2:59, F3:60, F4:61, F5:62, F6:63, F7:64, F8:65, F9:66, F10:67, F11:68, F12:69,
-      F13:104, F14:105, F15:106,
+      PrtSc:70, ScrlLk:71, Pause:72,
       Ins:73, Home:74, PgUp:75, Del:76, End:77, PgDn:78, Right:79, Left:80, Down:81, Up:82,
       NumLk:83, "KP_/":84, "KP_*":85, "KP_-":86, "KP_+":87, KP_Ent:88,
       KP_1:89, KP_2:90, KP_3:91, KP_4:92, KP_5:93, KP_6:94, KP_7:95, KP_8:96, KP_9:97, KP_0:98, "KP_.":99,
+      "<>":100, App:101, Menu:101,
+      F13:104, F14:105, F15:106, F16:107, F17:108, F18:109, F19:110, F20:111, F21:112, F22:113, F23:114, F24:115,
       LCtrl:224, LShift:225, LAlt:226, LGui:227, RCtrl:228, RShift:229, RAlt:230, RGui:231,
       // Shifted punctuation (Base HID + 2048 Shift bitmask)
       "!": 2048 + 30, "@": 2048 + 31, "#": 2048 + 32, "$": 2048 + 33, "%": 2048 + 34,
@@ -4121,14 +4181,23 @@
       "_": 2048 + 45, "+": 2048 + 46, "{": 2048 + 47, "}": 2048 + 48, "|": 2048 + 49,
       ":": 2048 + 51, "\"": 2048 + 52, "~": 2048 + 53, "<": 2048 + 54, ">": 2048 + 55, "?": 2048 + 56,
       "S-Tab": 2048 + 43,
-      // Media & Mouse
-      Mute: 19682, NextTrk: 22709, PrevTrk: 22710, Stop: 22711, "Play/Pse": 22733, VolUp: 23785, VolDn: 23786,
+      // LED Effects (db/ledeffects.tsx) — put canonical label last so REVERSE_HID_CODES prefers it
+      RGB_MOD: 17152, "LED Next": 17152, "LED Prev": 17153, RGB_TOG: 17154, "LED Togg": 17154,
+      // Media, Brightness, System & Tools (db/mediacontrols.tsx, db/miscellaneous.tsx)
+      Camera: 18552, Calc: 18834,
+      Mute: 19682, ShutDn: 20865, Sleep: 20866,
+      NextTrk: 22709, PrevTrk: 22710, Stop: 22711, Eject: 22712, Shuffle: 22713, "Play/Pse": 22733,
+      BriUp: 23663, BriDn: 23664, VolUp: 23785, VolDn: 23786,
+      // Mouse movement / wheel / buttons / warp (db/mousecontrols.ts)
       MsUp: 20481, MsDown: 20482, MsLeft: 20484, MsRight: 20488,
       WhlUp: 20497, WhlDn: 20498, WhlLt: 20500, WhlRt: 20504,
+      WarpNW: 20517, WarpSW: 20518, WarpNE: 20521, WarpSE: 20522, WarpEnd: 20576,
       Btn1: 20545, Btn2: 20546, Btn3: 20548, Btn4: 20552, Btn5: 20560,
-      // Dygma Defy Wireless, Bluetooth & Battery Focus Keycodes (Bazecor src/api/keymap/db/wireless.ts)
-      BatLvl: 54102, BT_1: 54103, BT_2: 54104, BT_3: 54105, BT_4: 54106, BT_5: 54107,
-      RF_MODE: 54108, BT_PAIR: 54109, WL_TOGG: 54110
+      // SpaceCadet (db/spacecadet.ts)
+      SC_ON: 53591, SC_OFF: 53592,
+      // Dygma Defy Wireless, Bluetooth, Battery & Lens Focus Keycodes (Bazecor db/wireless.ts & keycodes.ts)
+      // Note: 53980..54107 are strictly reserved for SUPERKEY 1..128!
+      BatLvl: 54108, BT_PAIR: 54109, WL_TOGG: 54110, EngySt: 54111, RF_MODE: 54112, LENS_TAP: 54113, LENS_HOLD: 54114
     };
 
     const FOCUS_DUAL_MOD_BASE = {
@@ -4141,10 +4210,29 @@
       RCtrl: 49157, RShift: 49158, RAlt: 49159, RGui: 49160
     };
 
+    // Exact Dygma Defy Hardware LED Map (src/lens/renderer/geometry-defy.ts LED_MAP):
+    // Left half increases left-to-right (0..34); Right half mirrors outer-to-inner (35..69)!
+    const DEFY_LED_MAP = [
+      [0, 1, 2, 3, 4, 5, 6, 255, 255, 41, 40, 39, 38, 37, 36, 35],
+      [7, 8, 9, 10, 11, 12, 13, 255, 255, 48, 47, 46, 45, 44, 43, 42],
+      [14, 15, 16, 17, 18, 19, 20, 255, 255, 55, 54, 53, 52, 51, 50, 49],
+      [21, 22, 23, 24, 25, 26, 255, 255, 255, 255, 61, 60, 59, 58, 57, 56],
+      [27, 28, 29, 30, 31, 32, 33, 34, 69, 68, 67, 66, 65, 64, 63, 62]
+    ];
+
     function getMatrixIndexFromAddr(addrStr) {
       const m = /KeyAddr\(\s*(\d+)\s*,\s*(\d+)\s*\)/.exec(addrStr || "");
       if (!m) return 0;
       return parseInt(m[1], 10) * 16 + parseInt(m[2], 10);
+    }
+
+    function getLedIndexFromAddr(addrStr) {
+      const m = /KeyAddr\(\s*(\d+)\s*,\s*(\d+)\s*\)/.exec(addrStr || "");
+      if (!m) return -1;
+      const r = parseInt(m[1], 10);
+      const c = parseInt(m[2], 10);
+      if (!DEFY_LED_MAP[r] || DEFY_LED_MAP[r][c] === undefined || DEFY_LED_MAP[r][c] === 255) return -1;
+      return DEFY_LED_MAP[r][c];
     }
 
     function bindingToFocusCode(b, maxLayers = 10) {
@@ -4152,16 +4240,65 @@
       if (b.type === "none") return 0;
       const clampLayer = (val) => Math.max(0, Math.min(maxLayers - 1, parseInt(val, 10) || 0));
       if (b.type === "mo") return 17450 + clampLayer(b.hold);
-      if (b.type === "to") return 17492 + clampLayer(b.hold);
+      if (b.type === "to") {
+        if (String(b.tap || "").startsWith("TG(")) return 17408 + clampLayer(b.hold);
+        return 17492 + clampLayer(b.hold);
+      }
+      if (b.type === "osl") return 49161 + Math.max(0, Math.min(7, clampLayer(b.hold)));
       if (b.type === "osm") return FOCUS_OSM_CODES[b.hold] || 49154;
-      const baseTap = FOCUS_HID_CODES[b.tap] || 4;
+
+      const tapStr = String(b.tap || "").trim();
+      const rawMatch = /^#(\d+)$/.exec(tapStr);
+      if (rawMatch) return parseInt(rawMatch[1], 10);
+
+      const macroMatch = /^MACRO\s+(\d+)$/i.exec(tapStr);
+      if (macroMatch) {
+        const mIdx = Math.max(0, Math.min(127, parseInt(macroMatch[1], 10) - 1));
+        return 53852 + mIdx;
+      }
+      const superMatch = /^(?:SUPER|SK)\s*(\d+)$/i.exec(tapStr);
+      if (superMatch) {
+        const sIdx = Math.max(0, Math.min(127, parseInt(superMatch[1], 10) - 1));
+        return 53980 + sIdx;
+      }
+      const leadMatch = /^LEAD\s+(\d+)$/i.exec(tapStr);
+      if (leadMatch) {
+        const lIdx = Math.max(0, Math.min(7, parseInt(leadMatch[1], 10) - 1));
+        return 53283 + lIdx;
+      }
+      const tdMatch = /^TD\s+(\d+)$/i.exec(tapStr);
+      if (tdMatch) {
+        const tIdx = Math.max(0, Math.min(63, parseInt(tdMatch[1], 10) - 1));
+        return 53267 + tIdx;
+      }
+      if (/^BT_[1-5]$/.test(tapStr)) return 54109; // Stock Bazecor uses BT_PAIR + number keys for host selection
+
+      if (FOCUS_HID_CODES[tapStr] === undefined) {
+        const modComboMatch = /^((?:(?:C|A|AGr|S|G)-)+)(.+)$/.exec(tapStr);
+        if (modComboMatch) {
+          const baseKey = FOCUS_HID_CODES[modComboMatch[2]];
+          if (baseKey !== undefined && baseKey < 256) {
+            let flags = 0;
+            modComboMatch[1].split("-").filter(Boolean).forEach((tok) => {
+              if (tok === "C") flags |= 0x01;
+              else if (tok === "A") flags |= 0x02;
+              else if (tok === "AGr") flags |= 0x04;
+              else if (tok === "S") flags |= 0x08;
+              else if (tok === "G") flags |= 0x10;
+            });
+            if (flags > 0) return (flags << 8) + baseKey;
+          }
+        }
+      }
+
+      const baseTap = FOCUS_HID_CODES[tapStr] !== undefined ? FOCUS_HID_CODES[tapStr] : 4;
       if (b.type === "mt" && baseTap < 256) {
         const modBase = FOCUS_DUAL_MOD_BASE[b.hold] || 49169;
         return modBase + baseTap;
       }
       if (b.type === "lt" && baseTap < 256) {
-        const lyr = Math.max(1, Math.min(Math.min(8, maxLayers - 1), parseInt(b.hold, 10) || 1));
-        return 51218 + (lyr - 1) * 256 + baseTap;
+        const lyr = Math.max(0, Math.min(Math.min(7, maxLayers - 1), parseInt(b.hold, 10) || 0));
+        return 51218 + lyr * 256 + baseTap;
       }
       return baseTap;
     }
@@ -4173,33 +4310,86 @@
 
     function focusCodeToBinding(code) {
       const c = Number(code);
-      if (!Number.isFinite(c) || c === 65535) return trns();
+      if (!Number.isFinite(c) || c === 65535 || c === 1) return trns();
       if (c === 0) return { type: "none", tap: "XXX", hold: "", color: "" };
       if (c >= 17450 && c <= 17465) return mo(c - 17450);
       if (c >= 17492 && c <= 17507) return to(c - 17492);
-      if (c >= 17408 && c <= 17423) return to(c - 17408);
+      if (c >= 17408 && c <= 17423) {
+        const lyr = c - 17408;
+        return { type: "to", tap: `TG(${lyr})`, hold: String(lyr), color: "" };
+      }
       if (c >= 49153 && c <= 49160) {
         const mods = ["LCtrl", "LShift", "LAlt", "LGui", "RCtrl", "RShift", "RAlt", "RGui"];
         return osm(mods[c - 49153] || "LShift");
       }
-      if (c >= 49169 && c < 51218) {
+      if (c >= 49161 && c <= 49168) {
+        return osl(c - 49161);
+      }
+      if (c >= 49169 && c <= 50192) {
         const offset = c - 49169;
         const modIdx = Math.floor(offset / 256);
         const tapCode = offset % 256;
-        const modMap = ["LCtrl", "LShift", "LAlt", "LGui", "RCtrl", "RShift", "RAlt", "RGui"];
-        return mt(REVERSE_HID_CODES[tapCode] || "A", modMap[modIdx] || "LCtrl");
+        const modMap = ["LCtrl", "LShift", "LAlt", "LGui"];
+        return mt(REVERSE_HID_CODES[tapCode] || `#${tapCode}`, modMap[modIdx] || "LCtrl");
       }
-      if (c >= 51218 && c < 53266) {
+      if (c >= 50705 && c <= 50960) {
+        const tapCode = c - 50705;
+        return mt(REVERSE_HID_CODES[tapCode] || `#${tapCode}`, "RAlt");
+      }
+      if (c >= 51218 && c <= 53265) {
         const offset = c - 51218;
-        const lyr = Math.floor(offset / 256) + 1;
+        const lyr = Math.floor(offset / 256);
         const tapCode = offset % 256;
         return lt(REVERSE_HID_CODES[tapCode] || "Space", lyr);
       }
-      if (REVERSE_HID_CODES[c]) return kp(REVERSE_HID_CODES[c]);
+      if (c >= 53852 && c <= 53979) {
+        return mac(`MACRO ${c - 53852 + 1}`, "");
+      }
+      if (c >= 53980 && c <= 54107) {
+        return mac(`SUPER ${c - 53980 + 1}`, "");
+      }
+      if (c >= 53283 && c <= 53290) {
+        return mac(`LEAD ${c - 53283 + 1}`, "LEADER");
+      }
+      if (c >= 53267 && c <= 53330) {
+        return mac(`TD ${c - 53267 + 1}`, "TAPD");
+      }
+      if (REVERSE_HID_CODES[c]) {
+        const name = REVERSE_HID_CODES[c];
+        if (/^(Ms|Whl|Btn|Warp)/.test(name)) return mse(name, "MOUSE");
+        return kp(name);
+      }
+      if (c >= 256 && c < 8192) {
+        const modFlags = (c >> 8) & 0x1f;
+        const baseCode = c & 0xff;
+        const baseName = REVERSE_HID_CODES[baseCode];
+        if (modFlags > 0 && baseName) {
+          const parts = [];
+          if (modFlags & 0x01) parts.push("C");
+          if (modFlags & 0x02) parts.push("A");
+          if (modFlags & 0x04) parts.push("AGr");
+          if (modFlags & 0x08) parts.push("S");
+          if (modFlags & 0x10) parts.push("G");
+          return kp(`${parts.join("-")}-${baseName}`);
+        }
+      }
       return kp(`#${c}`);
     }
 
+    function rgbwToHex(r, g, b, w) {
+      const R = Number(r) || 0;
+      const G = Number(g) || 0;
+      const B = Number(b) || 0;
+      const W = Number(w) || 0;
+      if (R === 0 && G === 0 && B === 0 && W === 0) return "#0f172a";
+      const cr = Math.max(0, Math.min(255, R + W));
+      const cg = Math.max(0, Math.min(255, G + W));
+      const cb = Math.max(0, Math.min(255, B + W));
+      return "#" + [cr, cg, cb].map((v) => v.toString(16).padStart(2, "0")).join("");
+    }
+
     function hexToRgbw(hex) {
+      if (isOffColor(hex)) return [0, 0, 0, 0];
       const clean = String(hex || "#000000").replace("#", "");
       const num = parseInt(clean, 16) || 0;
       const r = (num >> 16) & 255;
@@ -4209,13 +4399,26 @@
       return [r, g, b, 0];
     }
 
+    function hexToDisplayRgb(hex) {
+      if (isOffColor(hex)) return [0, 0, 0];
+      const clean = String(hex || "#000000").replace("#", "");
+      const num = parseInt(clean, 16) || 0;
+      return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
+    }
+
     function nearestPaletteIndex(hex) {
       if (!hex) return 4;
-      const [r1, g1, b1] = hexToRgbw(hex);
+      if (isOffColor(hex)) {
+        if (isOffColor(rgbPalette[15])) return 15;
+        const offSlot = rgbPalette.findIndex((p) => isOffColor(p));
+        if (offSlot >= 0) return offSlot;
+      }
+      const [r1, g1, b1] = hexToDisplayRgb(hex);
       let bestIdx = 0;
       let bestDist = Infinity;
       rgbPalette.forEach((pHex, idx) => {
-        const [r2, g2, b2] = hexToRgbw(pHex);
+        if (isOffColor(pHex) && !isOffColor(hex)) return;
+        const [r2, g2, b2] = hexToDisplayRgb(pHex);
         const d = (r1 - r2) ** 2 + (g1 - g2) ** 2 + (b1 - b2) ** 2;
         if (d < bestDist) {
           bestDist = d;
@@ -4225,12 +4428,17 @@
       return bestIdx;
     }
 
-    function serializeFocusKeymapCustom(targetTokenCount = 800) {
+    function serializeFocusKeymapCustom(targetTokenCount = 800, existingKmNums = null) {
       const maxLayers = Math.max(1, Math.floor(targetTokenCount / 80));
       const tokens = [];
       for (let lIdx = 0; lIdx < maxLayers; lIdx++) {
         const lyr = layers[lIdx];
         const matrix80 = new Array(80).fill(65535);
+        if (Array.isArray(existingKmNums) && existingKmNums.length >= (lIdx + 1) * 80) {
+          for (let m = 0; m < 80; m++) {
+            matrix80[m] = existingKmNums[lIdx * 80 + m];
+          }
+        }
         if (lyr) {
           lyr.forEach((binding, kIdx) => {
             const mIdx = getMatrixIndexFromAddr(KEY_POSITIONS[kIdx].addr);
@@ -4245,27 +4453,41 @@
     function serializeFocusPalette() {
       const vals = [];
       for (let i = 0; i < 16; i++) {
-        const [r, g, b, w] = hexToRgbw(rgbPalette[i] || "#000000");
-        vals.push(r, g, b, w);
+        if (Array.isArray(rgbwPaletteRaw) && Array.isArray(rgbwPaletteRaw[i]) && rgbwPaletteRaw[i].length === 4) {
+          vals.push(...rgbwPaletteRaw[i]);
+        } else {
+          const [r, g, b, w] = hexToRgbw(rgbPalette[i] || "#000000");
+          vals.push(r, g, b, w);
+        }
       }
       return vals.join(" ");
     }
 
-    function serializeFocusColormap(targetTokenCount = 1760, maxLayers = 10) {
+    function serializeFocusColormap(targetTokenCount = 1780, maxLayers = 10, existingCmNums = null) {
       const ledsPerLayer = Math.max(70, Math.floor(targetTokenCount / maxLayers));
+      const offIdx = nearestPaletteIndex("#0f172a");
       const leds = [];
       for (let lIdx = 0; lIdx < maxLayers; lIdx++) {
         const lyr = layers[lIdx];
-        const layerLeds = new Array(ledsPerLayer).fill(15);
+        const layerLeds = new Array(ledsPerLayer).fill(offIdx);
+        if (Array.isArray(existingCmNums) && existingCmNums.length >= (lIdx + 1) * ledsPerLayer) {
+          for (let s = 0; s < ledsPerLayer; s++) {
+            layerLeds[s] = existingCmNums[lIdx * ledsPerLayer + s];
+          }
+        }
         if (lyr) {
           lyr.forEach((binding, kIdx) => {
-            const c = getKeyAccentColor(KEY_POSITIONS[kIdx], binding);
-            layerLeds[kIdx] = nearestPaletteIndex(c);
+            const ledIdx = getLedIndexFromAddr(KEY_POSITIONS[kIdx].addr);
+            if (ledIdx >= 0 && ledIdx < ledsPerLayer) {
+              const c = binding.color ? binding.color : getKeyAccentColor(KEY_POSITIONS[kIdx], binding);
+              layerLeds[ledIdx] = nearestPaletteIndex(c);
+            }
           });
         }
         const ug = underglowLayers[lIdx] || {};
-        for (let sId = 70; sId < ledsPerLayer; sId++) {
-          layerLeds[sId] = nearestPaletteIndex(ug[sId] || "#2dd4bf");
+        const ugMax = Math.min(176, ledsPerLayer);
+        for (let sId = 70; sId < ugMax; sId++) {
+          layerLeds[sId] = nearestPaletteIndex(ug[sId] || "#0f172a");
         }
         leds.push(...layerLeds);
       }
@@ -4486,18 +4708,142 @@
 
         const existingCmRaw = await sendFocusCommand("colormap.map", 3500);
         const existingCmNums = existingCmRaw.trim().split(/\s+/).map(Number).filter(Number.isFinite);
-        const cmTokenCount = existingCmNums.length >= 70 ? existingCmNums.length : maxDeviceLayers * 176;
+        const cmTokenCount = existingCmNums.length >= 70 ? existingCmNums.length : maxDeviceLayers * 178;
 
         appendSerialLog(`[Safety Check] Neuron EEPROM capacity: ${maxDeviceLayers} layers (${kmTokenCount} keycodes, ${cmTokenCount} LED slots).`);
         await sendFocusCommand(`keymap.onlyCustom true`);
-        await sendFocusCommand(`keymap.custom ${serializeFocusKeymapCustom(kmTokenCount)}`, 4000);
+        await sendFocusCommand(`keymap.custom ${serializeFocusKeymapCustom(kmTokenCount, existingKmNums)}`, 4000);
         await sendFocusCommand(`palette ${serializeFocusPalette()}`, 2500);
-        await sendFocusCommand(`colormap.map ${serializeFocusColormap(cmTokenCount, maxDeviceLayers)}`, 4000);
+        await sendFocusCommand(`colormap.map ${serializeFocusColormap(cmTokenCount, maxDeviceLayers, existingCmNums)}`, 4000);
         await pushDeviceSettingsToDefy();
         triggerSaveToast(`⚡ Safely synced ${maxDeviceLayers} layers & RGB to Dygma Defy!`, "⚡");
       } catch (err) {
         appendSerialLog(`[Push Failed] ${err.message}`);
       }
+    }
+
+    function inferPulledLayerMeta(lyr70, idx) {
+      const bzNum = idx + 1;
+      const activeTaps = new Set(
+        lyr70
+          .filter((b) => b && b.type !== "none" && b.type !== "trans")
+          .map((b) => String(b.tap || ""))
+      );
+      if (activeTaps.size === 0) {
+        return {
+          id: idx,
+          short: `L${idx} (#${bzNum})`,
+          name: `Layer ${idx} (Bazecor #${bzNum} — Empty)`,
+          heldKey: null
+        };
+      }
+      if (idx === 0 || (activeTaps.has("Q") && activeTaps.has("W")) || (activeTaps.has("A") && activeTaps.has("S"))) {
+        return {
+          id: idx,
+          short: `L${idx}: Base (#${bzNum})`,
+          name: `Layer ${idx}: Base Layer (Bazecor #${bzNum})`,
+          heldKey: null
+        };
+      }
+      if ((activeTaps.has("NumLk") || activeTaps.has("KP_1")) && (activeTaps.has("Up") || activeTaps.has("Home"))) {
+        return {
+          id: idx,
+          short: `L${idx}: Nav/Num (#${bzNum})`,
+          name: `Layer ${idx}: Navigation & Numpad (Bazecor #${bzNum})`,
+          heldKey: null
+        };
+      }
+      if (activeTaps.has("F1") && activeTaps.has("F12")) {
+        return {
+          id: idx,
+          short: `L${idx}: F-Keys (#${bzNum})`,
+          name: `Layer ${idx}: F-Keys & Media (Bazecor #${bzNum})`,
+          heldKey: null
+        };
+      }
+      return {
+        id: idx,
+        short: `L${idx} (#${bzNum})`,
+        name: `Layer ${idx} (Bazecor #${bzNum})`,
+        heldKey: null
+      };
+    }
+
+    function applyPulledFocusData(kmRaw, palRaw = "", cmRaw = "") {
+      const nums = String(kmRaw || "").trim().split(/\s+/).map(Number).filter(Number.isFinite);
+      if (nums.length < 80) return 0;
+
+      const numLayers = Math.min(12, Math.floor(nums.length / 80));
+      const newLayers = [];
+      for (let l = 0; l < numLayers; l++) {
+        const slice80 = nums.slice(l * 80, (l + 1) * 80);
+        const lyr70 = KEY_POSITIONS.map((pos) => {
+          const mIdx = getMatrixIndexFromAddr(pos.addr);
+          return focusCodeToBinding(slice80[mIdx]);
+        });
+        newLayers.push(lyr70);
+      }
+
+      // 1. Parse 16-swatch RGBW palette (64 ints = 16 x [R, G, B, W])
+      const palNums = String(palRaw || "").trim().split(/\s+/).map(Number).filter(Number.isFinite);
+      if (palNums.length >= 64) {
+        const nextRaw = [];
+        const nextHex = [];
+        for (let i = 0; i < 16; i++) {
+          const R = palNums[i * 4] || 0;
+          const G = palNums[i * 4 + 1] || 0;
+          const B = palNums[i * 4 + 2] || 0;
+          const W = palNums[i * 4 + 3] || 0;
+          nextRaw.push([R, G, B, W]);
+          nextHex.push(rgbwToHex(R, G, B, W));
+        }
+        rgbwPaletteRaw = nextRaw;
+        rgbPalette = nextHex;
+      }
+
+      // 2. Parse colormap.map (numLayers x 178 LEDs: 0..69 keys via mirrored DEFY_LED_MAP, 70..175 underglow)
+      const cmNums = String(cmRaw || "").trim().split(/\s+/).map(Number).filter(Number.isFinite);
+      const newUnderglow = [];
+      if (cmNums.length >= numLayers * 70) {
+        const ledsPerLayer = Math.floor(cmNums.length / numLayers);
+        for (let l = 0; l < numLayers; l++) {
+          const baseOffset = l * ledsPerLayer;
+          KEY_POSITIONS.forEach((pos, kIdx) => {
+            const ledIdx = getLedIndexFromAddr(pos.addr);
+            const swIdx = ledIdx >= 0 ? cmNums[baseOffset + ledIdx] : 15;
+            newLayers[l][kIdx].color =
+              swIdx >= 0 && swIdx < rgbPalette.length ? rgbPalette[swIdx] : "#0f172a";
+          });
+          const ug = {};
+          const ugEnd = Math.min(176, ledsPerLayer);
+          for (let sId = 70; sId < ugEnd; sId++) {
+            const swIdx = cmNums[baseOffset + sId];
+            ug[sId] = swIdx >= 0 && swIdx < rgbPalette.length ? rgbPalette[swIdx] : "#0f172a";
+          }
+          newUnderglow.push(ug);
+        }
+      } else {
+        for (let l = 0; l < numLayers; l++) {
+          newUnderglow.push(createDefaultUnderglowMap("#2dd4bf"));
+        }
+      }
+
+      // 3. Rebuild LAYERS_META to match exact hardware layer count & Bazecor 1-based numbering
+      layers = newLayers;
+      underglowLayers = newUnderglow;
+      LAYERS_META.length = 0;
+      for (let l = 0; l < numLayers; l++) {
+        LAYERS_META.push(inferPulledLayerMeta(newLayers[l], l));
+      }
+      if (currentLayer >= numLayers) currentLayer = 0;
+      syncLayersHeldKeysFromBase();
+
+      renderRgbPaletteBar();
+      renderLayerTabs();
+      renderKeyboardStage();
+      renderInspector();
+      saveState(true, `Pulled ${numLayers} layers, RGBW palette & LED colormap from Dygma Defy!`);
+      return numLayers;
     }
 
     async function pullFromDygmaDefy() {
@@ -4506,25 +4852,13 @@
         if (!serialPort) return;
       }
       try {
-        appendSerialLog("=== Reading Keymap & RGB from Dygma Defy ===");
+        appendSerialLog("=== Reading Keymap, RGBW Palette & LED Colormap from Dygma Defy ===");
         const kmRaw = await sendFocusCommand("keymap.custom", 3500);
-        const nums = kmRaw.trim().split(/\s+/).map(Number).filter(Number.isFinite);
-        if (nums.length >= 80) {
-          const numLayers = Math.min(12, Math.floor(nums.length / 80));
-          const newLayers = [];
-          for (let l = 0; l < numLayers; l++) {
-            const slice80 = nums.slice(l * 80, (l + 1) * 80);
-            const lyr70 = KEY_POSITIONS.map((pos) => {
-              const mIdx = getMatrixIndexFromAddr(pos.addr);
-              return focusCodeToBinding(slice80[mIdx]);
-            });
-            newLayers.push(lyr70);
-          }
-          layers = newLayers;
-          saveState(true, `Pulled ${numLayers} layers from Dygma Defy!`);
-          renderLayerTabs();
-          renderKeyboardStage();
-          renderInspector();
+        const palRaw = await sendFocusCommand("palette", 2500);
+        const cmRaw = await sendFocusCommand("colormap.map", 3500);
+        const pulledCount = applyPulledFocusData(kmRaw, palRaw, cmRaw);
+        if (!pulledCount) {
+          appendSerialLog("[Pull Warning] Neuron returned fewer than 80 keymap tokens.");
         }
       } catch (err) {
         appendSerialLog(`[Pull Failed] ${err.message}`);
