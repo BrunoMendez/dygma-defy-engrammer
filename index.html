@@ -1607,6 +1607,8 @@
     let underglowLayers = []; // Array of { [stripId]: "#hex" } per layer
     let rgbPalette = [...DEFAULT_RGB_PALETTE];
     let rgbwPaletteRaw = null; // Optional 16x [R,G,B,W] array pulled from Bazecor palette
+    let deviceSuperkeys = [];  // Preserved/decoded Bazecor superkeys ({ actions: [a0..a4], name, id })
+    let rawMacrosMap = "";     // Preserved Bazecor macros.map string for round-trip push
     let selectedSwatchIdx = 4; // Default to Cyan/Teal (#2dd4bf)
     let paintMode = false;
     let isPaintingDrag = false;
@@ -1710,6 +1712,12 @@
             if (Array.isArray(parsed.rgbwPaletteRaw) && parsed.rgbwPaletteRaw.length === 16) {
               rgbwPaletteRaw = parsed.rgbwPaletteRaw;
             }
+            if (Array.isArray(parsed.deviceSuperkeys)) {
+              deviceSuperkeys = parsed.deviceSuperkeys;
+            }
+            if (typeof parsed.rawMacrosMap === "string") {
+              rawMacrosMap = parsed.rawMacrosMap;
+            }
             if (Number.isFinite(parsed.lastActiveLayer) && parsed.lastActiveLayer >= 0 && parsed.lastActiveLayer < layers.length) {
               currentLayer = parsed.lastActiveLayer;
             }
@@ -1756,6 +1764,8 @@
           underglowLayers,
           rgbPalette,
           rgbwPaletteRaw,
+          deviceSuperkeys,
+          rawMacrosMap,
           combos,
           deviceSettings
         };
@@ -3690,6 +3700,9 @@
           updatedAt: new Date().toISOString(),
           layersMeta: LAYERS_META,
           rgbPalette,
+          rgbwPaletteRaw,
+          deviceSuperkeys,
+          rawMacrosMap,
           combos,
           deviceSettings,
           layers,
@@ -3739,12 +3752,71 @@
             });
             if (cmdMap["keymap.custom"]) {
               currentLayer = 0;
-              applyPulledFocusData(cmdMap["keymap.custom"], cmdMap["palette"] || "", cmdMap["colormap.map"] || "");
+              const storedSuperMeta = data.neuron && Array.isArray(data.neuron.superkeys) ? data.neuron.superkeys : [];
+              const neuronLayersMeta = data.neuron && Array.isArray(data.neuron.layers) ? data.neuron.layers : [];
+              if (cmdMap["qukeys.holdTimeout"]) {
+                const ht = parseInt(cmdMap["qukeys.holdTimeout"], 10);
+                const tapEl = document.getElementById("cfg-tapping-term");
+                if (tapEl && Number.isFinite(ht) && ht >= 80 && ht <= 1000) tapEl.value = String(ht);
+              }
+              if (cmdMap["led.brightness"] !== undefined) {
+                const v = parseInt(cmdMap["led.brightness"], 10);
+                if (Number.isFinite(v)) deviceSettings.ledBrightnessKeyWired = Math.round((v / 255) * 100);
+              }
+              if (cmdMap["led.brightnessUG"] !== undefined) {
+                const v = parseInt(cmdMap["led.brightnessUG"], 10);
+                if (Number.isFinite(v)) deviceSettings.ledBrightnessUgWired = Math.round((v / 255) * 100);
+              }
+              if (cmdMap["led.brightness.wireless"] !== undefined) {
+                const v = parseInt(cmdMap["led.brightness.wireless"], 10);
+                if (Number.isFinite(v)) deviceSettings.ledBrightnessKeyWireless = Math.round((v / 255) * 100);
+              }
+              if (cmdMap["led.brightnessUG.wireless"] !== undefined) {
+                const v = parseInt(cmdMap["led.brightnessUG.wireless"], 10);
+                if (Number.isFinite(v)) deviceSettings.ledBrightnessUgWireless = Math.round((v / 255) * 100);
+              }
+              if (cmdMap["led.fade"] !== undefined) {
+                deviceSettings.highlightLayerChange = String(cmdMap["led.fade"]).trim() === "1";
+              }
+              if (cmdMap["idleleds.true_sleep"] !== undefined) {
+                deviceSettings.trueSleep = String(cmdMap["idleleds.true_sleep"]).trim() === "1";
+              }
+              if (cmdMap["idleleds.true_sleep_time"] !== undefined) {
+                const v = parseInt(cmdMap["idleleds.true_sleep_time"], 10);
+                if (Number.isFinite(v)) deviceSettings.trueSleepTimeSec = v;
+              }
+              if (cmdMap["idleleds.time_limit"] !== undefined) {
+                const v = parseInt(cmdMap["idleleds.time_limit"], 10);
+                if (Number.isFinite(v)) deviceSettings.ledIdleTimeoutWiredSec = v;
+              }
+              if (cmdMap["idleleds.wireless"] !== undefined) {
+                const v = parseInt(cmdMap["idleleds.wireless"], 10);
+                if (Number.isFinite(v)) deviceSettings.ledIdleTimeoutWirelessSec = v;
+              }
+              if (cmdMap["wireless.battery.savingMode"] !== undefined) {
+                deviceSettings.energySavingMode = String(cmdMap["wireless.battery.savingMode"]).trim() === "1";
+              }
+              if (cmdMap["wireless.rf.power"] !== undefined) {
+                const v = parseInt(cmdMap["wireless.rf.power"], 10);
+                if (Number.isFinite(v)) deviceSettings.rfPower = v;
+              }
+              applyPulledFocusData(
+                cmdMap["keymap.custom"],
+                cmdMap["palette"] || "",
+                cmdMap["colormap.map"] || "",
+                cmdMap["superkeys.map"] || "",
+                cmdMap["macros.map"] || "",
+                storedSuperMeta,
+                neuronLayersMeta
+              );
+              renderWirelessAndDeviceTab();
               return;
             }
           }
           if (data && Array.isArray(data.layers) && data.layers.length >= 1) {
             layers = data.layers;
+            deviceSuperkeys = Array.isArray(data.deviceSuperkeys) ? data.deviceSuperkeys : [];
+            rawMacrosMap = typeof data.rawMacrosMap === "string" ? data.rawMacrosMap : "";
             if (Array.isArray(data.layersMeta) && data.layersMeta.length === layers.length) {
               LAYERS_META.length = 0;
               data.layersMeta.forEach((lm) => LAYERS_META.push(lm));
@@ -3832,6 +3904,8 @@
         underglowLayers,
         rgbPalette,
         rgbwPaletteRaw,
+        deviceSuperkeys,
+        rawMacrosMap,
         combos,
         deviceSettings
       };
@@ -3886,6 +3960,9 @@
         layersMeta: JSON.parse(JSON.stringify(LAYERS_META)),
         underglowLayers: JSON.parse(JSON.stringify(underglowLayers)),
         rgbPalette: [...rgbPalette],
+        rgbwPaletteRaw: rgbwPaletteRaw ? JSON.parse(JSON.stringify(rgbwPaletteRaw)) : null,
+        deviceSuperkeys: JSON.parse(JSON.stringify(deviceSuperkeys || [])),
+        rawMacrosMap: String(rawMacrosMap || ""),
         combos: JSON.parse(JSON.stringify(combos)),
         deviceSettings: JSON.parse(JSON.stringify(deviceSettings))
       });
@@ -3908,6 +3985,9 @@
       if (Array.isArray(found.rgbPalette)) {
         rgbPalette = [...found.rgbPalette];
       }
+      rgbwPaletteRaw = Array.isArray(found.rgbwPaletteRaw) ? JSON.parse(JSON.stringify(found.rgbwPaletteRaw)) : null;
+      deviceSuperkeys = Array.isArray(found.deviceSuperkeys) ? JSON.parse(JSON.stringify(found.deviceSuperkeys)) : [];
+      rawMacrosMap = typeof found.rawMacrosMap === "string" ? found.rawMacrosMap : "";
       if (Array.isArray(found.combos)) {
         combos = JSON.parse(JSON.stringify(found.combos));
       }
@@ -4200,9 +4280,16 @@
       BatLvl: 54108, BT_PAIR: 54109, WL_TOGG: 54110, EngySt: 54111, RF_MODE: 54112, LENS_TAP: 54113, LENS_HOLD: 54114
     };
 
+    // Bazecor UI (src/api/keymap/db/dualuse.tsx) defines native DualUse tables for LCtrl, LShift, LAlt, LGui, and RAlt.
+    // Right-hand RCtrl (228), RShift (229), and RGui (231) use 2-action superkeys.map entries ([tap, mod, 1, 1, 1]),
+    // which KeyRoleManager on the Neuron converts to hardware Qukeys while preserving clean Bazecor UI rendering.
     const FOCUS_DUAL_MOD_BASE = {
-      LCtrl: 49169, LShift: 49425, LAlt: 49681, LGui: 49937,
-      RCtrl: 49169, RShift: 49425, RAlt: 50705, RGui: 49937
+      LCtrl: 49169, LShift: 49425, LAlt: 49681, LGui: 49937, RAlt: 50705
+    };
+
+    const FOCUS_MOD_HID = {
+      LCtrl: 224, LShift: 225, LAlt: 226, LGui: 227,
+      RCtrl: 228, RShift: 229, RAlt: 230, RGui: 231
     };
 
     const FOCUS_OSM_CODES = {
@@ -4282,7 +4369,57 @@
       return map[tapStr];
     }
 
-    function bindingToFocusCode(b, maxLayers = 10) {
+    function parseFocusSuperkeysRaw(raw, storedMeta = []) {
+      const cleaned = String(raw || "").trim();
+      if (!cleaned || cleaned === "0" || cleaned.startsWith("0 ") || cleaned.startsWith("65535")) {
+        if (Array.isArray(storedMeta) && storedMeta.length > 0) {
+          return storedMeta.map((sk, idx) => ({
+            id: idx,
+            name: String((sk && sk.name) || ""),
+            actions: [0, 1, 2, 3, 4].map((i) => {
+              const v = Number(sk && Array.isArray(sk.actions) ? sk.actions[i] : 0) || 0;
+              return v === 1 || v === 65535 ? 0 : v;
+            })
+          }));
+        }
+        return [];
+      }
+      const beforeEnd = cleaned.split(/\s+0\s+0(?:\s|$)/)[0].split(/\s+65535(?:\s|$)/)[0].trim();
+      if (!beforeEnd) return [];
+      const chunks = beforeEnd.split(/\s+0\s+/);
+      return chunks
+        .map((chunk, idx) => {
+          const rawActs = chunk.trim().split(/\s+/).map(Number).filter(Number.isFinite);
+          if (rawActs.length === 0) return null;
+          const actions = [0, 1, 2, 3, 4].map((i) => {
+            const v = rawActs[i] || 0;
+            return v === 1 || v === 65535 ? 0 : v;
+          });
+          const meta = Array.isArray(storedMeta) ? storedMeta[idx] : null;
+          return {
+            id: idx,
+            name: String((meta && meta.name) || ""),
+            actions
+          };
+        })
+        .filter(Boolean);
+    }
+
+    function serializeFocusSuperkeys(superkeysArr) {
+      if (!Array.isArray(superkeysArr) || superkeysArr.length === 0) return "";
+      const parts = superkeysArr.slice(0, 64).map((sk) => {
+        const acts = Array.isArray(sk && sk.actions) ? sk.actions : [];
+        return [0, 1, 2, 3, 4]
+          .map((i) => {
+            const v = Number(acts[i]) || 0;
+            return v <= 0 || v === 65535 ? 1 : v;
+          })
+          .join(" ");
+      });
+      return `${parts.join(" 0 ")} 0 0`;
+    }
+
+    function bindingToFocusCode(b, maxLayers = 10, superkeyAlloc = null) {
       if (!b || b.type === "trans") return 65535;
       if (b.type === "none") return 0;
       const clampLayer = (val) => Math.max(0, Math.min(maxLayers - 1, parseInt(val, 10) || 0));
@@ -4321,7 +4458,7 @@
       if (/^BT_[1-5]$/.test(tapStr)) return 54109; // Stock Bazecor uses BT_PAIR + number keys for host selection
 
       const aliasCode = resolveEngrammerFocusAlias(tapStr, maxLayers);
-      if (aliasCode !== undefined && b.type !== "mt" && b.type !== "lt") {
+      if (aliasCode !== undefined && b.type !== "mt" && b.type !== "lt" && b.type !== "dual") {
         return aliasCode;
       }
 
@@ -4349,16 +4486,48 @@
           : aliasCode !== undefined
           ? aliasCode
           : 0;
-      if (b.type === "mt" && baseTap > 0 && baseTap < 256) {
-        const modBase = FOCUS_DUAL_MOD_BASE[b.hold] || 49169;
-        return modBase + baseTap;
+      if (b.type === "mt" && baseTap > 0) {
+        const holdModHid = FOCUS_MOD_HID[b.hold] || 224;
+        if (superkeyAlloc) {
+          const existingIdx = superkeyAlloc.findExisting(baseTap, holdModHid);
+          if (existingIdx >= 0) return 53980 + existingIdx;
+        }
+        if (baseTap < 256 && FOCUS_DUAL_MOD_BASE[b.hold] !== undefined) {
+          return FOCUS_DUAL_MOD_BASE[b.hold] + baseTap;
+        }
+        if (superkeyAlloc) {
+          const allocIdx = superkeyAlloc.getOrCreate(baseTap, holdModHid, tapStr);
+          if (allocIdx >= 0) return 53980 + allocIdx;
+        }
+        return (FOCUS_DUAL_MOD_BASE[b.hold] || 49169) + (baseTap & 0xff);
       }
-      if (b.type === "lt" && baseTap > 0 && baseTap < 256) {
+      if (b.type === "lt" && baseTap > 0) {
         const rawLyr = parseInt(b.hold, 10) || 0;
-        if (rawLyr >= 0 && rawLyr < Math.min(8, maxLayers)) {
+        if (rawLyr < 0 || rawLyr >= maxLayers) return baseTap;
+        const holdLayerCode = 17450 + rawLyr;
+        if (superkeyAlloc) {
+          const existingIdx = superkeyAlloc.findExisting(baseTap, holdLayerCode);
+          if (existingIdx >= 0) return 53980 + existingIdx;
+        }
+        if (baseTap < 256 && rawLyr < 8) {
           return 51218 + rawLyr * 256 + baseTap;
         }
+        if (superkeyAlloc) {
+          const allocIdx = superkeyAlloc.getOrCreate(baseTap, holdLayerCode, tapStr);
+          if (allocIdx >= 0) return 53980 + allocIdx;
+        }
         return baseTap;
+      }
+      if (b.type === "dual" && baseTap > 0 && superkeyAlloc) {
+        const holdStr = String(b.hold || "").trim();
+        const holdCode =
+          FOCUS_HID_CODES[holdStr] !== undefined
+            ? FOCUS_HID_CODES[holdStr]
+            : resolveEngrammerFocusAlias(holdStr, maxLayers) || 0;
+        if (holdCode > 0) {
+          const allocIdx = superkeyAlloc.getOrCreate(baseTap, holdCode, tapStr);
+          if (allocIdx >= 0) return 53980 + allocIdx;
+        }
       }
       return baseTap;
     }
@@ -4368,7 +4537,26 @@
       REVERSE_HID_CODES[v] = k;
     });
 
-    function focusCodeToBinding(code) {
+    function focusSingleCodeToLabel(c) {
+      if (REVERSE_HID_CODES[c]) return REVERSE_HID_CODES[c];
+      if (c >= 256 && c < 8192) {
+        const modFlags = (c >> 8) & 0x1f;
+        const baseCode = c & 0xff;
+        const baseName = REVERSE_HID_CODES[baseCode];
+        if (modFlags > 0 && baseName) {
+          const parts = [];
+          if (modFlags & 0x01) parts.push("C");
+          if (modFlags & 0x02) parts.push("A");
+          if (modFlags & 0x04) parts.push("AGr");
+          if (modFlags & 0x08) parts.push("S");
+          if (modFlags & 0x10) parts.push("G");
+          return `${parts.join("-")}-${baseName}`;
+        }
+      }
+      return null;
+    }
+
+    function focusCodeToBinding(code, superkeysList = deviceSuperkeys) {
       const c = Number(code);
       if (!Number.isFinite(c) || c === 65535 || c === 1) return trns();
       if (c === 0) return { type: "none", tap: "XXX", hold: "", color: "" };
@@ -4385,16 +4573,12 @@
       if (c >= 49161 && c <= 49168) {
         return osl(c - 49161);
       }
-      if (c >= 49169 && c <= 50192) {
+      if (c >= 49169 && c <= 51216) {
         const offset = c - 49169;
         const modIdx = Math.floor(offset / 256);
         const tapCode = offset % 256;
-        const modMap = ["LCtrl", "LShift", "LAlt", "LGui"];
+        const modMap = ["LCtrl", "LShift", "LAlt", "LGui", "RCtrl", "RShift", "RAlt", "RGui"];
         return mt(REVERSE_HID_CODES[tapCode] || `#${tapCode}`, modMap[modIdx] || "LCtrl");
-      }
-      if (c >= 50705 && c <= 50960) {
-        const tapCode = c - 50705;
-        return mt(REVERSE_HID_CODES[tapCode] || `#${tapCode}`, "RAlt");
       }
       if (c >= 51218 && c <= 53265) {
         const offset = c - 51218;
@@ -4406,7 +4590,27 @@
         return mac(`MACRO ${c - 53852 + 1}`, "");
       }
       if (c >= 53980 && c <= 54107) {
-        return mac(`SUPER ${c - 53980 + 1}`, "");
+        const sIdx = c - 53980;
+        const sk = Array.isArray(superkeysList) ? superkeysList[sIdx] : null;
+        if (sk && Array.isArray(sk.actions)) {
+          const [a0, a1, a2, a3, a4] = sk.actions.map((v) => Number(v) || 0);
+          const restEmpty = (a2 === 0 || a2 === 1) && (a3 === 0 || a3 === 1) && (a4 === 0 || a4 === 1);
+          const tapLabel = a0 > 1 ? focusSingleCodeToLabel(a0) : null;
+          if (restEmpty && tapLabel && a1 > 1) {
+            if (a1 >= 224 && a1 <= 231) {
+              const mods = ["LCtrl", "LShift", "LAlt", "LGui", "RCtrl", "RShift", "RAlt", "RGui"];
+              return mt(tapLabel, mods[a1 - 224]);
+            }
+            if (a1 >= 17450 && a1 <= 17465) {
+              return lt(tapLabel, a1 - 17450);
+            }
+            const holdLabel = focusSingleCodeToLabel(a1);
+            if (holdLabel) {
+              return dual(tapLabel, holdLabel);
+            }
+          }
+        }
+        return mac(`SUPER ${sIdx + 1}`, sk && sk.name ? sk.name : "");
       }
       if (c >= 53283 && c <= 53290) {
         return mac(`LEAD ${c - 53283 + 1}`, "LEADER");
@@ -4419,20 +4623,8 @@
         if (/^(Ms|Whl|Btn|Warp)/.test(name)) return mse(name, "MOUSE");
         return kp(name);
       }
-      if (c >= 256 && c < 8192) {
-        const modFlags = (c >> 8) & 0x1f;
-        const baseCode = c & 0xff;
-        const baseName = REVERSE_HID_CODES[baseCode];
-        if (modFlags > 0 && baseName) {
-          const parts = [];
-          if (modFlags & 0x01) parts.push("C");
-          if (modFlags & 0x02) parts.push("A");
-          if (modFlags & 0x04) parts.push("AGr");
-          if (modFlags & 0x08) parts.push("S");
-          if (modFlags & 0x10) parts.push("G");
-          return kp(`${parts.join("-")}-${baseName}`);
-        }
-      }
+      const modComboLabel = focusSingleCodeToLabel(c);
+      if (modComboLabel) return kp(modComboLabel);
       return kp(`#${c}`);
     }
 
@@ -4488,8 +4680,51 @@
       return bestIdx;
     }
 
-    function serializeFocusKeymapCustom(targetTokenCount = 800, existingKmNums = null) {
+    function hasExplicitSuperkeyMacroInLayers(maxLayers = 10) {
+      for (let lIdx = 0; lIdx < Math.min(layers.length, maxLayers); lIdx++) {
+        const lyr = layers[lIdx];
+        if (!Array.isArray(lyr)) continue;
+        for (const b of lyr) {
+          if (b && /^(?:SUPER|SK)\s*\d+$/i.test(String(b.tap || "").trim())) return true;
+        }
+      }
+      return false;
+    }
+
+    function buildFocusKeymapAndSuperkeys(targetTokenCount = 800, existingKmNums = null, fallbackSuperkeys = []) {
       const maxLayers = Math.max(1, Math.floor(targetTokenCount / 80));
+      const baseList =
+        Array.isArray(deviceSuperkeys) && deviceSuperkeys.length > 0
+          ? JSON.parse(JSON.stringify(deviceSuperkeys))
+          : hasExplicitSuperkeyMacroInLayers(maxLayers) && Array.isArray(fallbackSuperkeys)
+          ? JSON.parse(JSON.stringify(fallbackSuperkeys))
+          : [];
+
+      const isTwoActionMatch = (sk, tapCode, holdCode) => {
+        if (!sk || !Array.isArray(sk.actions)) return false;
+        const [a0, a1, a2, a3, a4] = sk.actions.map((v) => Number(v) || 0);
+        const restEmpty = (a2 === 0 || a2 === 1) && (a3 === 0 || a3 === 1) && (a4 === 0 || a4 === 1);
+        return restEmpty && a0 === tapCode && a1 === holdCode;
+      };
+
+      const superkeyAlloc = {
+        findExisting(tapCode, holdCode) {
+          return baseList.findIndex((sk) => isTwoActionMatch(sk, tapCode, holdCode));
+        },
+        getOrCreate(tapCode, holdCode, label = "") {
+          const found = baseList.findIndex((sk) => isTwoActionMatch(sk, tapCode, holdCode));
+          if (found >= 0) return found;
+          if (baseList.length >= 64) return -1;
+          const idx = baseList.length;
+          baseList.push({
+            id: idx,
+            name: String(label || ""),
+            actions: [tapCode, holdCode, 0, 0, 0]
+          });
+          return idx;
+        }
+      };
+
       const tokens = [];
       for (let lIdx = 0; lIdx < maxLayers; lIdx++) {
         const lyr = layers[lIdx];
@@ -4502,12 +4737,21 @@
         if (lyr) {
           lyr.forEach((binding, kIdx) => {
             const mIdx = getMatrixIndexFromAddr(KEY_POSITIONS[kIdx].addr);
-            matrix80[mIdx] = bindingToFocusCode(binding, maxLayers);
+            matrix80[mIdx] = bindingToFocusCode(binding, maxLayers, superkeyAlloc);
           });
         }
         tokens.push(...matrix80);
       }
-      return tokens.slice(0, targetTokenCount).join(" ");
+
+      return {
+        keymapPayload: tokens.slice(0, targetTokenCount).join(" "),
+        superkeysPayload: serializeFocusSuperkeys(baseList),
+        superkeysList: baseList
+      };
+    }
+
+    function serializeFocusKeymapCustom(targetTokenCount = 800, existingKmNums = null) {
+      return buildFocusKeymapAndSuperkeys(targetTokenCount, existingKmNums).keymapPayload;
     }
 
     function serializeFocusPalette() {
@@ -4826,7 +5070,7 @@
         if (!serialPort) return;
       }
       try {
-        appendSerialLog("=== Pushing Layout, Palette, Colormap & Device Settings to Dygma Defy ===");
+        appendSerialLog("=== Pushing Superkeys, Keymap, Palette, Colormap & Device Settings to Dygma Defy ===");
         // Query existing Neuron EEPROM slice lengths first so we NEVER overflow EEPROM bounds!
         const existingKmRaw = await sendFocusCommand("keymap.custom", 4500);
         const existingKmNums = existingKmRaw.trim().split(/\s+/).map(Number).filter(Number.isFinite);
@@ -4837,26 +5081,66 @@
         const existingCmNums = existingCmRaw.trim().split(/\s+/).map(Number).filter(Number.isFinite);
         const cmTokenCount = existingCmNums.length >= 70 ? existingCmNums.length : maxDeviceLayers * 178;
 
-        appendSerialLog(`[Safety Check] Neuron EEPROM capacity: ${maxDeviceLayers} layers (${kmTokenCount} keycodes, ${cmTokenCount} LED slots).`);
+        const existingSuperRaw = await sendFocusCommand("superkeys.map", 3500);
+        const existingSuperkeys = parseFocusSuperkeysRaw(existingSuperRaw);
+
+        const built = buildFocusKeymapAndSuperkeys(kmTokenCount, existingKmNums, existingSuperkeys);
+        appendSerialLog(
+          `[Safety Check] Neuron EEPROM: ${maxDeviceLayers} layers (${kmTokenCount} keycodes, ${cmTokenCount} LEDs, ${built.superkeysList.length} superkeys).`
+        );
         if (layers.length > maxDeviceLayers) {
-          appendSerialLog(`[Note] Stock Neuron EEPROM stores ${maxDeviceLayers} layers (L0..L${maxDeviceLayers - 1}) and DualUse LT supports L0..L7; layers L${maxDeviceLayers}+ require custom firmware.`);
+          appendSerialLog(`[Note] Stock Neuron EEPROM stores ${maxDeviceLayers} layers (L0..L${maxDeviceLayers - 1}); layers L${maxDeviceLayers}+ require custom firmware.`);
         }
+
+        // CRITICAL (KeyRoleManager.cpp + EEPROMKeymapDygma.cpp):
+        // superkeys.map MUST be written BEFORE keymap.custom so KeyRoleManager::search_and_replace
+        // converts 2-action [tap, mod/layer, 1, 1, 1] superkeys into hardware Qukeys during keymap.custom write!
+        if (built.superkeysPayload) {
+          await sendFocusCommand(`superkeys.map ${built.superkeysPayload}`, 4000);
+        }
+        if (rawMacrosMap && rawMacrosMap.trim().length > 0) {
+          await sendFocusCommand(`macros.map ${rawMacrosMap.trim()}`, 4500);
+        }
+        await sendFocusCommand(`keymap.custom ${built.keymapPayload}`, 5000);
         await sendFocusCommand("keymap.onlyCustom 1");
         await sendFocusCommand("settings.defaultLayer 0");
-        await sendFocusCommand(`keymap.custom ${serializeFocusKeymapCustom(kmTokenCount, existingKmNums)}`, 5000);
-        await sendFocusCommand(`palette ${serializeFocusPalette()}`, 3000);
         await sendFocusCommand(`colormap.map ${serializeFocusColormap(cmTokenCount, maxDeviceLayers, existingCmNums)}`, 5000);
-        await sendFocusCommand(`qukeys.holdTimeout ${getQukeysThresholdMs()}`);
+        await sendFocusCommand(`palette ${serializeFocusPalette()}`, 3000);
+
+        const holdMs = getQukeysThresholdMs();
+        await sendFocusCommand(`qukeys.holdTimeout ${holdMs}`);
         await sendFocusCommand("qukeys.overlapThreshold 80");
+        await sendFocusCommand(`superkeys.holdstart ${holdMs}`);
+        await sendFocusCommand("superkeys.overlap 80");
         await pushDeviceSettingsToDefy();
-        triggerSaveToast(`⚡ Safely synced ${maxDeviceLayers} layers & RGB to Dygma Defy!`, "⚡");
+
+        // Post-push readback verification so factory PROGMEM layers can never stay active silently
+        let verifyOnlyCustom = (await sendFocusCommand("keymap.onlyCustom")).trim();
+        if (verifyOnlyCustom !== "1") {
+          await sendFocusCommand("keymap.onlyCustom 1");
+          verifyOnlyCustom = (await sendFocusCommand("keymap.onlyCustom")).trim();
+        }
+        const verifyKm = await sendFocusCommand("keymap.custom", 4500);
+        const verifyHead = verifyKm.trim().split(/\s+/).slice(0, 7).join(" ");
+        appendSerialLog(`[Verified] keymap.onlyCustom=${verifyOnlyCustom} (custom layers active), L0[0..6]=[${verifyHead}]`);
+        triggerSaveToast(`⚡ Synced & verified ${maxDeviceLayers} custom layers & RGB on Dygma Defy!`, "⚡");
       } catch (err) {
         appendSerialLog(`[Push Failed] ${err.message}`);
       }
     }
 
-    function inferPulledLayerMeta(lyr70, idx) {
+    function inferPulledLayerMeta(lyr70, idx, customName = "") {
       const bzNum = idx + 1;
+      const cleanCustom = String(customName || "").trim();
+      const hasCustomTitle = cleanCustom && !/^L\d+$/i.test(cleanCustom);
+      if (hasCustomTitle) {
+        return {
+          id: idx,
+          short: `L${idx}: ${cleanCustom} (#${bzNum})`,
+          name: `Layer ${idx}: ${cleanCustom} (Bazecor #${bzNum})`,
+          heldKey: null
+        };
+      }
       const activeTaps = new Set(
         lyr70
           .filter((b) => b && b.type !== "none" && b.type !== "trans")
@@ -4902,9 +5186,21 @@
       };
     }
 
-    function applyPulledFocusData(kmRaw, palRaw = "", cmRaw = "") {
+    function applyPulledFocusData(
+      kmRaw,
+      palRaw = "",
+      cmRaw = "",
+      superRaw = "",
+      macrosRaw = "",
+      storedSuperMeta = [],
+      neuronLayersMeta = []
+    ) {
       const nums = String(kmRaw || "").trim().split(/\s+/).map(Number).filter(Number.isFinite);
       if (nums.length < 80) return 0;
+
+      // 0. Parse superkeys.map & macros.map BEFORE decoding keymap.custom so 2-action superkeys (53980+) decode into mt/lt/dual!
+      deviceSuperkeys = parseFocusSuperkeysRaw(superRaw, storedSuperMeta);
+      rawMacrosMap = typeof macrosRaw === "string" ? macrosRaw.trim() : "";
 
       const numLayers = Math.min(12, Math.floor(nums.length / 80));
       const newLayers = [];
@@ -4912,7 +5208,7 @@
         const slice80 = nums.slice(l * 80, (l + 1) * 80);
         const lyr70 = KEY_POSITIONS.map((pos) => {
           const mIdx = getMatrixIndexFromAddr(pos.addr);
-          return focusCodeToBinding(slice80[mIdx]);
+          return focusCodeToBinding(slice80[mIdx], deviceSuperkeys);
         });
         newLayers.push(lyr70);
       }
@@ -4966,7 +5262,8 @@
       underglowLayers = newUnderglow;
       LAYERS_META.length = 0;
       for (let l = 0; l < numLayers; l++) {
-        LAYERS_META.push(inferPulledLayerMeta(newLayers[l], l));
+        const metaItem = Array.isArray(neuronLayersMeta) ? neuronLayersMeta.find((m) => m && Number(m.id) === l) || neuronLayersMeta[l] : null;
+        LAYERS_META.push(inferPulledLayerMeta(newLayers[l], l, metaItem && metaItem.name ? metaItem.name : ""));
       }
       if (currentLayer >= numLayers) currentLayer = 0;
       syncLayersHeldKeysFromBase();
@@ -4975,7 +5272,7 @@
       renderLayerTabs();
       renderKeyboardStage();
       renderInspector();
-      saveState(true, `Pulled ${numLayers} layers, RGBW palette & LED colormap from Dygma Defy!`);
+      saveState(true, `Loaded ${numLayers} layers, ${deviceSuperkeys.length} superkeys, RGBW palette & LED colormap!`);
       return numLayers;
     }
 
@@ -4991,6 +5288,9 @@
           layersMeta: JSON.parse(JSON.stringify(LAYERS_META)),
           underglowLayers: JSON.parse(JSON.stringify(underglowLayers)),
           rgbPalette: [...rgbPalette],
+          rgbwPaletteRaw: rgbwPaletteRaw ? JSON.parse(JSON.stringify(rgbwPaletteRaw)) : null,
+          deviceSuperkeys: JSON.parse(JSON.stringify(deviceSuperkeys || [])),
+          rawMacrosMap: String(rawMacrosMap || ""),
           combos: JSON.parse(JSON.stringify(combos)),
           deviceSettings: JSON.parse(JSON.stringify(deviceSettings))
         });
@@ -5004,7 +5304,7 @@
         if (!serialPort) return;
       }
       try {
-        appendSerialLog("=== Reading Keymap, RGBW Palette & LED Colormap from Dygma Defy ===");
+        appendSerialLog("=== Reading Keymap, Superkeys, Macros, RGBW Palette & LED Colormap from Dygma Defy ===");
         autoBackupStudioBeforePull();
         const onlyCustomRaw = await sendFocusCommand("keymap.onlyCustom");
         let kmRaw = await sendFocusCommand("keymap.custom", 4500);
@@ -5014,9 +5314,11 @@
             kmRaw = `${defRaw.trim()} ${kmRaw.trim()}`.trim();
           }
         }
+        const superRaw = await sendFocusCommand("superkeys.map", 3500);
+        const macrosRaw = await sendFocusCommand("macros.map", 4500);
         const palRaw = await sendFocusCommand("palette", 3000);
         const cmRaw = await sendFocusCommand("colormap.map", 4500);
-        const pulledCount = applyPulledFocusData(kmRaw, palRaw, cmRaw);
+        const pulledCount = applyPulledFocusData(kmRaw, palRaw, cmRaw, superRaw, macrosRaw);
         if (!pulledCount) {
           appendSerialLog("[Pull Warning] Neuron returned fewer than 80 keymap tokens.");
         }
