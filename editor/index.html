@@ -264,11 +264,11 @@
           </select>
         </div>
 
-        <button id="btn-preview-layer-hw" type="button" class="px-2.5 py-1 rounded-md border border-[var(--app-border)] bg-[var(--app-background)] hover:border-cyan-400 transition font-medium" title="Temporarily activate the selected layer on your connected Dygma Defy so you can preview secondary layer LEDs hands-free while painting">
+        <button id="btn-preview-layer-hw" type="button" class="px-2.5 py-1 rounded-md border border-[var(--app-border)] bg-[var(--app-background)] hover:border-cyan-400 transition font-medium" title="Temporarily activate the selected secondary layer on your connected Dygma Defy to preview its LEDs hands-free (auto-exits on L0 or after 90s)">
           👁️ Preview Layer: OFF
         </button>
-        <button id="btn-sync-rgb-live" type="button" class="px-2.5 py-1 rounded-md font-bold bg-emerald-500 text-slate-950 hover:bg-emerald-400 transition shadow-sm" title="Push the 16-swatch RGBW palette &amp; all layer colormaps directly to your Dygma Defy over WebSerial">
-          ⚡ Sync RGB
+        <button id="btn-sync-rgb-live" type="button" class="px-2.5 py-1 rounded-md font-bold bg-emerald-500 text-slate-950 hover:bg-emerald-400 transition shadow-sm" title="Explicitly save the 16-swatch RGBW palette &amp; all layer colormaps to your Dygma Defy (chunked for nRF52833 256B USB buffer — never writes flash while dragging)">
+          💾 Save RGB to Board
         </button>
       </div>
     </div>
@@ -873,9 +873,9 @@
                 <button id="btn-push-live" class="w-full py-2 px-3 rounded-lg font-bold bg-emerald-500 text-slate-950 hover:bg-emerald-400 transition">
                   ⚡ Push Keymap &amp; RGB Now
                 </button>
-                <label class="flex items-center gap-2 text-[11px] cursor-pointer select-none pt-1">
+                <label class="flex items-center gap-2 text-[11px] cursor-pointer select-none pt-1" title="Waits 2.0s after edits stop before pushing so nRF52833 flash writes never collide. Manual Push is recommended while actively painting.">
                   <input id="chk-auto-sync" type="checkbox" class="accent-emerald-400" />
-                  <span><b>Live Auto-Sync:</b> Push edits to keyboard automatically as I click</span>
+                  <span><b>Auto-Push (2s idle):</b> Push after edits settle (manual Push recommended)</span>
                 </label>
               </div>
             </div>
@@ -2730,10 +2730,10 @@
         if (currentLayer === 0) {
           syncBaseWinColorsFromMac("all", true);
         }
-        saveState();
-        if (typeof scheduleRgbAutoSync === "function") {
-          scheduleRgbAutoSync();
+        if (typeof markRgbDirtyForHardware === "function") {
+          markRgbDirtyForHardware();
         }
+        saveState();
         renderKeyboardStage();
         renderInspector();
       }
@@ -3868,14 +3868,14 @@
     document.getElementById("edit-hold").onchange = applyCurrentInspectorEdit;
     document.getElementById("edit-shifted-custom").oninput = applyCurrentInspectorEdit;
 
-    function scheduleRgbSaveAndSync() {
+    function scheduleRgbSaveLocalOnly() {
+      if (typeof markRgbDirtyForHardware === "function") {
+        markRgbDirtyForHardware();
+      }
       if (rgbSaveDebounceTimer) clearTimeout(rgbSaveDebounceTimer);
       rgbSaveDebounceTimer = setTimeout(() => {
         saveState(false);
-        if (typeof scheduleRgbAutoSync === "function") {
-          scheduleRgbAutoSync();
-        }
-      }, 180);
+      }, 220);
     }
 
     document.getElementById("edit-key-color").oninput = (e) => {
@@ -3888,14 +3888,14 @@
         syncBaseWinColorsFromMac([selectedKeyIndex], false);
       }
       renderKeyboardStage();
-      scheduleRgbSaveAndSync();
+      scheduleRgbSaveLocalOnly();
     };
     document.getElementById("edit-key-color").onchange = () => {
       inspectorColorSlot = null;
-      saveState();
-      if (typeof scheduleRgbAutoSync === "function") {
-        scheduleRgbAutoSync();
+      if (typeof markRgbDirtyForHardware === "function") {
+        markRgbDirtyForHardware();
       }
+      saveState();
     };
     document.getElementById("btn-clear-key-color").onclick = () => {
       inspectorColorSlot = null;
@@ -3903,10 +3903,10 @@
       if (currentLayer === 0) {
         syncBaseWinColorsFromMac([selectedKeyIndex], false);
       }
-      saveState();
-      if (typeof scheduleRgbAutoSync === "function") {
-        scheduleRgbAutoSync();
+      if (typeof markRgbDirtyForHardware === "function") {
+        markRgbDirtyForHardware();
       }
+      saveState();
       renderKeyboardStage();
       renderInspector();
     };
@@ -3951,13 +3951,13 @@
       renderRgbPaletteBar();
       renderKeyboardStage();
       renderInspector();
-      scheduleRgbSaveAndSync();
+      scheduleRgbSaveLocalOnly();
     };
     document.getElementById("rgb-custom-picker").onchange = () => {
-      saveState();
-      if (typeof scheduleRgbAutoSync === "function") {
-        scheduleRgbAutoSync();
+      if (typeof markRgbDirtyForHardware === "function") {
+        markRgbDirtyForHardware();
       }
+      saveState();
     };
 
     document.getElementById("btn-paint-mode").onclick = (e) => {
@@ -4006,10 +4006,10 @@
       if (currentLayer === 0) {
         syncBaseWinColorsFromMac("all", false);
       }
-      saveState();
-      if (typeof scheduleRgbAutoSync === "function") {
-        scheduleRgbAutoSync();
+      if (typeof markRgbDirtyForHardware === "function") {
+        markRgbDirtyForHardware();
       }
+      saveState();
       renderKeyboardStage();
       renderInspector();
     };
@@ -4034,10 +4034,10 @@
       if (currentLayer === 0) {
         syncBaseWinColorsFromMac(null, true);
       }
-      saveState();
-      if (typeof scheduleRgbAutoSync === "function") {
-        scheduleRgbAutoSync();
+      if (typeof markRgbDirtyForHardware === "function") {
+        markRgbDirtyForHardware();
       }
+      saveState();
       renderKeyboardStage();
     };
 
@@ -5999,13 +5999,83 @@
     let serialRxBuffer = "";
     let serialResponseWaiter = null;
     let serialMutex = Promise.resolve();
+    let hardwareOpMutex = Promise.resolve();
+    let isHardwareOpBusy = false;
+    let lastNeuronFlashCommitMs = 0;
+    let cachedDeviceCmNums = null;
+    let rgbDirtyOnHardware = false;
     let autoSyncTimer = null;
-    let rgbAutoSyncTimer = null;
     let previewLayerOnBoard = false;
     let previewedHwLayer = null;
+    let previewAutoExitTimer = null;
+
+    // nRF52833 TinyUSB CDC RX FIFO is ONLY 256 bytes (CFG_TUD_CDC_RX_BUFSIZE = 256 in tusb_config_nrf.h).
+    // Pacing TX in <=120-byte chunks keeps the FIFO <50% full so Stream::parseInt() never drops tokens
+    // or eats '\n' (which otherwise stalls Kaleidoscope.loop() for 1000ms per missing token!).
+    const FOCUS_TX_CHUNK_BYTES = 120;
+    const FOCUS_TX_CHUNK_DELAY_MS = 5;
+    // Neuron runs EEPROM.timer_update_periodically_run(1000) in mainDefy.cpp, erasing/writing 8KB flash ~1.0–1.6s after commit().
+    const NEURON_FLASH_SETTLE_MS = 1850;
 
     function sleepMs(ms) {
       return new Promise((r) => setTimeout(r, ms));
+    }
+
+    async function waitIfNeuronFlashSettling() {
+      if (!lastNeuronFlashCommitMs) return;
+      const elapsed = Date.now() - lastNeuronFlashCommitMs;
+      if (elapsed >= 0 && elapsed < NEURON_FLASH_SETTLE_MS) {
+        const waitMs = NEURON_FLASH_SETTLE_MS - elapsed;
+        await sleepMs(waitMs);
+      }
+    }
+
+    function renderSyncRgbButtonUI() {
+      const btn = document.getElementById("btn-sync-rgb-live");
+      if (!btn) return;
+      btn.disabled = isHardwareOpBusy;
+      if (isHardwareOpBusy) {
+        btn.textContent = "⏳ Syncing...";
+        btn.className = "px-2.5 py-1 rounded-md font-bold bg-slate-600 text-slate-200 cursor-wait transition shadow-sm";
+        return;
+      }
+      if (!serialPort) {
+        btn.textContent = "🔌 Connect & Save RGB";
+        btn.className = "px-2.5 py-1 rounded-md font-bold bg-emerald-500 text-slate-950 hover:bg-emerald-400 transition shadow-sm";
+        return;
+      }
+      if (rgbDirtyOnHardware) {
+        btn.textContent = "💾 Save RGB to Board • Unsaved";
+        btn.className = "px-2.5 py-1 rounded-md font-bold bg-amber-400 text-slate-950 hover:bg-amber-300 transition shadow-sm";
+      } else {
+        btn.textContent = "💾 Save RGB to Board";
+        btn.className = "px-2.5 py-1 rounded-md font-bold bg-emerald-500 text-slate-950 hover:bg-emerald-400 transition shadow-sm";
+      }
+    }
+
+    function markRgbDirtyForHardware() {
+      rgbDirtyOnHardware = true;
+      renderSyncRgbButtonUI();
+    }
+
+    function runExclusiveHardwareOp(fn) {
+      const wrapped = async () => {
+        isHardwareOpBusy = true;
+        renderSyncRgbButtonUI();
+        const pushBtn = document.getElementById("btn-push-live");
+        if (pushBtn) pushBtn.disabled = true;
+        try {
+          await waitIfNeuronFlashSettling();
+          return await fn();
+        } finally {
+          isHardwareOpBusy = false;
+          if (pushBtn) pushBtn.disabled = false;
+          renderSyncRgbButtonUI();
+        }
+      };
+      const next = hardwareOpMutex.then(wrapped, wrapped);
+      hardwareOpMutex = next.catch(() => {});
+      return next;
     }
 
     function appendSerialLog(line) {
@@ -6033,10 +6103,7 @@
         btnConn.classList.remove("hidden");
         btnDisc.classList.add("hidden");
       }
-      const syncRgbBtn = document.getElementById("btn-sync-rgb-live");
-      if (syncRgbBtn) {
-        syncRgbBtn.textContent = connected ? "⚡ Sync RGB (Live)" : "🔌 Connect & Sync RGB";
-      }
+      renderSyncRgbButtonUI();
       renderPreviewLayerButtonUI();
       renderWirelessAndDeviceTab();
     }
@@ -6127,12 +6194,18 @@
     }
 
     async function disconnectDygmaSerial() {
+      if (previewAutoExitTimer) {
+        clearTimeout(previewAutoExitTimer);
+        previewAutoExitTimer = null;
+      }
       if (serialPort && previewedHwLayer !== null && previewedHwLayer > 0) {
         try {
           await sendFocusCommand(`layer.deactivate ${previewedHwLayer}`, 800);
         } catch (e) {}
       }
       previewedHwLayer = null;
+      previewLayerOnBoard = false;
+      cachedDeviceCmNums = null;
       const portToClose = serialPort;
       serialPort = null;
       if (serialReader) {
@@ -6162,11 +6235,16 @@
         if (!serialReader) {
           startSerialReadLoop(serialPort);
         }
-        const preview = cmdLine.length > 90 ? cmdLine.slice(0, 90) + `... (${cmdLine.length} bytes)` : cmdLine;
+        const normalizedCmd = String(cmdLine || "").trim().replace(/[ \t]+/g, " ");
+        const preview = normalizedCmd.length > 90 ? normalizedCmd.slice(0, 90) + `... (${normalizedCmd.length} bytes)` : normalizedCmd;
         appendSerialLog(`TX > ${preview}`);
 
         // Clear stale unsolicited bytes before sending command
         serialRxBuffer = "";
+
+        const encoded = new TextEncoder().encode(normalizedCmd + "\n");
+        const minPacedTimeout = Math.ceil(encoded.length / FOCUS_TX_CHUNK_BYTES) * (FOCUS_TX_CHUNK_DELAY_MS + 4) + 2500;
+        const effectiveTimeoutMs = Math.max(timeoutMs, minPacedTimeout);
 
         const responsePromise = new Promise((resolve) => {
           const timer = setTimeout(() => {
@@ -6176,7 +6254,7 @@
               serialRxBuffer = "";
               resolve(partial);
             }
-          }, timeoutMs);
+          }, effectiveTimeoutMs);
           serialResponseWaiter = {
             timer,
             resolve: (rawPayload) => {
@@ -6188,7 +6266,14 @@
 
         const writer = serialPort.writable.getWriter();
         try {
-          await writer.write(new TextEncoder().encode(cmdLine.trim() + "\n"));
+          // Pace writes in <=120B chunks so nRF52833 TinyUSB 256B RX buffer never overflows
+          for (let offset = 0; offset < encoded.length; offset += FOCUS_TX_CHUNK_BYTES) {
+            const chunk = encoded.subarray(offset, offset + FOCUS_TX_CHUNK_BYTES);
+            await writer.write(chunk);
+            if (offset + FOCUS_TX_CHUNK_BYTES < encoded.length) {
+              await sleepMs(FOCUS_TX_CHUNK_DELAY_MS);
+            }
+          }
         } finally {
           writer.releaseLock();
         }
@@ -6237,34 +6322,41 @@
       }
     }
 
+    async function sendDeviceSettingsFocusCommands() {
+      const brKeyW = Math.round(((deviceSettings.ledBrightnessKeyWired ?? 100) / 100) * 255);
+      const brUgW = Math.round(((deviceSettings.ledBrightnessUgWired ?? 100) / 100) * 255);
+      const brKeyWl = Math.round(((deviceSettings.ledBrightnessKeyWireless ?? 40) / 100) * 255);
+      const brUgWl = Math.round(((deviceSettings.ledBrightnessUgWireless ?? 25) / 100) * 255);
+
+      await sendFocusCommand(`idleleds.true_sleep ${deviceSettings.trueSleep ? 1 : 0}`);
+      await sendFocusCommand(`idleleds.true_sleep_time ${deviceSettings.trueSleepTimeSec ?? 1800}`);
+      await sendFocusCommand(`wireless.battery.savingMode ${deviceSettings.energySavingMode ? 1 : 0}`);
+      await sendFocusCommand(`led.fade ${deviceSettings.highlightLayerChange ? 1 : 0}`);
+      await sendFocusCommand(`led.brightness ${brKeyW}`);
+      await sendFocusCommand(`led.brightnessUG ${brUgW}`);
+      await sendFocusCommand(`led.brightness.wireless ${brKeyWl}`);
+      await sendFocusCommand(`led.brightnessUG.wireless ${brUgWl}`);
+      await sendFocusCommand(`idleleds.time_limit ${deviceSettings.ledIdleTimeoutWiredSec ?? 600}`);
+      await sendFocusCommand(`idleleds.wireless ${deviceSettings.ledIdleTimeoutWirelessSec ?? 300}`);
+      await sendFocusCommand(`wireless.rf.power ${deviceSettings.rfPower ?? 1}`);
+      lastNeuronFlashCommitMs = Date.now();
+    }
+
     async function pushDeviceSettingsToDefy() {
       onDeviceSettingInputChanged("");
       if (!serialPort) {
         saveState(true, "Saved Bazecor Device Settings to profile & config.h! (Connect WebSerial to push live)");
         return;
       }
-      try {
-        appendSerialLog("=== Pushing Bazecor Wireless & Device Power Settings to Dygma Defy ===");
-        const brKeyW = Math.round(((deviceSettings.ledBrightnessKeyWired ?? 100) / 100) * 255);
-        const brUgW = Math.round(((deviceSettings.ledBrightnessUgWired ?? 100) / 100) * 255);
-        const brKeyWl = Math.round(((deviceSettings.ledBrightnessKeyWireless ?? 40) / 100) * 255);
-        const brUgWl = Math.round(((deviceSettings.ledBrightnessUgWireless ?? 25) / 100) * 255);
-
-        await sendFocusCommand(`idleleds.true_sleep ${deviceSettings.trueSleep ? 1 : 0}`);
-        await sendFocusCommand(`idleleds.true_sleep_time ${deviceSettings.trueSleepTimeSec ?? 1800}`);
-        await sendFocusCommand(`wireless.battery.savingMode ${deviceSettings.energySavingMode ? 1 : 0}`);
-        await sendFocusCommand(`led.fade ${deviceSettings.highlightLayerChange ? 1 : 0}`);
-        await sendFocusCommand(`led.brightness ${brKeyW}`);
-        await sendFocusCommand(`led.brightnessUG ${brUgW}`);
-        await sendFocusCommand(`led.brightness.wireless ${brKeyWl}`);
-        await sendFocusCommand(`led.brightnessUG.wireless ${brUgWl}`);
-        await sendFocusCommand(`idleleds.time_limit ${deviceSettings.ledIdleTimeoutWiredSec ?? 600}`);
-        await sendFocusCommand(`idleleds.wireless ${deviceSettings.ledIdleTimeoutWirelessSec ?? 300}`);
-        await sendFocusCommand(`wireless.rf.power ${deviceSettings.rfPower ?? 1}`);
-        triggerSaveToast("⚡ Applied Bazecor Device & Power Settings to Dygma Defy!", "⚡");
-      } catch (err) {
-        appendSerialLog(`[Device Settings Push Error] ${err.message}`);
-      }
+      return runExclusiveHardwareOp(async () => {
+        try {
+          appendSerialLog("=== Pushing Bazecor Wireless & Device Power Settings to Dygma Defy ===");
+          await sendDeviceSettingsFocusCommands();
+          triggerSaveToast("⚡ Applied Bazecor Device & Power Settings to Dygma Defy!", "⚡");
+        } catch (err) {
+          appendSerialLog(`[Device Settings Push Error] ${err.message}`);
+        }
+      });
     }
 
     async function queryNeuronStatus() {
@@ -6284,140 +6376,150 @@
         await connectDygmaSerial();
         if (!serialPort) return;
       }
-      try {
-        appendSerialLog("=== Pushing Superkeys, Macros, Keymap, Palette, Colormap & Device Settings to Dygma Defy ===");
-        // Probe firmware capabilities (v2.4.0-engrammer.1 adds shiftmorph.enabled, qukeys.quickTapTimeout, capsword.enabled & combos.map)
-        const helpRaw = await sendFocusCommand("help", 3000);
-        const supportsNativeCapsWord = /\bcapsword\.enabled\b/.test(helpRaw || "");
-        const supportsNativeCombos = /\bcombos\.map\b/.test(helpRaw || "");
-        const supportsNativeShiftMorph = /\bshiftmorph\.enabled\b/.test(helpRaw || "");
-        const supportsNativeQuickTap = /\bqukeys\.quickTapTimeout\b/.test(helpRaw || "");
+      return runExclusiveHardwareOp(async () => {
+        try {
+          appendSerialLog("=== Pushing Superkeys, Macros, Keymap, Palette, Colormap & Device Settings to Dygma Defy ===");
+          // Probe firmware capabilities (v2.4.0-engrammer.1 adds shiftmorph.enabled, qukeys.quickTapTimeout, capsword.enabled & combos.map)
+          const helpRaw = await sendFocusCommand("help", 3000);
+          const supportsNativeCapsWord = /\bcapsword\.enabled\b/.test(helpRaw || "");
+          const supportsNativeCombos = /\bcombos\.map\b/.test(helpRaw || "");
+          const supportsNativeShiftMorph = /\bshiftmorph\.enabled\b/.test(helpRaw || "");
+          const supportsNativeQuickTap = /\bqukeys\.quickTapTimeout\b/.test(helpRaw || "");
 
-        const combosBanner = document.getElementById("combos-fw-banner");
-        if (combosBanner) {
-          if (supportsNativeCombos && supportsNativeShiftMorph) {
-            combosBanner.className = "text-[10.5px] leading-snug px-2.5 py-2 rounded border border-emerald-500/40 bg-emerald-500/10 text-emerald-200";
-            combosBanner.innerHTML = `✅ Connected Wireless Neuron is running <b>Engrammer Custom FW</b> — hardware <code>Combos</code>, <code>Caps-Word</code>, <code>Shift-Morph</code> &amp; <code>200ms Quick-Tap Repeat</code> active!`;
-          } else if (supportsNativeCombos) {
-            combosBanner.className = "text-[10.5px] leading-snug px-2.5 py-1.5 rounded border border-emerald-500/40 bg-emerald-500/10 text-emerald-200";
-            combosBanner.innerHTML = `✅ Connected Neuron firmware supports hardware <code>combos.map</code> — chords sync live to L0 + L8 (Win)!`;
-          } else {
-            combosBanner.className = "text-[10.5px] leading-snug px-2.5 py-2 rounded border border-rose-500/40 bg-rose-500/10 text-rose-200 flex flex-wrap items-center justify-between gap-2";
-            combosBanner.innerHTML = `<span>⚠️ Connected Wireless Neuron (<code>Defy v2.3.0</code>) lacks <code>CombosDygma</code>, <code>ShiftMorph</code> &amp; <code>QuickTap</code>. Install our Wireless Custom FW via Bazecor to unlock all hardware features:</span><a href="./Defy_Wireless_Engrammer_v2.4.0_Custom_FW.zip" download="Defy_Wireless_Engrammer_v2.4.0_Custom_FW.zip" class="shrink-0 font-bold px-2.5 py-1 rounded bg-emerald-400 text-slate-950 hover:bg-emerald-300 transition">⬇️ Download Custom FW (.zip)</a>`;
+          const combosBanner = document.getElementById("combos-fw-banner");
+          if (combosBanner) {
+            if (supportsNativeCombos && supportsNativeShiftMorph) {
+              combosBanner.className = "text-[10.5px] leading-snug px-2.5 py-2 rounded border border-emerald-500/40 bg-emerald-500/10 text-emerald-200";
+              combosBanner.innerHTML = `✅ Connected Wireless Neuron is running <b>Engrammer Custom FW</b> — hardware <code>Combos</code>, <code>Caps-Word</code>, <code>Shift-Morph</code> &amp; <code>200ms Quick-Tap Repeat</code> active!`;
+            } else if (supportsNativeCombos) {
+              combosBanner.className = "text-[10.5px] leading-snug px-2.5 py-1.5 rounded border border-emerald-500/40 bg-emerald-500/10 text-emerald-200";
+              combosBanner.innerHTML = `✅ Connected Neuron firmware supports hardware <code>combos.map</code> — chords sync live to L0 + L8 (Win)!`;
+            } else {
+              combosBanner.className = "text-[10.5px] leading-snug px-2.5 py-2 rounded border border-rose-500/40 bg-rose-500/10 text-rose-200 flex flex-wrap items-center justify-between gap-2";
+              combosBanner.innerHTML = `<span>⚠️ Connected Wireless Neuron (<code>Defy v2.3.0</code>) lacks <code>CombosDygma</code>, <code>ShiftMorph</code> &amp; <code>QuickTap</code>. Install our Wireless Custom FW via Bazecor to unlock all hardware features:</span><a href="./Defy_Wireless_Engrammer_v2.4.0_Custom_FW.zip" download="Defy_Wireless_Engrammer_v2.4.0_Custom_FW.zip" class="shrink-0 font-bold px-2.5 py-1 rounded bg-emerald-400 text-slate-950 hover:bg-emerald-300 transition">⬇️ Download Custom FW (.zip)</a>`;
+            }
           }
-        }
 
-        // Query existing Neuron EEPROM slice lengths first so we NEVER overflow EEPROM bounds!
-        const existingKmRaw = await sendFocusCommand("keymap.custom", 4500);
-        const existingKmNums = existingKmRaw.trim().split(/\s+/).map(Number).filter(Number.isFinite);
-        const kmTokenCount = existingKmNums.length >= 80 ? existingKmNums.length : 800;
-        const maxDeviceLayers = Math.max(1, Math.floor(kmTokenCount / 80));
+          // Query existing Neuron EEPROM slice lengths first so we NEVER overflow EEPROM bounds!
+          const existingKmRaw = await sendFocusCommand("keymap.custom", 5500);
+          const existingKmNums = existingKmRaw.trim().split(/\s+/).map(Number).filter(Number.isFinite);
+          const kmTokenCount = existingKmNums.length >= 80 ? existingKmNums.length : 800;
+          const maxDeviceLayers = Math.max(1, Math.floor(kmTokenCount / 80));
 
-        const existingCmRaw = await sendFocusCommand("colormap.map", 4500);
-        const existingCmNums = existingCmRaw.trim().split(/\s+/).map(Number).filter(Number.isFinite);
-        const cmTokenCount = existingCmNums.length >= 70 ? existingCmNums.length : maxDeviceLayers * 178;
+          const existingCmRaw = await sendFocusCommand("colormap.map", 5500);
+          const existingCmNums = existingCmRaw.trim().split(/\s+/).map(Number).filter(Number.isFinite);
+          if (existingCmNums.length >= 178) {
+            cachedDeviceCmNums = existingCmNums;
+          }
+          const cmTokenCount = existingCmNums.length >= 70 ? existingCmNums.length : maxDeviceLayers * 178;
 
-        const existingSuperRaw = await sendFocusCommand("superkeys.map", 3500);
-        const existingSuperkeys = parseFocusSuperkeysRaw(existingSuperRaw);
-        const existingMacrosRaw = await sendFocusCommand("macros.map", 4500);
+          const existingSuperRaw = await sendFocusCommand("superkeys.map", 4000);
+          const existingSuperkeys = parseFocusSuperkeysRaw(existingSuperRaw);
+          const existingMacrosRaw = await sendFocusCommand("macros.map", 5500);
 
-        const built = buildFocusKeymapAndSuperkeys(
-          kmTokenCount,
-          existingKmNums,
-          existingSuperkeys,
-          existingMacrosRaw || rawMacrosMap,
-          supportsNativeCapsWord,
-          supportsNativeShiftMorph
-        );
-        deviceSuperkeys = built.superkeysList;
-        deviceMacros = built.macrosList;
-        rawMacrosMap = built.macrosPayload;
-
-        appendSerialLog(
-          `[Safety Check] Neuron EEPROM: ${maxDeviceLayers} layers (${kmTokenCount} keycodes, ${cmTokenCount} LEDs, ${built.superkeysList.length} superkeys, ${built.macrosList.length} macros, CapsWord=${supportsNativeCapsWord ? "native-54371" : `L${built.cwLayerIdx}-layer`}, ShiftMorph=${supportsNativeShiftMorph ? "native" : "superkey"}, QuickTap=${supportsNativeQuickTap ? "200ms" : "n/a"}).`
-        );
-        if (layers.length > maxDeviceLayers) {
-          appendSerialLog(`[Note] Stock Neuron EEPROM stores ${maxDeviceLayers} layers (L0..L${maxDeviceLayers - 1}); layers L${maxDeviceLayers}+ require custom firmware.`);
-        }
-
-        // CRITICAL (KeyRoleManager.cpp + EEPROMKeymapDygma.cpp):
-        // superkeys.map & macros.map MUST be written BEFORE keymap.custom so KeyRoleManager::search_and_replace
-        // converts 2-action [tap, mod/layer, 1, 1, 1] superkeys into hardware Qukeys during keymap.custom write!
-        if (built.superkeysPayload) {
-          await sendFocusCommand(`superkeys.map ${built.superkeysPayload}`, 4000);
-        }
-        if (built.macrosPayload) {
-          await sendFocusCommand(`macros.map ${built.macrosPayload}`, 4500);
-        }
-        await sendFocusCommand(`keymap.custom ${built.keymapPayload}`, 5000);
-        await sendFocusCommand("keymap.onlyCustom 1");
-        await sendFocusCommand("settings.defaultLayer 0");
-        if (supportsNativeCapsWord) {
-          await sendFocusCommand("capsword.enabled 1");
-        }
-        if (supportsNativeShiftMorph) {
-          await sendFocusCommand("shiftmorph.enabled 1");
-        }
-        // CombosDygma.cpp validates comboPositionsAllowed against EEPROMKeymap, so write combos.map AFTER keymap.custom!
-        if (supportsNativeCombos) {
-          await sendFocusCommand("combos.window 45");
-          await sendFocusCommand("combos.idleTime 40");
-          await sendFocusCommand(`combos.map ${built.combosPayload}`, 4500);
-          appendSerialLog(`[Combos] Synced ${built.combosCount} hardware combo entries across L0/L${built.winLayerIdx}.`);
-        } else if (Array.isArray(combos) && combos.length > 0) {
-          appendSerialLog("[Combos Notice] Connected Wireless Neuron (Defy v2.3.0) lacks Focus 'combos.map'. Flash Defy_Wireless_Engrammer_v2.4.0_Custom_FW via Bazecor to enable hardware combos!");
-        }
-        // Write 16-swatch RGBW palette BEFORE colormap.map + brief RF pipe drain pause so both wireless halves
-        // already hold the updated swatches when LAYER_KEYMAP_COLORS / LAYER_UNDERGLOW_COLORS + MODE_LED arrive!
-        ensureOffSwatchExists();
-        await sendFocusCommand(`palette ${serializeFocusPalette()}`, 3000);
-        await sleepMs(65);
-        await sendFocusCommand(`colormap.map ${serializeFocusColormap(cmTokenCount, maxDeviceLayers, existingCmNums)}`, 5000);
-        await sleepMs(90);
-        // Ensure static per-key & underglow Colormap mode (led.mode 0) is active on the Neuron!
-        await sendFocusCommand("led.mode 0");
-        if (previewLayerOnBoard) {
-          await syncHardwareLayerPreview();
-        }
-
-        const hasAnyLitUnderglow =
-          Array.isArray(underglowLayers) &&
-          underglowLayers.slice(0, maxDeviceLayers).some(
-            (ug) => ug && Object.values(ug).some((hex) => hex && !isOffColor(hex))
+          const built = buildFocusKeymapAndSuperkeys(
+            kmTokenCount,
+            existingKmNums,
+            existingSuperkeys,
+            existingMacrosRaw || rawMacrosMap,
+            supportsNativeCapsWord,
+            supportsNativeShiftMorph
           );
-        if (hasAnyLitUnderglow && Number(deviceSettings.ledBrightnessUgWireless ?? 25) <= 0) {
-          deviceSettings.ledBrightnessUgWireless = 45;
-          renderWirelessAndDeviceTab();
-          appendSerialLog("[Underglow] Bumped Wireless Underglow Brightness from 0% -> 45% so painted underglow strips light up.");
-        }
+          deviceSuperkeys = built.superkeysList;
+          deviceMacros = built.macrosList;
+          rawMacrosMap = built.macrosPayload;
 
-        const holdMs = getQukeysThresholdMs();
-        await sendFocusCommand(`qukeys.holdTimeout ${holdMs}`);
-        await sendFocusCommand("qukeys.overlapThreshold 80");
-        if (supportsNativeQuickTap) {
-          await sendFocusCommand("qukeys.quickTapTimeout 200");
-        }
-        await sendFocusCommand(`superkeys.holdstart ${holdMs}`);
-        await sendFocusCommand("superkeys.overlap 80");
-        await pushDeviceSettingsToDefy();
+          appendSerialLog(
+            `[Safety Check] Neuron EEPROM: ${maxDeviceLayers} layers (${kmTokenCount} keycodes, ${cmTokenCount} LEDs, ${built.superkeysList.length} superkeys, ${built.macrosList.length} macros, CapsWord=${supportsNativeCapsWord ? "native-54371" : `L${built.cwLayerIdx}-layer`}, ShiftMorph=${supportsNativeShiftMorph ? "native" : "superkey"}, QuickTap=${supportsNativeQuickTap ? "200ms" : "n/a"}).`
+          );
+          if (layers.length > maxDeviceLayers) {
+            appendSerialLog(`[Note] Stock Neuron EEPROM stores ${maxDeviceLayers} layers (L0..L${maxDeviceLayers - 1}); layers L${maxDeviceLayers}+ require custom firmware.`);
+          }
 
-        // Post-push readback verification so factory PROGMEM layers can never stay active silently
-        let verifyOnlyCustom = (await sendFocusCommand("keymap.onlyCustom")).trim();
-        if (verifyOnlyCustom !== "1") {
+          // CRITICAL (KeyRoleManager.cpp + EEPROMKeymapDygma.cpp):
+          // superkeys.map & macros.map MUST be written BEFORE keymap.custom so KeyRoleManager::search_and_replace
+          // converts 2-action [tap, mod/layer, 1, 1, 1] superkeys into hardware Qukeys during keymap.custom write!
+          if (built.superkeysPayload) {
+            await sendFocusCommand(`superkeys.map ${built.superkeysPayload}`, 6000);
+          }
+          if (built.macrosPayload) {
+            await sendFocusCommand(`macros.map ${built.macrosPayload}`, 7500);
+          }
+          await sendFocusCommand(`keymap.custom ${built.keymapPayload}`, 8000);
           await sendFocusCommand("keymap.onlyCustom 1");
-          verifyOnlyCustom = (await sendFocusCommand("keymap.onlyCustom")).trim();
+          await sendFocusCommand("settings.defaultLayer 0");
+          if (supportsNativeCapsWord) {
+            await sendFocusCommand("capsword.enabled 1");
+          }
+          if (supportsNativeShiftMorph) {
+            await sendFocusCommand("shiftmorph.enabled 1");
+          }
+          // CombosDygma.cpp validates comboPositionsAllowed against EEPROMKeymap, so write combos.map AFTER keymap.custom!
+          if (supportsNativeCombos) {
+            await sendFocusCommand("combos.window 45");
+            await sendFocusCommand("combos.idleTime 40");
+            await sendFocusCommand(`combos.map ${built.combosPayload}`, 6500);
+            appendSerialLog(`[Combos] Synced ${built.combosCount} hardware combo entries across L0/L${built.winLayerIdx}.`);
+          } else if (Array.isArray(combos) && combos.length > 0) {
+            appendSerialLog("[Combos Notice] Connected Wireless Neuron (Defy v2.3.0) lacks Focus 'combos.map'. Flash Defy_Wireless_Engrammer_v2.4.0_Custom_FW via Bazecor to enable hardware combos!");
+          }
+          // Write 16-swatch RGBW palette BEFORE colormap.map + RF pipe drain pause so both wireless halves
+          // hold the updated swatches when LAYER_KEYMAP_COLORS / LAYER_UNDERGLOW_COLORS + MODE_LED arrive!
+          ensureOffSwatchExists();
+          const cmSerialized = serializeFocusColormap(cmTokenCount, maxDeviceLayers, existingCmNums);
+          cachedDeviceCmNums = cmSerialized.split(/\s+/).map(Number).filter(Number.isFinite);
+          await sendFocusCommand(`palette ${serializeFocusPalette()}`, 4000);
+          await sleepMs(75);
+          await sendFocusCommand(`colormap.map ${cmSerialized}`, 8000);
+          await sleepMs(140);
+          // Ensure static per-key & underglow Colormap mode (led.mode 0) is active on the Neuron!
+          await sendFocusCommand("led.mode 0");
+          if (previewLayerOnBoard) {
+            await syncHardwareLayerPreview();
+          }
+
+          const hasAnyLitUnderglow =
+            Array.isArray(underglowLayers) &&
+            underglowLayers.slice(0, maxDeviceLayers).some(
+              (ug) => ug && Object.values(ug).some((hex) => hex && !isOffColor(hex))
+            );
+          if (hasAnyLitUnderglow && Number(deviceSettings.ledBrightnessUgWireless ?? 25) <= 0) {
+            deviceSettings.ledBrightnessUgWireless = 45;
+            renderWirelessAndDeviceTab();
+            appendSerialLog("[Underglow] Bumped Wireless Underglow Brightness from 0% -> 45% so painted underglow strips light up.");
+          }
+
+          const holdMs = getQukeysThresholdMs();
+          await sendFocusCommand(`qukeys.holdTimeout ${holdMs}`);
+          await sendFocusCommand("qukeys.overlapThreshold 80");
+          if (supportsNativeQuickTap) {
+            await sendFocusCommand("qukeys.quickTapTimeout 200");
+          }
+          await sendFocusCommand(`superkeys.holdstart ${holdMs}`);
+          await sendFocusCommand("superkeys.overlap 80");
+          await sendDeviceSettingsFocusCommands();
+          lastNeuronFlashCommitMs = Date.now();
+          rgbDirtyOnHardware = false;
+
+          // Post-push readback verification so factory PROGMEM layers can never stay active silently
+          let verifyOnlyCustom = (await sendFocusCommand("keymap.onlyCustom")).trim();
+          if (verifyOnlyCustom !== "1") {
+            await sendFocusCommand("keymap.onlyCustom 1");
+            lastNeuronFlashCommitMs = Date.now();
+            verifyOnlyCustom = (await sendFocusCommand("keymap.onlyCustom")).trim();
+          }
+          const verifyKm = await sendFocusCommand("keymap.custom", 5500);
+          const verifyHead = verifyKm.trim().split(/\s+/).slice(0, 7).join(" ");
+          appendSerialLog(`[Verified] keymap.onlyCustom=${verifyOnlyCustom} (custom layers active), L0[0..6]=[${verifyHead}]`);
+          saveState(false);
+          renderLayerTabs();
+          renderKeyboardStage();
+          renderInspector();
+          triggerSaveToast(`⚡ Synced & verified ${maxDeviceLayers} custom layers, CapsWord & OS Toggle on Dygma Defy!`, "⚡");
+        } catch (err) {
+          appendSerialLog(`[Push Failed] ${err.message}`);
         }
-        const verifyKm = await sendFocusCommand("keymap.custom", 4500);
-        const verifyHead = verifyKm.trim().split(/\s+/).slice(0, 7).join(" ");
-        appendSerialLog(`[Verified] keymap.onlyCustom=${verifyOnlyCustom} (custom layers active), L0[0..6]=[${verifyHead}]`);
-        saveState(false);
-        renderLayerTabs();
-        renderKeyboardStage();
-        renderInspector();
-        triggerSaveToast(`⚡ Synced & verified ${maxDeviceLayers} custom layers, CapsWord & OS Toggle on Dygma Defy!`, "⚡");
-      } catch (err) {
-        appendSerialLog(`[Push Failed] ${err.message}`);
-      }
+      });
     }
 
     function inferPulledLayerMeta(lyr70, idx, customName = "") {
@@ -6679,66 +6781,75 @@
         await connectDygmaSerial();
         if (!serialPort) return;
       }
-      try {
-        appendSerialLog("=== Reading Keymap, Superkeys, Macros, RGBW Palette & LED Colormap from Dygma Defy ===");
-        autoBackupStudioBeforePull();
-        const onlyCustomRaw = await sendFocusCommand("keymap.onlyCustom");
-        let kmRaw = await sendFocusCommand("keymap.custom", 4500);
-        if (onlyCustomRaw.trim() === "0") {
-          const defRaw = await sendFocusCommand("keymap.default", 4500);
-          if (defRaw && defRaw.trim().split(/\s+/).length >= 80) {
-            kmRaw = `${defRaw.trim()} ${kmRaw.trim()}`.trim();
+      return runExclusiveHardwareOp(async () => {
+        try {
+          appendSerialLog("=== Reading Keymap, Superkeys, Macros, RGBW Palette & LED Colormap from Dygma Defy ===");
+          autoBackupStudioBeforePull();
+          const onlyCustomRaw = await sendFocusCommand("keymap.onlyCustom");
+          let kmRaw = await sendFocusCommand("keymap.custom", 5500);
+          if (onlyCustomRaw.trim() === "0") {
+            const defRaw = await sendFocusCommand("keymap.default", 5500);
+            if (defRaw && defRaw.trim().split(/\s+/).length >= 80) {
+              kmRaw = `${defRaw.trim()} ${kmRaw.trim()}`.trim();
+            }
           }
+          const helpRaw = await sendFocusCommand("help", 3000);
+          const supportsNativeCombos = /\bcombos\.map\b/.test(helpRaw || "");
+          const supportsNativeShiftMorph = /\bshiftmorph\.enabled\b/.test(helpRaw || "");
+          const superRaw = await sendFocusCommand("superkeys.map", 4000);
+          const macrosRaw = await sendFocusCommand("macros.map", 5500);
+          const combosRaw = supportsNativeCombos ? await sendFocusCommand("combos.map", 4000) : "";
+          const palRaw = await sendFocusCommand("palette", 3500);
+          const cmRaw = await sendFocusCommand("colormap.map", 5500);
+          const parsedCmNums = cmRaw.trim().split(/\s+/).map(Number).filter(Number.isFinite);
+          if (parsedCmNums.length >= 178) {
+            cachedDeviceCmNums = parsedCmNums;
+          }
+          const brKeyW = parseInt((await sendFocusCommand("led.brightness")).trim(), 10);
+          const brUgW = parseInt((await sendFocusCommand("led.brightnessUG")).trim(), 10);
+          const brKeyWl = parseInt((await sendFocusCommand("led.brightness.wireless")).trim(), 10);
+          const brUgWl = parseInt((await sendFocusCommand("led.brightnessUG.wireless")).trim(), 10);
+          if (Number.isFinite(brKeyW) && brKeyW >= 0 && brKeyW <= 255) {
+            deviceSettings.ledBrightnessKeyWired = Math.round((brKeyW / 255) * 100);
+          }
+          if (Number.isFinite(brUgW) && brUgW >= 0 && brUgW <= 255) {
+            deviceSettings.ledBrightnessUgWired = Math.round((brUgW / 255) * 100);
+          }
+          if (Number.isFinite(brKeyWl) && brKeyWl >= 0 && brKeyWl <= 255) {
+            deviceSettings.ledBrightnessKeyWireless = Math.round((brKeyWl / 255) * 100);
+          }
+          if (Number.isFinite(brUgWl) && brUgWl >= 0 && brUgWl <= 255) {
+            deviceSettings.ledBrightnessUgWireless = Math.round((brUgWl / 255) * 100);
+          }
+          rgbDirtyOnHardware = false;
+          renderWirelessAndDeviceTab();
+          const pulledCount = applyPulledFocusData(
+            kmRaw,
+            palRaw,
+            cmRaw,
+            superRaw,
+            macrosRaw,
+            [],
+            [],
+            combosRaw,
+            supportsNativeShiftMorph
+          );
+          if (!pulledCount) {
+            appendSerialLog("[Pull Warning] Neuron returned fewer than 80 keymap tokens.");
+          }
+        } catch (err) {
+          appendSerialLog(`[Pull Failed] ${err.message}`);
         }
-        const helpRaw = await sendFocusCommand("help", 3000);
-        const supportsNativeCombos = /\bcombos\.map\b/.test(helpRaw || "");
-        const supportsNativeShiftMorph = /\bshiftmorph\.enabled\b/.test(helpRaw || "");
-        const superRaw = await sendFocusCommand("superkeys.map", 3500);
-        const macrosRaw = await sendFocusCommand("macros.map", 4500);
-        const combosRaw = supportsNativeCombos ? await sendFocusCommand("combos.map", 3500) : "";
-        const palRaw = await sendFocusCommand("palette", 3000);
-        const cmRaw = await sendFocusCommand("colormap.map", 4500);
-        const brKeyW = parseInt((await sendFocusCommand("led.brightness")).trim(), 10);
-        const brUgW = parseInt((await sendFocusCommand("led.brightnessUG")).trim(), 10);
-        const brKeyWl = parseInt((await sendFocusCommand("led.brightness.wireless")).trim(), 10);
-        const brUgWl = parseInt((await sendFocusCommand("led.brightnessUG.wireless")).trim(), 10);
-        if (Number.isFinite(brKeyW) && brKeyW >= 0 && brKeyW <= 255) {
-          deviceSettings.ledBrightnessKeyWired = Math.round((brKeyW / 255) * 100);
-        }
-        if (Number.isFinite(brUgW) && brUgW >= 0 && brUgW <= 255) {
-          deviceSettings.ledBrightnessUgWired = Math.round((brUgW / 255) * 100);
-        }
-        if (Number.isFinite(brKeyWl) && brKeyWl >= 0 && brKeyWl <= 255) {
-          deviceSettings.ledBrightnessKeyWireless = Math.round((brKeyWl / 255) * 100);
-        }
-        if (Number.isFinite(brUgWl) && brUgWl >= 0 && brUgWl <= 255) {
-          deviceSettings.ledBrightnessUgWireless = Math.round((brUgWl / 255) * 100);
-        }
-        renderWirelessAndDeviceTab();
-        const pulledCount = applyPulledFocusData(
-          kmRaw,
-          palRaw,
-          cmRaw,
-          superRaw,
-          macrosRaw,
-          [],
-          [],
-          combosRaw,
-          supportsNativeShiftMorph
-        );
-        if (!pulledCount) {
-          appendSerialLog("[Pull Warning] Neuron returned fewer than 80 keymap tokens.");
-        }
-      } catch (err) {
-        appendSerialLog(`[Pull Failed] ${err.message}`);
-      }
+      });
     }
 
     function renderPreviewLayerButtonUI() {
       const btn = document.getElementById("btn-preview-layer-hw");
       if (!btn) return;
       btn.textContent = previewLayerOnBoard
-        ? `👁️ Previewing L${currentLayer}`
+        ? currentLayer > 0
+          ? `👁️ Layer Lock L${currentLayer} (Click to Exit)`
+          : "👁️ Preview Ready (Select L1–L9)"
         : "👁️ Preview Layer: OFF";
       btn.className = previewLayerOnBoard
         ? "px-2.5 py-1 rounded-md border border-cyan-400 bg-cyan-500 text-slate-950 font-bold transition shadow-sm"
@@ -6746,6 +6857,10 @@
     }
 
     async function syncHardwareLayerPreview() {
+      if (previewAutoExitTimer) {
+        clearTimeout(previewAutoExitTimer);
+        previewAutoExitTimer = null;
+      }
       renderPreviewLayerButtonUI();
       if (!serialPort) return;
       try {
@@ -6764,6 +6879,12 @@
           previewedHwLayer = currentLayer;
           await sendFocusCommand(`layer.activate ${currentLayer}`, 1200);
         }
+        // Auto-restore L0 after 90s so physical keys never stay unexpectedly locked on a secondary layer
+        previewAutoExitTimer = setTimeout(async () => {
+          previewLayerOnBoard = false;
+          await syncHardwareLayerPreview();
+          triggerSaveToast("👁️ Layer Preview auto-closed after 90s — L0 typing restored!", "👁️");
+        }, 90000);
       } catch (e) {}
     }
 
@@ -6772,49 +6893,48 @@
         await connectDygmaSerial();
         if (!serialPort) return;
       }
-      try {
-        ensureOffSwatchExists();
-        const existingCmRaw = await sendFocusCommand("colormap.map", 4500);
-        const existingCmNums = existingCmRaw.trim().split(/\s+/).map(Number).filter(Number.isFinite);
-        const cmTokenCount = existingCmNums.length >= 178 ? existingCmNums.length : 1780;
-        const maxDeviceLayers = Math.max(1, Math.round(cmTokenCount / 178));
+      return runExclusiveHardwareOp(async () => {
+        try {
+          ensureOffSwatchExists();
+          let existingCmNums = Array.isArray(cachedDeviceCmNums) && cachedDeviceCmNums.length >= 178 ? cachedDeviceCmNums : null;
+          if (!existingCmNums) {
+            const existingCmRaw = await sendFocusCommand("colormap.map", 5500);
+            existingCmNums = existingCmRaw.trim().split(/\s+/).map(Number).filter(Number.isFinite);
+          }
+          const cmTokenCount = existingCmNums.length >= 178 ? existingCmNums.length : 1780;
+          const maxDeviceLayers = Math.max(1, Math.round(cmTokenCount / 178));
+          const cmSerialized = serializeFocusColormap(cmTokenCount, maxDeviceLayers, existingCmNums);
+          cachedDeviceCmNums = cmSerialized.split(/\s+/).map(Number).filter(Number.isFinite);
 
-        await sendFocusCommand(`palette ${serializeFocusPalette()}`, 3000);
-        await sleepMs(65);
-        await sendFocusCommand(`colormap.map ${serializeFocusColormap(cmTokenCount, maxDeviceLayers, existingCmNums)}`, 5000);
-        await sleepMs(90);
-        await sendFocusCommand("led.mode 0");
+          await sendFocusCommand(`palette ${serializeFocusPalette()}`, 4000);
+          await sleepMs(75);
+          await sendFocusCommand(`colormap.map ${cmSerialized}`, 8000);
+          await sleepMs(140);
+          await sendFocusCommand("led.mode 0");
 
-        const hasAnyLitUnderglow =
-          Array.isArray(underglowLayers) &&
-          underglowLayers.slice(0, maxDeviceLayers).some(
-            (ug) => ug && Object.values(ug).some((hex) => hex && !isOffColor(hex))
-          );
-        if (hasAnyLitUnderglow && Number(deviceSettings.ledBrightnessUgWireless ?? 25) <= 0) {
-          deviceSettings.ledBrightnessUgWireless = 45;
-          await sendFocusCommand("led.brightnessUG.wireless 115");
-          renderWirelessAndDeviceTab();
+          const hasAnyLitUnderglow =
+            Array.isArray(underglowLayers) &&
+            underglowLayers.slice(0, maxDeviceLayers).some(
+              (ug) => ug && Object.values(ug).some((hex) => hex && !isOffColor(hex))
+            );
+          if (hasAnyLitUnderglow && Number(deviceSettings.ledBrightnessUgWireless ?? 25) <= 0) {
+            deviceSettings.ledBrightnessUgWireless = 45;
+            await sendFocusCommand("led.brightnessUG.wireless 115");
+            renderWirelessAndDeviceTab();
+          }
+          lastNeuronFlashCommitMs = Date.now();
+          rgbDirtyOnHardware = false;
+          if (previewLayerOnBoard) {
+            await syncHardwareLayerPreview();
+          }
+          appendSerialLog(`[RGB Save] Saved 16-swatch RGBW palette & ${maxDeviceLayers} layer colormaps (${cmTokenCount} LEDs, chunked 120B).`);
+          if (showToast) {
+            triggerSaveToast(`💾 Saved RGB Palette & Layer Colors to Dygma Defy!`, "🎨");
+          }
+        } catch (err) {
+          appendSerialLog(`[RGB Save Error] ${err.message}`);
         }
-        if (previewLayerOnBoard) {
-          await syncHardwareLayerPreview();
-        }
-        appendSerialLog(`[RGB Sync] Synced 16-swatch RGBW palette & ${maxDeviceLayers} layer colormaps (${cmTokenCount} LEDs).`);
-        if (showToast) {
-          triggerSaveToast(`⚡ Synced RGB Palette & Layer Colors to Dygma Defy!`, "🎨");
-        }
-      } catch (err) {
-        appendSerialLog(`[RGB Sync Error] ${err.message}`);
-      }
-    }
-
-    function scheduleRgbAutoSync() {
-      if (!serialPort) return;
-      const chk = document.getElementById("chk-auto-sync");
-      if (chk && chk.checked) return; // Full auto-sync already queued via saveState()
-      if (rgbAutoSyncTimer) clearTimeout(rgbAutoSyncTimer);
-      rgbAutoSyncTimer = setTimeout(() => {
-        pushRgbOnlyToDefy(false);
-      }, 260);
+      });
     }
 
     function scheduleAutoSync() {
@@ -6822,8 +6942,12 @@
       if (!chk || !chk.checked || !serialPort) return;
       if (autoSyncTimer) clearTimeout(autoSyncTimer);
       autoSyncTimer = setTimeout(() => {
+        if (isHardwareOpBusy) {
+          scheduleAutoSync();
+          return;
+        }
         pushToDygmaDefy();
-      }, 280);
+      }, 2000);
     }
 
     // =========================================================================
