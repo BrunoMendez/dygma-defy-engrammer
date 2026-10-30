@@ -13,26 +13,32 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Interactive layer, symbol roll, and chord visualizer for the Dygma Defy 70 Glorious Engrammer layout, synced live with Layout Studio." />
   <title>Dygma Defy 70 — "Glorious Engrammer" Interactive Layer &amp; Symbol Visualizer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg-page: #0b0f17;
-      --bg-panel: #111827;
-      --bg-card: #161f33;
-      --bg-elevated: #1e293b;
-      --border: #26334d;
+      --bg-page: #070a10;
+      --bg-panel: #0c111b;
+      --bg-card: #101724;
+      --bg-elevated: #151e2e;
+      --border: rgba(148, 163, 184, 0.14);
+      --border-strong: rgba(148, 163, 184, 0.24);
       --text-main: #f1f5f9;
       --text-muted: #94a3b8;
       --accent: #38bdf8;
-      --accent-purple: #a855f7;
+      --accent-cyan: #06b6d4;
+      --accent-teal: #14b8a6;
       --accent-emerald: #10b981;
       --accent-amber: #f59e0b;
       --accent-rose: #f43f5e;
-      /* Sunaku Symbol Layer Semantic Palette */
+      /* Sunaku Symbol Layer Semantic Palette (Zero Purple on Dark) */
       --cat-quote: #f43f5e;   /* Red quotes */
       --cat-arrow: #22c55e;   /* Green arrows & equality */
       --cat-group: #3b82f6;   /* Blue groups */
-      --cat-flip:  #a855f7;   /* Purple flips & escapes */
+      --cat-flip:  #f97316;   /* Orange flips & escapes */
       --cat-vim:   #eab308;   /* Yellow Vim & regex */
       --cat-space: #14b8a6;   /* Teal spacegrams */
     }
@@ -41,10 +47,13 @@
     html { scroll-behavior: smooth; }
     body {
       margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
-      background: var(--bg-page);
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% 0%, rgba(14, 165, 233, 0.06), transparent 70%),
+        var(--bg-page);
       color: var(--text-main);
       line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
     }
 
     /* Top Sticky Header */
@@ -52,9 +61,10 @@
       position: sticky;
       top: 0;
       z-index: 100;
-      background: rgba(17, 24, 39, 0.92);
+      background: linear-gradient(180deg, rgba(15, 22, 35, 0.96) 0%, rgba(10, 15, 24, 0.96) 100%);
       backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--border);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
       padding: 10px 24px;
       display: flex;
       align-items: center;
@@ -68,47 +78,59 @@
       gap: 12px;
     }
     .brand-badge {
-      background: linear-gradient(135deg, #06b6d4, #6366f1);
-      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(180deg, #162235 0%, #0d1522 100%);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 2px 6px rgba(0, 0, 0, 0.4);
+      color: #38bdf8;
+      font-family: "JetBrains Mono", ui-monospace, monospace;
       font-weight: 800;
       font-size: 11px;
-      padding: 4px 10px;
-      border-radius: 999px;
-      letter-spacing: 0.06em;
+      padding: 5px 10px;
+      border-radius: 8px;
+      letter-spacing: 0.04em;
       text-transform: uppercase;
     }
     .nav-actions {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
       flex-wrap: wrap;
     }
     .btn {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 6px 13px;
+      padding: 6px 12px;
       font-size: 12px;
       font-weight: 600;
       border-radius: 7px;
-      border: 1px solid var(--border);
-      background: var(--bg-elevated);
+      border: 1px solid var(--border-strong);
+      background: linear-gradient(180deg, #1a2436 0%, #121a28 100%);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
       color: var(--text-main);
       cursor: pointer;
       text-decoration: none;
-      transition: all 0.15s ease;
+      transition: background 0.14s ease, border-color 0.14s ease, transform 0.1s ease;
     }
     .btn:hover {
-      border-color: var(--accent);
-      background: #243249;
+      border-color: rgba(148, 163, 184, 0.42);
+      background: linear-gradient(180deg, #222f46 0%, #172133 100%);
+    }
+    .btn:active {
+      transform: translateY(0.5px);
     }
     .btn-primary {
-      background: linear-gradient(135deg, #0284c7, #4f46e5);
-      border-color: #38bdf8;
+      background: linear-gradient(180deg, #0284c7 0%, #0369a1 100%);
+      border-color: rgba(56, 189, 248, 0.45);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 2px 8px rgba(2, 132, 199, 0.25);
       color: #fff;
     }
     .btn-primary:hover {
-      filter: brightness(1.1);
+      background: linear-gradient(180deg, #0ea5e9 0%, #0284c7 100%);
+      border-color: rgba(125, 211, 252, 0.65);
     }
 
     /* Main 2-Column Layout with Sticky Sidebar TOC */
@@ -128,12 +150,13 @@
     /* Sticky Table of Contents Sidebar */
     .toc-sidebar {
       position: sticky;
-      top: 72px;
+      top: 120px;
       align-self: start;
-      max-height: calc(100vh - 96px);
+      max-height: calc(100vh - 136px);
       overflow-y: auto;
-      background: var(--bg-panel);
+      background: linear-gradient(180deg, rgba(19, 27, 42, 0.92) 0%, rgba(12, 17, 27, 0.96) 100%);
       border: 1px solid var(--border);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 8px 24px rgba(0, 0, 0, 0.28);
       border-radius: 12px;
       padding: 16px;
       font-size: 13px;
@@ -183,15 +206,16 @@
       min-width: 0;
     }
     .hero-card {
-      background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95));
+      background: linear-gradient(180deg, rgba(20, 29, 45, 0.95) 0%, rgba(12, 17, 27, 0.98) 100%);
       border: 1px solid var(--border);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 8px 24px rgba(0, 0, 0, 0.28);
       border-radius: 14px;
-      padding: 24px 28px;
-      margin-bottom: 28px;
+      padding: 22px 26px;
+      margin-bottom: 26px;
     }
     .hero-card h1 {
       margin: 0 0 8px 0;
-      font-size: 26px;
+      font-size: 24px;
       font-weight: 800;
       letter-spacing: -0.02em;
     }
@@ -203,12 +227,13 @@
 
     /* Section Cards */
     .layer-section {
-      background: var(--bg-panel);
+      background: linear-gradient(180deg, rgba(18, 25, 39, 0.92) 0%, rgba(11, 16, 26, 0.96) 100%);
       border: 1px solid var(--border);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 10px 28px rgba(0, 0, 0, 0.3);
       border-radius: 14px;
       padding: 24px 28px;
-      margin-bottom: 32px;
-      scroll-margin-top: 76px;
+      margin-bottom: 30px;
+      scroll-margin-top: 124px;
     }
     .section-header {
       display: flex;
@@ -222,8 +247,9 @@
     }
     .section-header h2, .section-header h3 {
       margin: 0;
-      font-size: 21px;
+      font-size: 20px;
       font-weight: 800;
+      letter-spacing: -0.015em;
       display: flex;
       align-items: center;
       gap: 10px;
@@ -236,11 +262,12 @@
     }
     .permalink:hover { opacity: 1; color: var(--accent); }
 
-    /* Sunaku-style Interactive Prompt Blockquote */
+    /* Sunaku-style Interactive Prompt Bar */
     .interactive-prompt {
       background: var(--bg-card);
-      border-left: 4px solid var(--accent);
-      border-radius: 8px;
+      border: 1px solid var(--border);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+      border-radius: 10px;
       padding: 12px 16px;
       margin: 14px 0;
       display: flex;
@@ -254,7 +281,7 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      flex-wrap: nowrap;
+      flex-wrap: wrap;
       flex: 1 1 auto;
       min-height: 34px;
       min-width: 0;
@@ -272,26 +299,30 @@
       color: #38bdf8;
     }
     .interactive-select {
-      background: #0f172a;
+      background: #090d16;
       color: var(--text-main);
-      border: 1px solid #334155;
-      border-radius: 6px;
+      border: 1px solid var(--border-strong);
+      border-radius: 7px;
       padding: 6px 12px;
       font-size: 13px;
       font-weight: 500;
-      min-width: 280px;
+      min-width: 260px;
+      max-width: 100%;
       cursor: pointer;
     }
     .interactive-select:focus {
       outline: none;
       border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.16);
     }
 
     /* Keyboard SVG Container */
     .diagram-wrapper {
       position: relative;
-      background: radial-gradient(ellipse at center, #131c2e 0%, #090d16 100%);
-      border: 1px solid #1e293b;
+      background:
+        radial-gradient(ellipse 75% 65% at 50% 45%, rgba(20, 30, 48, 0.72) 0%, rgba(7, 10, 16, 0.96) 100%);
+      border: 1px solid var(--border);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 12px 32px rgba(0, 0, 0, 0.42);
       border-radius: 14px;
       padding: 12px;
       margin: 14px 0;
@@ -315,7 +346,7 @@
       align-items: center;
       gap: 6px;
       flex-wrap: wrap;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     }
     .seq-step-pill {
       display: inline-flex;
@@ -325,13 +356,13 @@
       border-radius: 6px;
       font-size: 11.5px;
       font-weight: 700;
-      background: #1e293b;
-      border: 1px solid #475569;
+      background: #162032;
+      border: 1px solid var(--border-strong);
       color: #f8fafc;
     }
     .seq-step-pill.hold-pill {
-      background: rgba(239, 68, 68, 0.2);
-      border-color: #ef4444;
+      background: rgba(239, 68, 68, 0.18);
+      border-color: rgba(239, 68, 68, 0.5);
       color: #fca5a5;
     }
     .seq-step-num {
@@ -343,7 +374,6 @@
       border-radius: 50%;
       background: #facc15;
       color: #000;
-      border: 1px solid #ef4444;
       font-size: 10px;
       font-weight: 900;
     }
@@ -358,8 +388,8 @@
 
     /* Sunaku Glowing & Sequence Animations on SVG Keys */
     @keyframes sunakuGlow {
-      0%   { opacity: 0.95; filter: drop-shadow(0 0 8px rgba(168, 85, 247, 0.85)); }
-      100% { opacity: 0.45; filter: drop-shadow(0 0 2px rgba(168, 85, 247, 0.25)); }
+      0%   { opacity: 0.96; filter: drop-shadow(0 0 8px rgba(6, 182, 212, 0.8)); }
+      100% { opacity: 0.52; filter: drop-shadow(0 0 2px rgba(6, 182, 212, 0.22)); }
     }
     @keyframes sunakuSequencePulse {
       0%, 100% { filter: drop-shadow(0 0 2px rgba(250, 204, 21, 0.3)); }
@@ -387,7 +417,7 @@
       animation: dashFlow 0.9s linear infinite;
     }
 
-    /* Semantic Category Legend Pills (Symbol Layer) */
+    /* Semantic Category Legend Pills (Symbol Layer & Aux Layer Bar) */
     .category-bar {
       display: flex;
       align-items: center;
@@ -403,21 +433,30 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 4px 11px;
-      border-radius: 999px;
+      padding: 5px 11px;
+      border-radius: 7px;
       font-size: 12px;
-      font-weight: 700;
+      font-weight: 600;
       cursor: pointer;
-      border: 1px solid transparent;
-      transition: all 0.15s;
+      background: var(--bg-elevated);
+      color: #cbd5e1;
+      border: 1px solid var(--border);
+      transition: all 0.14s ease;
     }
-    .cat-pill:hover, .cat-pill.active {
-      transform: translateY(-1px);
-      box-shadow: 0 0 12px rgba(255,255,255,0.12);
+    .cat-pill:hover {
+      color: #f8fafc;
+      border-color: var(--border-strong);
+      background: #1c283d;
+    }
+    .cat-pill.active {
+      color: #f8fafc;
+      background: rgba(14, 165, 233, 0.18);
+      border-color: rgba(56, 189, 248, 0.55);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
     }
     .dot-swatch {
-      width: 10px;
-      height: 10px;
+      width: 9px;
+      height: 9px;
       border-radius: 50%;
       display: inline-block;
     }
@@ -433,7 +472,7 @@
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 7px 11px;
+      padding: 8px 12px;
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: 8px;
@@ -442,17 +481,17 @@
       font-size: 13px;
     }
     .bigram-item:hover, .bigram-item.active {
-      border-color: var(--accent);
-      background: rgba(56, 189, 248, 0.11);
+      border-color: rgba(56, 189, 248, 0.5);
+      background: rgba(56, 189, 248, 0.1);
       transform: translateX(2px);
     }
     .bigram-code {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      font-weight: 800;
-      font-size: 13.5px;
+      font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-weight: 700;
+      font-size: 13px;
       color: #facc15;
-      background: #0f172a;
-      border: 1px solid #334155;
+      background: #090d16;
+      border: 1px solid var(--border-strong);
       padding: 2px 8px;
       border-radius: 5px;
       min-width: 44px;
@@ -462,14 +501,14 @@
     .bigram-desc {
       color: var(--text-muted);
       font-size: 12.5px;
-      line-height: 1.35;
+      line-height: 1.38;
     }
 
     .sub-heading {
       margin: 24px 0 8px 0;
-      padding-left: 12px;
-      border-left: 3px solid var(--accent-purple);
-      font-size: 16px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+      font-size: 15.5px;
       font-weight: 700;
       color: #e2e8f0;
       scroll-margin-top: 84px;
@@ -487,24 +526,29 @@
       margin-bottom: 6px;
     }
     code.inline-code {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      background: #0f172a;
-      border: 1px solid #334155;
+      font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      background: #090d16;
+      border: 1px solid var(--border-strong);
       color: #38bdf8;
       padding: 1px 6px;
       border-radius: 4px;
-      font-size: 12.5px;
+      font-size: 12px;
     }
     .live-tester-input {
-      background: #0f172a;
-      border: 1px solid #38bdf8;
+      background: #090d16;
+      border: 1px solid var(--border-strong);
       color: #facc15;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       font-size: 13px;
       font-weight: 700;
       padding: 5px 10px;
-      border-radius: 6px;
+      border-radius: 7px;
       width: 170px;
+    }
+    .live-tester-input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.16);
     }
   </style>
 </head>
@@ -525,11 +569,11 @@
       </span>
       <button id="btn-vis-load-json" class="btn" title="Load a saved Dygma_Defy_Engrammer_Layout.json file from disk">📂 Load .json</button>
       <input id="vis-file-json" type="file" accept=".json" style="display:none;" />
-      <a href="#layers" class="btn">🗺️ Master Layer Map</a>
-      <a href="#symbol-layer" class="btn">💎 Symbol Layer</a>
-      <a href="#cursor-layer" class="btn">🧭 Cursor Layer</a>
-      <a href="#number-layer" class="btn">🔢 Number Layer</a>
-      <a href="index.html" class="btn btn-primary">🛠️ Open Layout &amp; RGB Studio</a>
+      <a id="nav-btn-layers" href="#layers" class="btn">🗺️ Master Layer Map</a>
+      <a id="nav-btn-symbol" href="#symbol-layer" class="btn">💎 Symbol Layer</a>
+      <a id="nav-btn-cursor" href="#cursor-layer" class="btn">🧭 Cursor Layer</a>
+      <a id="nav-btn-number" href="#number-layer" class="btn">🔢 Number Layer</a>
+      <a id="nav-btn-studio" href="index.html" class="btn btn-primary">🛠️ Open Layout &amp; RGB Studio</a>
     </div>
   </header>
 
@@ -538,16 +582,16 @@
     <aside class="toc-sidebar">
       <div class="toc-title">
         <span>Table of Contents</span>
-        <span style="font-size:10px; color:var(--text-muted);">70 Keys</span>
+        <span style="font-size:10px; color:var(--text-muted);">70 Keys · 10 Layers</span>
       </div>
       <ul class="toc-list">
         <li>
           <a href="#layers"><strong>1. Interactive Layers Map</strong></a>
           <ul class="toc-sublist">
-            <li><a href="#lower-layer">Lower &amp; Layer Locking</a></li>
-            <li><a href="#typing-layer">Typing (Plain QWERTY)</a></li>
-            <li><a href="#gaming-layer">Gaming Layer</a></li>
-            <li><a href="#magic-layer">Magic &amp; macOS Mode</a></li>
+            <li><a href="#lower-layer">Lower &amp; Layer Locking (L7)</a></li>
+            <li><a href="#typing-layer">HRM-Free Typing (L9)</a></li>
+            <li><a href="#magic-layer">macOS / Windows Mode (L8)</a></li>
+            <li><a href="#system-layer">System, RGB &amp; Wireless (L6)</a></li>
           </ul>
         </li>
         <li>
@@ -581,7 +625,7 @@
           </ul>
         </li>
         <li><a href="#mouse-layer"><strong>6. Mouse Layer</strong></a></li>
-        <li><a href="#system-layer"><strong>7. System &amp; RGB Layer</strong></a></li>
+        <li><a href="#lower-layer"><strong>7. Lower, System &amp; Typing</strong></a></li>
       </ul>
     </aside>
 
@@ -607,28 +651,27 @@
             <a href="#layers" class="permalink">#</a>
           </h2>
           <span style="font-size:12px; color:var(--text-muted);">
-            Hover over <strong style="color:#c084fc;">the glowing purple thumb &amp; corner keys</strong> to preview each layer, or click to jump!
+            Hover over <strong style="color:#22d3ee;">the glowing cyan thumb &amp; corner keys</strong> to preview each layer, or click to jump!
           </span>
         </div>
 
         <p style="font-size:13.5px; color:#cbd5e1; margin-top:0;">
-          The Dygma Defy boots into the <strong>Base QWERTY layer</strong> (macOS <code class="inline-code">CAGS</code> by default, dynamically toggleable to Windows/Linux <code class="inline-code">GACS</code>).
-          When held, <strong style="color:#c084fc;">the glowing purple thumb keys</strong> activate the Miryoku-inspired layers; the lower outer keys hold <code class="inline-code">MO(7)</code> for the Magic/OS layer, and the <code class="inline-code">(</code> / <code class="inline-code">)</code> keys on the left lower thumb arc automatically <strong>Shift-Morph</strong> into <code class="inline-code">&lt;</code> / <code class="inline-code">&gt;</code> when Shift is held.
+          The Dygma Defy boots into the <strong>Base QWERTY layer</strong> (macOS <code class="inline-code">CAGS</code> by default, dynamically toggleable to Windows/Linux <code class="inline-code">GACS</code> on <code class="inline-code">L8</code> or HRM-Free Typing on <code class="inline-code">L9</code>).
+          When held, <strong style="color:#22d3ee;">the glowing cyan thumb keys</strong> activate the Miryoku-inspired layers; the lower outer keys hold <code class="inline-code">MO(7)</code> for Lower / OS Controls, and the <code class="inline-code">(</code> / <code class="inline-code">)</code> keys on the left lower thumb arc automatically <strong>Shift-Morph</strong> into <code class="inline-code">&lt;</code> / <code class="inline-code">&gt;</code> when Shift is held.
         </p>
 
         <div class="interactive-prompt">
           <div class="interactive-controls">
             <strong>Interactive:</strong>
             <select id="master-base-select" class="interactive-select">
-              <option value="0">Base Mode #1. macOS (CAGS Home-Row Mods: Ctrl, Opt, Cmd, Shift)</option>
-              <option value="11">Base Mode #2. Windows / Linux (GACS Home-Row Mods: Win, Alt, Ctrl, Shift)</option>
-              <option value="9">Base Mode #3. Plain QWERTY (No Home-Row Mods — Typing Layer)</option>
-              <option value="8">Base Mode #4. Gaming Layer (WASD + Number Row + Thumb Arrows)</option>
+              <option value="0">Layer 0: Base QWERTY (macOS — CAGS Home-Row Mods)</option>
+              <option value="8">Layer 8: Base QWERTY (Windows / Linux — GACS Mods)</option>
+              <option value="9">Layer 9: Typing (Plain QWERTY — HRM-Free)</option>
             </select>
             <button class="btn" id="master-next-base">Next base mode ▶</button>
           </div>
           <div id="master-hover-badge" style="font-size:12px; font-weight:700; color:#38bdf8;">
-            Showing: Base Layer (Hover any glowing purple key to preview its target layer)
+            Showing: Base Layer (Hover any glowing cyan key to preview its target layer)
           </div>
         </div>
 
@@ -655,26 +698,26 @@
           The crown jewel of the Glorious Engrammer configuration: an entire layer dedicated to programming symbols, arranged so that the most common multi-character operators (<code class="inline-code">();</code>, <code class="inline-code">-&gt;</code>, <code class="inline-code">=&gt;</code>, <code class="inline-code">|&gt;</code>, <code class="inline-code">!=</code>, <code class="inline-code">~/</code>, <code class="inline-code">${</code>, <code class="inline-code">#{</code>) are effortless <strong>inward finger rolls</strong> on the left hand while the right thumb holds the Symbol layer key.
         </p>
 
-        <!-- Semantic Category Filter Bar (Sunaku's Red/Green/Blue/Purple/Yellow + Spacegrams) -->
+        <!-- Semantic Category Filter Bar (Sunaku's Red/Green/Blue/Orange/Yellow + Spacegrams) -->
         <div class="category-bar" id="symbol-cat-bar">
-          <span style="font-size:12px; font-weight:700; color:var(--text-muted); margin-right:4px;">👉 Highlight Group:</span>
-          <button class="cat-pill active" data-cat="all" style="background:#1e293b; color:#f8fafc; border-color:#475569;">All Symbols</button>
-          <button class="cat-pill" data-cat="quote" style="background:rgba(244,63,94,0.16); color:#fda4af; border-color:#f43f5e;">
+          <span style="font-size:12px; font-weight:700; color:var(--text-muted); margin-right:4px;">Highlight Group:</span>
+          <button id="cat-btn-all" class="cat-pill active" data-cat="all">All Symbols</button>
+          <button id="cat-btn-quote" class="cat-pill" data-cat="quote">
             <span class="dot-swatch" style="background:#f43f5e;"></span> Red Quotes
           </button>
-          <button class="cat-pill" data-cat="arrow" style="background:rgba(34,197,94,0.16); color:#86efac; border-color:#22c55e;">
+          <button id="cat-btn-arrow" class="cat-pill" data-cat="arrow">
             <span class="dot-swatch" style="background:#22c55e;"></span> Green Arrows &amp; Ops
           </button>
-          <button class="cat-pill" data-cat="group" style="background:rgba(59,130,246,0.16); color:#93c5fd; border-color:#3b82f6;">
+          <button id="cat-btn-group" class="cat-pill" data-cat="group">
             <span class="dot-swatch" style="background:#3b82f6;"></span> Blue Groups
           </button>
-          <button class="cat-pill" data-cat="flip" style="background:rgba(168,85,247,0.16); color:#d8b4fe; border-color:#a855f7;">
-            <span class="dot-swatch" style="background:#a855f7;"></span> Purple Flips &amp; Escapes
+          <button id="cat-btn-flip" class="cat-pill" data-cat="flip">
+            <span class="dot-swatch" style="background:#f97316;"></span> Orange Flips &amp; Escapes
           </button>
-          <button class="cat-pill" data-cat="vim" style="background:rgba(234,179,8,0.16); color:#fde047; border-color:#eab308;">
+          <button id="cat-btn-vim" class="cat-pill" data-cat="vim">
             <span class="dot-swatch" style="background:#eab308;"></span> Yellow Vim &amp; Regex
           </button>
-          <button class="cat-pill" data-cat="space" style="background:rgba(20,184,166,0.16); color:#5eead4; border-color:#14b8a6;">
+          <button id="cat-btn-space" class="cat-pill" data-cat="space">
             <span class="dot-swatch" style="background:#14b8a6;"></span> Teal Spacegrams (Right Hand)
           </button>
         </div>
@@ -826,9 +869,9 @@
           The right-hand home row (<code class="inline-code">R21..R24</code>) arranges the arrows as <code class="inline-code">Left</code>, <code class="inline-code">Up</code>, <code class="inline-code">Down</code>, <code class="inline-code">Right</code> so each finger is responsible for a single cardinal direction, with <code class="inline-code">Home</code>, <code class="inline-code">PgUp</code>, <code class="inline-code">PgDn</code>, <code class="inline-code">End</code> (<code class="inline-code">R31..R34</code>) directly beneath them.
         </p>
 
-        <h4 id="select-edit" class="sub-heading"><span>Select &amp; Edit Pinching</span><a href="#select-edit" class="permalink">#</a></h4>
+        <h4 id="select-edit" class="sub-heading"><span>Word &amp; Line Selection Engine + Pinching</span><a href="#select-edit" class="permalink">#</a></h4>
         <p style="font-size:13.5px; color:#cbd5e1;">
-          Word and line selection macros (<code class="inline-code">SelWord</code> on <code class="inline-code">RTU0</code>, <code class="inline-code">SelLine</code> on <code class="inline-code">RTU1</code>, <code class="inline-code">SelAll</code> on <code class="inline-code">RTU2</code>) sit on the right thumb cluster opposite the inner index column (<code class="inline-code">Cut</code>/<code class="inline-code">Copy</code>/<code class="inline-code">Paste</code> on <code class="inline-code">R10, R20, R30</code>), allowing a quick thumb-to-index pinching motion to select and copy.
+          OS-aware selection triggers (<code class="inline-code">SelWord</code>, <code class="inline-code">ExtWord</code>, <code class="inline-code">SelLine</code>, <code class="inline-code">ExtLine</code>, <code class="inline-code">SelNone</code>, and <code class="inline-code">SelAll</code>) sit on the thumb and upper-right clusters opposite <code class="inline-code">Cut</code>/<code class="inline-code">Copy</code>/<code class="inline-code">Paste</code> (<code class="inline-code">R10, R20, R30</code>) — tap <code class="inline-code">SelWord</code> to highlight the current word, tap <code class="inline-code">ExtWord</code> (or hold <code class="inline-code">Shift</code> + <code class="inline-code">SelWord</code>) to extend selection word-by-word, and pinch to copy.
         </p>
       </section>
 
@@ -950,18 +993,18 @@
       </section>
 
       <!-- ================================================================ -->
-      <!-- 7. LOWER, MAGIC, SYSTEM, GAMING & TYPING LAYERS                  -->
+      <!-- 7. LOWER / OS, SYSTEM / RGB, BASE WIN & TYPING LAYERS            -->
       <!-- ================================================================ -->
       <section id="lower-layer" class="layer-section">
         <div class="section-header">
           <h2>
-            <span>🔒 Lower, Magic, System, Gaming, Typing &amp; Custom Layers</span>
+            <span>🔒 Lower / OS, System / RGB, Base Win &amp; Typing Layers</span>
             <a href="#lower-layer" class="permalink">#</a>
           </h2>
         </div>
 
         <div class="category-bar" id="aux-layer-bar">
-          <!-- Populated dynamically with L10, L7, L6, L8, L9 + any custom layers -->
+          <!-- Populated dynamically with L7, L6, L9, L8 + any custom layers -->
         </div>
 
         <div class="interactive-prompt">
@@ -977,28 +1020,28 @@
         <div class="diagram-wrapper">
           <div class="diagram-status-bar">
             <div id="aux-seq-readout" class="sequence-readout">
-              <span style="color:var(--text-muted);">Select an example above to see Layer Locking, Dynamic macOS/Windows Switching, RGB Controls, Gaming, or Typing layers.</span>
+              <span style="color:var(--text-muted);">Select an example above to explore Layer Locking, Dynamic macOS/Windows Switching, Wireless/RGB Controls, or HRM-Free Typing mode.</span>
             </div>
           </div>
           <svg id="svg-aux-layer" class="defy-svg" viewBox="0 0 1270 785"></svg>
         </div>
 
         <div class="bigram-grid" style="margin-top:16px;">
-          <div class="bigram-item" id="magic-layer">
-            <span class="bigram-code">Magic (L7)</span>
-            <span class="bigram-desc"><strong>macOS / Windows Toggle:</strong> Hold <code class="inline-code">MO(7)</code> (<code class="inline-code">LTL0</code> or <code class="inline-code">RTL0</code>) + tap <code class="inline-code">OS_TOGG</code> (<code class="inline-code">L03</code>) to swap <code class="inline-code">CAGS</code> ↔ <code class="inline-code">GACS</code>.</span>
+          <div class="bigram-item" id="lower-locks-card">
+            <span class="bigram-code">Lower / OS (L7)</span>
+            <span class="bigram-desc"><strong>Layer Locks &amp; Numpad Row:</strong> Hold <code class="inline-code">LT(7, Ins)</code> (<code class="inline-code">LTU2</code>/<code class="inline-code">RTU2</code>) or <code class="inline-code">MO(7)</code> (<code class="inline-code">LTL0</code>/<code class="inline-code">RTL0</code>) for <code class="inline-code">TO(1..6)</code> locks, <code class="inline-code">TG(9)</code> Typing toggle, and <code class="inline-code">OS_TOGG</code>.</span>
           </div>
           <div class="bigram-item" id="system-layer">
-            <span class="bigram-code">System (L6)</span>
-            <span class="bigram-desc"><strong>RGB &amp; System:</strong> Hold <code class="inline-code">LT(6, Enter)</code> (<code class="inline-code">RTU3</code>) for RGB Hue/Sat/Val/Speed, <code class="inline-code">LockScr</code>, and <code class="inline-code">OS_TOGG</code>.</span>
+            <span class="bigram-code">Sys / RGB (L6)</span>
+            <span class="bigram-desc"><strong>RGB, Wireless &amp; Battery:</strong> Hold <code class="inline-code">LT(6, Enter)</code> (<code class="inline-code">RTU3</code>) for <code class="inline-code">LED Next/Prev/Togg</code>, <code class="inline-code">BatLvl</code>, <code class="inline-code">BT_PAIR</code>, <code class="inline-code">RF_MODE</code>, <code class="inline-code">EngySt</code>, and OS-aware <code class="inline-code">LockScr</code>.</span>
           </div>
-          <div class="bigram-item" id="gaming-layer">
-            <span class="bigram-code">Gaming (L8)</span>
-            <span class="bigram-desc"><strong>Gaming Mode:</strong> Chord <code class="inline-code">B + OSM(LShift)</code> (<code class="inline-code">L35 + L30</code>) to enter Gaming; chord <code class="inline-code">F + C</code> (<code class="inline-code">L24 + L33</code>) to return to Base.</span>
+          <div class="bigram-item" id="magic-layer">
+            <span class="bigram-code">Base Win (L8)</span>
+            <span class="bigram-desc"><strong>Dynamic CAGS ↔ GACS:</strong> Tap <code class="inline-code">OS_TOGG</code> on <code class="inline-code">L6</code>/<code class="inline-code">L7</code> (or chord <code class="inline-code">B + OSM(LShift)</code>) to swap <code class="inline-code">Ctrl</code> ↔ <code class="inline-code">Gui</code> home-row mods &amp; OS shortcuts while keeping your custom thumbs.</span>
           </div>
           <div class="bigram-item" id="typing-layer">
             <span class="bigram-code">Typing (L9)</span>
-            <span class="bigram-desc"><strong>Plain QWERTY:</strong> Chord <code class="inline-code">N + OSM(RShift)</code> (<code class="inline-code">R31 + R36</code>) to toggle Plain QWERTY without Home-Row Mods.</span>
+            <span class="bigram-desc"><strong>HRM-Free Plain QWERTY:</strong> Toggle <code class="inline-code">TG(9)</code> on <code class="inline-code">L7</code> (<code class="inline-code">L06</code>/<code class="inline-code">LTL1</code>) for zero-hold plain alphas during fast prose or gaming; chord 3 thumbs (<code class="inline-code">TO(0)</code>) or tap <code class="inline-code">TG(9)</code> (<code class="inline-code">R06</code>) to return.</span>
           </div>
         </div>
       </section>
@@ -1222,21 +1265,19 @@
     ];
 
     // =========================================================================
-    // 2. LAYER METADATA & ACTIVE THUMB HOLD ORIGINS
+    // 2. LAYER METADATA & ACTIVE THUMB HOLD ORIGINS (10 HARDWARE LAYERS L0..L9)
     // =========================================================================
     const LAYERS_META = [
-      { id: 0,  short: "L0: Base Mac",  name: "Layer 0: Base QWERTY (macOS — CAGS Home-Row Mods)", heldKey: null },
-      { id: 1,  short: "L1: Symbol",    name: "Layer 1: Programming Symbol Layer",                 heldKey: "RTU0" },
-      { id: 2,  short: "L2: Number",    name: "Layer 2: Number & Hex Numpad Layer",                heldKey: "LTU1" },
-      { id: 3,  short: "L3: Cursor",    name: "Layer 3: Cursor Navigation & Editing Layer",        heldKey: "LTU0" },
-      { id: 4,  short: "L4: Mouse",     name: "Layer 4: Mouse & Natural Scroll Layer",             heldKey: "RTU1" },
-      { id: 5,  short: "L5: Function",  name: "Layer 5: Function (F1–F15) & Media Layer",          heldKey: "LTU3" },
-      { id: 6,  short: "L6: Sys/RGB",   name: "Layer 6: System, RGB & Power Layer",                heldKey: "RTU3" },
-      { id: 7,  short: "L7: Magic/OS",  name: "Layer 7: Magic, Boot & OS Switch Layer",            heldKey: "LTL0" },
-      { id: 8,  short: "L8: Gaming",    name: "Layer 8: Gaming Layer (B+LShift ON / F+C OFF)",     heldKey: null },
-      { id: 9,  short: "L9: Plain",     name: "Layer 9: Plain QWERTY (No Home-Row Mods, N+RShift)",heldKey: null },
-      { id: 10, short: "L10: Lower",    name: "Layer 10: Lower Numpad Row & Layer Locks",          heldKey: "LTU2" },
-      { id: 11, short: "L11: Base Win", name: "Layer 11: Base QWERTY (Windows/Linux — GACS Mods)", heldKey: null }
+      { id: 0, short: "L0: Base Mac", name: "Layer 0: Base QWERTY (macOS — CAGS Home-Row Mods)",                     heldKey: null },
+      { id: 1, short: "L1: Symbol",   name: "Layer 1: Programming Symbol Layer",                                     heldKey: "RTU0" },
+      { id: 2, short: "L2: Number",   name: "Layer 2: Number & Hex Numpad Layer",                                    heldKey: "LTU1" },
+      { id: 3, short: "L3: Cursor",   name: "Layer 3: Cursor Navigation & Selection Layer",                          heldKey: "LTU0" },
+      { id: 4, short: "L4: Mouse",    name: "Layer 4: Mouse & Natural Scroll Layer",                                 heldKey: "RTU1" },
+      { id: 5, short: "L5: Function", name: "Layer 5: Function (F1–F15) & Media Layer",                              heldKey: "LTU3" },
+      { id: 6, short: "L6: Sys/RGB",  name: "Layer 6: System, Modifiers, RGB, Wireless & Battery Layer",             heldKey: "RTU3" },
+      { id: 7, short: "L7: Lower/OS", name: "Layer 7: Lower Numpad, Layer Locks, Typing Mode & OS Switch",           heldKey: "LTU2" },
+      { id: 8, short: "L8: Base Win", name: "Layer 8: Base QWERTY (Windows/Linux — GACS Home-Row Mods)",             heldKey: null },
+      { id: 9, short: "L9: Typing",   name: "Layer 9: Plain Typing / Gaming (HRM-Free QWERTY — Thumbs & Layers On)", heldKey: null }
     ];
 
     const kp    = (tap, c)       => ({ type: "kp",    tap, hold: "",   color: c || "" });
@@ -1244,6 +1285,8 @@
     const lt    = (tap, lyr, c)  => ({ type: "lt",    tap, hold: String(lyr), color: c || "#06b6d4" });
     const mo    = (lyr, c)       => ({ type: "mo",    tap: `MO(${lyr})`, hold: String(lyr), color: c || "" });
     const to    = (lyr, c)       => ({ type: "to",    tap: `TO(${lyr})`, hold: String(lyr), color: c || "" });
+    const tg    = (lyr, c)       => ({ type: "to",    tap: `TG(${lyr})`, hold: String(lyr), color: c || "#14b8a6" });
+    const osl   = (lyr, c)       => ({ type: "osl",   tap: `OSL(${lyr})`, hold: String(lyr), color: c || "" });
     const osm   = (mod, c)       => ({ type: "osm",   tap: "OSM", hold: mod, color: c || "#22c55e" });
     const dual  = (tap, hold, c) => ({ type: "dual",  tap, hold, color: c || "#f59e0b" });
     const morph = (tap, shf, c)  => ({ type: "morph", tap, hold: shf, color: c || "#f59e0b" });
@@ -1251,31 +1294,74 @@
     const mse   = (name, sub, c) => ({ type: "mouse", tap: name, hold: sub || "MOUSE", color: c || "" });
     const trns  = ()             => ({ type: "trans", tap: "___", hold: "", color: "" });
 
+    function swapMacWinModName(modStr) {
+      if (modStr === "LCtrl") return "LGui";
+      if (modStr === "LGui") return "LCtrl";
+      if (modStr === "RCtrl") return "RGui";
+      if (modStr === "RGui") return "RCtrl";
+      return modStr;
+    }
+
+    function convertMacBindingToWin(b) {
+      if (!b) return trns();
+      const copy = { ...b };
+      if (copy.type === "mt" || copy.type === "osm") {
+        const nextHold = swapMacWinModName(copy.hold);
+        if (nextHold !== copy.hold && copy.type === "mt" && !copy.color) {
+          copy.color = "#38bdf8";
+        }
+        copy.hold = nextHold;
+      } else if (copy.type === "kp") {
+        copy.tap = swapMacWinModName(copy.tap);
+      }
+      return copy;
+    }
+
+    function deriveWindowsLayerFromMacBase(baseMacLayer) {
+      if (!Array.isArray(baseMacLayer) || baseMacLayer.length !== 70) return Array.from({ length: 70 }, () => trns());
+      return baseMacLayer.map(convertMacBindingToWin);
+    }
+
+    function generateTypingLayerFromBase(baseMacLayer) {
+      if (!Array.isArray(baseMacLayer) || baseMacLayer.length !== 70) return Array.from({ length: 70 }, () => trns());
+      return baseMacLayer.map((b, kIdx) => {
+        if (!b || b.type === "trans" || b.type === "none") return trns();
+        if (kIdx === 13) return tg(9, "#14b8a6");
+        if (b.type === "mt") return kp(b.tap, "#14b8a6");
+        if (b.type === "kp" && !/^(?:L|R)(?:Ctrl|Alt|Gui|Shift)$/.test(String(b.tap || ""))) {
+          return kp(b.tap, b.color || "");
+        }
+        return trns();
+      });
+    }
+
     // =========================================================================
-    // 3. COMPLETE 12-LAYER MOONLANDER -> DEFY 70 DEFAULT KEYMAP
+    // 3. COMPLETE 10-LAYER GLOVE80 v52 -> DEFY 70 DEFAULT KEYMAP
     // =========================================================================
     function getInitialLayers() {
+      const baseMac = [
+        kp("Caps"), kp("1"), kp("2"), kp("3", "#22c55e"), kp("4", "#06b6d4"), kp("5"), kp("F11"),
+        kp("F12"), kp("6"), kp("7"), kp("8"), kp("9", "#06b6d4"), kp("0", "#22c55e"), kp("Caps"),
+
+        mac("CW_TOGG", "CapsWord", "#14b8a6"), kp("Q"), kp("W"), kp("E"), kp("R"), kp("T"), kp("PgUp"),
+        mse("WhlDn", "Scroll"), kp("Y"), kp("U"), kp("I"), kp("O"), kp("P"), kp("-"),
+
+        kp("=", "#f43f5e"), mt("A", "LCtrl"), mt("S", "LAlt"), mt("D", "LGui"), mt("F", "LShift"), kp("G"), kp("PgDn"),
+        mse("WhlUp", "Scroll"), kp("H"), mt("J", "RShift"), mt("K", "RGui"), mt("L", "LAlt"), mt(";", "RCtrl"), kp("'", "#f43f5e"),
+
+        osm("LShift"), kp("Z"), kp("X"), kp("C"), kp("V"), kp("B"),
+        kp("N"), kp("M"), kp(","), kp("."), kp("/"), osm("RShift"),
+
+        mo(7), kp("\\"), morph("(", "<"), morph(")", ">"), lt("Esc", 5),
+        lt("Enter", 6), kp("["), kp("]"), kp("`"), mo(7),
+
+        lt("Bksp", 3), lt("Del", 2), lt("Ins", 7),
+        lt("Ins", 7), lt("Tab", 4), lt("Space", 1)
+      ];
+
       return [
         // [0] LAYER_BASE_MAC (macOS CAGS)
-        [
-          kp("Caps"), kp("1"), kp("2"), kp("3", "#22c55e"), kp("4", "#06b6d4"), kp("5"), kp("F11"),
-          kp("F12"), kp("6"), kp("7"), kp("8"), kp("9", "#06b6d4"), kp("0", "#22c55e"), kp("Caps"),
-
-          mac("CW_TOGG", "CapsWord", "#a855f7"), kp("Q"), kp("W"), kp("E"), kp("R"), kp("T"), kp("PgUp"),
-          mse("WhlDn", "Scroll"), kp("Y"), kp("U"), kp("I"), kp("O"), kp("P"), kp("-"),
-
-          kp("=", "#f43f5e"), mt("A", "LCtrl"), mt("S", "LAlt"), mt("D", "LGui"), mt("F", "LShift"), kp("G"), kp("PgDn"),
-          mse("WhlUp", "Scroll"), kp("H"), mt("J", "RShift"), mt("K", "RGui"), mt("L", "LAlt"), mt(";", "RCtrl"), kp("'", "#f43f5e"),
-
-          osm("LShift"), kp("Z"), kp("X"), kp("C"), kp("V"), kp("B"),
-          kp("N"), kp("M"), kp(","), kp("."), kp("/"), osm("RShift"),
-
-          mo(7), kp("\\"), dual("(", "<"), dual(")", ">"), lt("Esc", 5),
-          lt("Enter", 6), kp("["), kp("]"), kp("`"), mo(7),
-
-          lt("Bksp", 3), lt("Del", 2), lt("Ins", 10),
-          lt("Ins", 10), lt("Tab", 4), lt("Space", 1)
-        ],
+        baseMac,
 
         // [1] LAYER_SYMBOL
         [
@@ -1292,10 +1378,10 @@
           kp(";"), kp("\""), kp("'"), kp("`"), kp("\\"), trns(),
 
           mac("..", "ST_M0"), kp("&"), kp("'"), kp("\""), kp("\\"),
-          trns(), kp("LGui"), kp("LAlt"), kp("LCtrl"), trns(),
+          kp("RShift"), kp("LGui"), kp("LAlt"), kp("LCtrl"), trns(),
 
           kp("%"), kp(":"), trns(),
-          trns(), trns(), trns()
+          trns(), trns(), to(0, "#10b981")
         ],
 
         // [2] LAYER_NUMBER
@@ -1309,35 +1395,35 @@
           osm("LShift"), kp("LCtrl"), kp("LAlt"), kp("LGui"), kp("LShift"), kp("X"), trns(),
           kp("<"), kp("K"), kp("KP_4", "#ef4444"), kp("KP_5", "#ef4444"), kp("KP_6", "#ef4444"), kp("KP_-"), kp("KP_+"),
 
-          kp("E"), mac("SelAll", "Cmd+A"), mac("SelLine", "Line"), mac("SelWord", "Word"), mac("Find", "Cmd+F"), kp("F"),
+          kp("E"), mac("SelAll", "Cmd+A"), mac("SelLine", "Line", "#14b8a6"), mac("SelWord", "Word", "#14b8a6"), mac("Find", "Cmd+F"), kp("F"),
           kp("J"), kp("KP_1", "#ef4444"), kp("KP_2", "#ef4444"), kp("KP_3", "#ef4444"), kp("KP_/"), kp("KP_*"),
 
           kp("_"), mac("Undo", "Cmd+Z"), mac("Redo", "Cmd+S+Z"), mac("FindPrv", "Cmd+S+G"), mac("FindNxt", "Cmd+G"),
           kp(","), kp("("), trns(), kp(")"), kp("@"),
 
-          trns(), trns(), trns(),
+          kp("Bksp"), to(0, "#10b981"), kp("Del"),
           kp("="), kp("KP_."), kp("KP_0", "#ef4444")
         ],
 
         // [3] LAYER_CURSOR
         [
           trns(), kp("Esc"), kp("Ins"), kp("S-Tab"), kp("Del"), kp("Ins"), trns(),
-          trns(), kp("Ins"), trns(), trns(), trns(), trns(), trns(),
+          trns(), kp("Ins"), trns(), trns(), trns(), trns(), mac("SelNone", "Deselect", "#06b6d4"),
 
           trns(), kp("Enter"), kp("Space"), kp("Tab"), kp("Bksp"), mac("Cut", "Cmd+X"), trns(),
-          trns(), mac("Cut", "Cmd+X"), kp("Bksp"), mac("Undo", "Cmd+Z"), mac("Redo", "Cmd+S+Z"), kp("Tab"), trns(),
+          mac("ExtLine", "+Line", "#14b8a6"), mac("Cut", "Cmd+X"), kp("Bksp"), mac("Undo", "Cmd+Z"), mac("Redo", "Cmd+S+Z"), kp("Tab"), trns(),
 
           osm("LShift"), kp("LCtrl"), kp("LAlt"), kp("LGui"), kp("LShift"), mac("Copy", "Cmd+C"), trns(),
-          trns(), mac("Copy", "Cmd+C"), kp("Left", "#3b82f6"), kp("Up", "#3b82f6"), kp("Down", "#3b82f6"), kp("Right", "#3b82f6"), osm("LShift"),
+          mac("SelNone", "Deselect", "#06b6d4"), mac("Copy", "Cmd+C"), kp("Left", "#3b82f6"), kp("Up", "#3b82f6"), kp("Down", "#3b82f6"), kp("Right", "#3b82f6"), osm("LShift"),
 
-          mac("GotoLn", "Cmd+L"), mac("SelAll", "Cmd+A"), mac("SelLine", "Line"), mac("SelWord", "Word"), mac("Find", "Cmd+F"), mac("Paste", "Cmd+V"),
+          mac("GotoLn", "Cmd+L"), mac("SelAll", "Cmd+A"), mac("SelLine", "Line", "#14b8a6"), mac("SelWord", "Word", "#14b8a6"), mac("Find", "Cmd+F"), mac("Paste", "Cmd+V"),
           mac("Paste", "Cmd+V"), kp("Home", "#22c55e"), kp("PgUp", "#ef4444"), kp("PgDn", "#ef4444"), kp("End", "#22c55e"), mac("GotoLn", "Cmd+L"),
 
           mac("QuickOpn", "Cmd+P"), mac("Undo", "Cmd+Z"), mac("Redo", "Cmd+S+Z"), mac("FindPrv", "Cmd+S+G"), mac("FindNxt", "Cmd+G"),
-          kp("Opt+S+Rt"), mac("Find", "Cmd+F"), mac("FindPrv", "Cmd+S+G"), mac("FindNxt", "Cmd+G"), mac("Replace", "Opt+Cmd+F"),
+          mac("ExtWord", "+Word", "#14b8a6"), mac("ExtLine", "+Line", "#14b8a6"), mac("FindPrv", "Cmd+S+G"), mac("FindNxt", "Cmd+G"), mac("Replace", "Opt+Cmd+F"),
 
-          trns(), trns(), trns(),
-          mac("SelAll", "Cmd+A"), mac("SelLine", "Line"), mac("SelWord", "Word")
+          to(0, "#10b981"), kp("Del"), kp("Bksp"),
+          mac("SelAll", "Cmd+A"), mac("SelLine", "Line", "#14b8a6"), mac("SelWord", "Word", "#14b8a6")
         ],
 
         // [4] LAYER_MOUSE
@@ -1358,7 +1444,7 @@
           trns(), kp("LShift"), kp("LGui"), kp("LAlt"), kp("LCtrl"),
 
           mse("Btn1", "LeftClk", "#f59e0b"), mse("Btn2", "RightClk", "#f59e0b"), mse("Btn4", "BackClk", "#f59e0b"),
-          trns(), trns(), trns()
+          trns(), to(0, "#10b981"), trns()
         ],
 
         // [5] LAYER_FUNCTION
@@ -1372,161 +1458,84 @@
           osm("LShift"), kp("LCtrl"), kp("LAlt"), kp("LGui"), kp("LShift"), trns(), kp("VolDn"),
           kp("PrevTrk"), trns(), kp("F4", "#f97316"), kp("F5", "#f97316"), kp("F6", "#f97316"), kp("F11", "#f97316"), kp("F14"),
 
-          trns(), mac("SelAll", "Cmd+A"), mac("SelLine", "Line"), mac("SelWord", "Word"), mac("Find", "Cmd+F"), trns(),
+          trns(), mac("SelAll", "Cmd+A"), mac("SelLine", "Line", "#14b8a6"), mac("SelWord", "Word", "#14b8a6"), mac("Find", "Cmd+F"), trns(),
           trns(), kp("F1", "#f97316"), kp("F2", "#f97316"), kp("F3", "#f97316"), kp("F12", "#f97316"), kp("F15"),
 
           trns(), mac("Undo", "Cmd+Z"), mac("Redo", "Cmd+S+Z"), mac("FindPrv", "Cmd+S+G"), mac("FindNxt", "Cmd+G"),
           kp("Play/Pse"), kp("LED+"), kp("LED-"), trns(), trns(),
 
-          trns(), trns(), trns(),
+          to(0, "#10b981"), trns(), trns(),
           kp("Mute"), kp("VolDn"), kp("VolUp")
         ],
 
         // [6] LAYER_SYS_RGB
         [
-          mac("OS_TOGG", "Mac/Win", "#10b981"), mac("OS_MAC", "CAGS", "#10b981"), mac("OS_WIN", "GACS", "#10b981"), mac("BatLvl", "LED Bar", "#10b981"), mac("BT_PAIR", "Pair Slot", "#38bdf8"), mac("RF_MODE", "2.4GHz RF", "#10b981"), mac("WL_TOGG", "USB/BT/RF", "#10b981"),
-          trns(), mac("BT_1", "Host 1", "#38bdf8"), mac("BT_2", "Host 2", "#38bdf8"), mac("BT_3", "Host 3", "#38bdf8"), mac("BT_4", "Host 4", "#38bdf8"), mac("BT_5", "Host 5", "#38bdf8"), mac("OS_TOGG", "Mac/Win", "#10b981"),
+          mac("OS_TOGG", "Mac/Win", "#10b981"), mac("OS_MAC", "CAGS", "#10b981"), mac("OS_WIN", "GACS", "#10b981"), mac("BatLvl", "LED%", "#10b981"), mac("BT_PAIR", "Pair/1-5", "#06b6d4"), mac("RF_MODE", "RF/Lens", "#10b981"), mac("EngySt", "Energy", "#10b981"),
+          trns(), trns(), trns(), trns(), trns(), trns(), mac("OS_TOGG", "Mac/Win", "#10b981"),
 
-          trns(), kp("RGB_SPI"), kp("RGB_SAI"), kp("RGB_HUI"), kp("RGB_VAI"), kp("RGB_MOD"), trns(),
-          trns(), kp("RGB_MOD"), kp("RGB_VAI"), kp("RGB_HUI"), kp("RGB_SAI"), kp("RGB_SPI"), trns(),
+          trns(), kp("LED Next"), kp("LED Prev"), kp("LED Togg"), kp("BriUp"), trns(), trns(),
+          trns(), trns(), kp("BriUp"), kp("LED Togg"), kp("LED Prev"), kp("LED Next"), trns(),
 
-          trns(), kp("RGB_SPD"), kp("RGB_SAD"), kp("RGB_HUD"), kp("RGB_VAD"), kp("RGB_MOD"), trns(),
-          trns(), kp("RGB_MOD"), kp("RGB_VAD"), kp("RGB_HUD"), kp("RGB_SAD"), kp("RGB_SPD"), trns(),
+          trns(), kp("LCtrl"), kp("LAlt"), kp("LGui"), kp("LShift"), kp("BriDn"), trns(),
+          trns(), kp("BriDn"), kp("RShift"), kp("RGui"), kp("RAlt"), kp("RCtrl"), trns(),
 
-          trns(), trns(), kp("App"), kp("PrtSc"), kp("Pause"), kp("RGB_TOG"),
-          kp("RGB_TOG"), kp("ScrlLk"), kp("NumLk"), kp("Caps"), mac("LockScr", "Ctrl+Cmd+Q"), kp("Sleep"),
+          trns(), trns(), kp("App"), kp("PrtSc"), kp("Pause"), trns(),
+          trns(), kp("ScrlLk"), kp("NumLk"), kp("Caps"), mac("LockScr", "LockOS", "#f59e0b"), kp("Sleep"),
 
           trns(), trns(), trns(), trns(), kp("Sleep"),
-          trns(), trns(), trns(), trns(), kp("Power"),
+          to(0, "#10b981"), trns(), trns(), trns(), kp("Power"),
 
-          mac("LockScr", "Ctrl+Cmd+Q"), kp("Power"), trns(),
+          mac("LockScr", "LockOS", "#f59e0b"), kp("Power"), trns(),
           kp("App"), kp("PrtSc"), kp("Pause")
         ],
 
-        // [7] LAYER_MAGIC
+        // [7] LAYER_LOWER_OS
         [
-          to(0, "#10b981"), mac("OS_MAC", "CAGS", "#10b981"), mac("OS_WIN", "GACS", "#10b981"), mac("OS_TOGG", "Mac/Win", "#10b981"), trns(), trns(), trns(),
-          trns(), trns(), trns(), trns(), trns(), trns(), trns(),
-
-          trns(), kp("RGB_SPI"), kp("RGB_SAI"), kp("RGB_HUI"), kp("RGB_VAI"), kp("RGB_TOG"), trns(),
-          trns(), trns(), trns(), trns(), trns(), trns(), trns(),
-
-          mac("OS_TOGG", "Mac/Win", "#10b981"), kp("RGB_SPD"), kp("RGB_SAD"), kp("RGB_HUD"), kp("RGB_VAD"), kp("RGB_MOD"), trns(),
+          to(0, "#10b981"), mac("OS_MAC", "CAGS", "#10b981"), mac("OS_WIN", "GACS", "#10b981"), mac("OS_TOGG", "Mac/Win", "#10b981"), mac("BatLvl", "LED%", "#10b981"), mac("BT_PAIR", "Pair/1-5", "#06b6d4"), tg(9, "#14b8a6"),
           trns(), trns(), trns(), trns(), trns(), trns(), mac("OS_TOGG", "Mac/Win", "#10b981"),
-
-          trns(), trns(), trns(), trns(), trns(), trns(),
-          trns(), trns(), trns(), trns(), trns(), trns(),
-
-          trns(), trns(), trns(), trns(), trns(),
-          trns(), trns(), trns(), trns(), trns(),
-
-          trns(), trns(), to(0, "#10b981"),
-          to(8, "#ef4444"), trns(), trns()
-        ],
-
-        // [8] LAYER_GAMING
-        [
-          kp("M"), kp("6"), kp("7"), kp("8"), kp("9"), kp("0"), kp("Esc"),
-          kp("F1"), kp("F2"), kp("F3"), kp("F4"), kp("F5"), kp("F6"), kp("F7"),
-
-          kp("I"), kp("1"), kp("2"), kp("3"), kp("4"), kp("5"), kp("T"),
-          kp("F8"), kp("F9"), kp("F10"), kp("F11"), kp("F12"), trns(), trns(),
-
-          kp("T"), kp("Tab"), kp("Q", "#22c55e"), kp("W", "#22c55e"), kp("E", "#22c55e"), kp("R"), kp("N"),
-          trns(), kp("H"), kp("J"), kp("K"), kp("L"), kp(";"), kp("'"),
-
-          kp("G"), kp("LShift"), kp("A", "#22c55e"), kp("S", "#22c55e"), kp("D", "#22c55e"), kp("F"),
-          kp("N"), kp("M"), kp(","), kp("."), kp("/"), kp("\\"),
-
-          kp("B"), kp("LCtrl"), kp("Z"), kp("X"), kp("LShift"),
-          kp("Up", "#ef4444"), kp("-"), kp("["), kp("]"), kp("="),
-
-          kp("Space"), kp("LCtrl"), kp("Enter"),
-          kp("Left", "#ef4444"), kp("Down", "#ef4444"), kp("Right", "#ef4444")
-        ],
-
-        // [9] LAYER_PLAIN (Plain QWERTY without Home-Row Mods)
-        [
-          kp("Caps"), kp("1"), kp("2"), kp("3"), kp("4"), kp("5"), trns(),
-          trns(), kp("6"), kp("7"), kp("8"), kp("9"), kp("0"), kp("Caps"),
-
-          mac("CW_TOGG", "CapsWord"), kp("Q"), kp("W"), kp("E"), kp("R"), kp("T"), trns(),
-          trns(), kp("Y"), kp("U"), kp("I"), kp("O"), kp("P"), kp("-"),
-
-          kp("="), kp("A"), kp("S"), kp("D"), kp("F"), kp("G"), trns(),
-          trns(), kp("H"), kp("J"), kp("K"), kp("L"), kp(";"), kp("'"),
-
-          osm("LShift"), kp("Z"), kp("X"), kp("C"), kp("V"), kp("B"),
-          kp("N"), kp("M"), kp(","), kp("."), kp("/"), osm("RShift"),
-
-          trns(), kp("\\"), dual("(", "<"), dual(")", ">"), kp("Esc"),
-          kp("Enter"), trns(), trns(), trns(), trns(),
-
-          kp("Bksp"), kp("Del"), kp("Ins"),
-          kp("Ins"), kp("Tab"), kp("Space")
-        ],
-
-        // [10] LAYER_LOWER
-        [
-          trns(), trns(), trns(), trns(), trns(), trns(), trns(),
-          trns(), trns(), trns(), trns(), trns(), trns(), trns(),
 
           trns(), kp("KP_1"), kp("KP_2"), kp("KP_3"), kp("KP_4"), kp("KP_5"), trns(),
           trns(), kp("KP_6"), kp("KP_7"), kp("KP_8"), kp("KP_9"), kp("KP_0"), trns(),
 
-          trns(), osm("LCtrl"), osm("LAlt"), osm("LGui"), osm("LShift"), kp("KP_-"), trns(),
-          trns(), kp("KP_/"), osm("LShift"), osm("LGui"), osm("LAlt"), osm("LCtrl"), trns(),
+          mac("OS_TOGG", "Mac/Win", "#10b981"), osm("LCtrl"), osm("LAlt"), osm("LGui"), osm("LShift"), kp("KP_-"), trns(),
+          trns(), kp("KP_/"), osm("LShift"), osm("LGui"), osm("LAlt"), osm("LCtrl"), mac("OS_TOGG", "Mac/Win", "#10b981"),
 
           trns(), kp("("), kp("KP_,"), kp("KP_."), kp(")"), kp("KP_+"),
           kp("KP_*"), kp("NumLk"), trns(), kp("KP_="), kp("KP_Ent"), trns(),
 
-          to(0), trns(), trns(), trns(), to(5),
+          to(0), tg(9, "#14b8a6"), trns(), trns(), to(5),
           to(6), trns(), trns(), trns(), to(0),
 
-          to(3), to(2), trns(),
-          trns(), to(4), to(1)
+          to(3), to(2), to(0, "#10b981"),
+          to(0, "#10b981"), to(4), to(1)
         ],
 
-        // [11] LAYER_BASE_WIN (Windows/Linux GACS)
-        [
-          kp("Caps"), kp("1"), kp("2"), kp("3", "#22c55e"), kp("4", "#06b6d4"), kp("5"), kp("F11"),
-          kp("F12"), kp("6"), kp("7"), kp("8"), kp("9", "#06b6d4"), kp("0", "#22c55e"), kp("Caps"),
+        // [8] LAYER_BASE_WIN (Windows/Linux GACS)
+        deriveWindowsLayerFromMacBase(baseMac),
 
-          mac("CW_TOGG", "CapsWord", "#a855f7"), kp("Q"), kp("W"), kp("E"), kp("R"), kp("T"), kp("PgUp"),
-          mse("WhlDn", "Scroll"), kp("Y"), kp("U"), kp("I"), kp("O"), kp("P"), kp("-"),
-
-          kp("=", "#f43f5e"), mt("A", "LGui"), mt("S", "LAlt"), mt("D", "LCtrl"), mt("F", "LShift"), kp("G"), kp("PgDn"),
-          mse("WhlUp", "Scroll"), kp("H"), mt("J", "RShift"), mt("K", "RCtrl"), mt("L", "LAlt"), mt(";", "RGui"), kp("'", "#f43f5e"),
-
-          osm("LShift"), kp("Z"), kp("X"), kp("C"), kp("V"), kp("B"),
-          kp("N"), kp("M"), kp(","), kp("."), kp("/"), osm("RShift"),
-
-          mo(7), kp("\\"), dual("(", "<"), dual(")", ">"), lt("Esc", 5),
-          lt("Enter", 6), kp("["), kp("]"), kp("`"), mo(7),
-
-          lt("Bksp", 3), lt("Del", 2), lt("Ins", 10),
-          lt("Ins", 10), lt("Tab", 4), lt("Space", 1)
-        ]
+        // [9] LAYER_TYPING (HRM-Free Plain QWERTY)
+        generateTypingLayerFromBase(baseMac)
       ];
     }
 
     // =========================================================================
-    // 4. MOONLANDER COMBOS DEFINITIONS
+    // 4. GLOVE80 v52 / ENGRAMMER COMBOS DEFINITIONS
     // =========================================================================
     const COMBOS = [
-      { id: "combo0",  keys: ["RTU3", "RTU2"], label: "Right Enter + Right Insert", action: "Ctrl + LeftShift" },
-      { id: "combo1",  keys: ["L35",  "L30"],  label: "B + Left OSM(Shift)",        action: "TO(8) — Gaming Layer" },
-      { id: "combo2",  keys: ["L24",  "L33"],  label: "F + C",                      action: "TO(0) — Return to Base" },
-      { id: "combo4",  keys: ["LTU0", "LTU1"], label: "Left Bksp + Left Del",       action: "CW_TOGG (Caps-Word)" },
-      { id: "combo5",  keys: ["RTU2", "RTU1"], label: "Right Ins + Right Tab",      action: "CapsLock" },
-      { id: "combo6",  keys: ["RTU0", "RTU1"], label: "Right Space + Right Tab",    action: "CW_TOGG (Caps-Word)" },
-      { id: "combo7",  keys: ["LTU1", "LTU2"], label: "Left Del + Left Ins",        action: "CapsLock" },
-      { id: "combo8",  keys: ["LTU3", "LTU0"], label: "Left Esc + Left Bksp",       action: "Alt + Tab" },
-      { id: "combo9",  keys: ["LTU3", "LTU1"], label: "Left Esc + Left Del",        action: "Ctrl + Tab" },
-      { id: "combo10", keys: ["LTU3", "LTU2"], label: "Left Esc + Left Ins",        action: "GUI + Tab" },
-      { id: "combo11", keys: ["RTU3", "RTU0"], label: "Right Enter + Right Space",  action: "Hyper (Ctrl+Alt+Gui+Shift)" },
-      { id: "combo12", keys: ["RTU3", "RTU1"], label: "Right Enter + Right Tab",    action: "Meh (Ctrl+Alt+Shift)" },
-      { id: "combo13", keys: ["R31",  "R36"],  label: "N + Right OSM(Shift)",       action: "TG(9) — Plain QWERTY" }
+      { id: "combo0",  keys: ["RTU3", "RTU2"],         label: "Right Enter + Right Insert", action: "Ctrl + LeftShift" },
+      { id: "combo1",  keys: ["L35",  "L30"],          label: "B + Left OSM(Shift)",        action: "OS_TOGG — Mac/Win Base" },
+      { id: "combo2",  keys: ["L24",  "L33"],          label: "F + C",                      action: "TO(0) — Return to Base" },
+      { id: "combo4",  keys: ["LTU0", "LTU1"],         label: "Left Bksp + Left Del",       action: "CW_TOGG (Caps-Word)" },
+      { id: "combo5",  keys: ["RTU2", "RTU1"],         label: "Right Ins + Right Tab",      action: "CapsLock" },
+      { id: "combo6",  keys: ["RTU0", "RTU1"],         label: "Right Space + Right Tab",    action: "CW_TOGG (Caps-Word)" },
+      { id: "combo7",  keys: ["LTU1", "LTU2"],         label: "Left Del + Left Ins",        action: "CapsLock" },
+      { id: "combo8",  keys: ["LTU3", "LTU0"],         label: "Left Esc + Left Bksp",       action: "AppSw — App Switcher" },
+      { id: "combo9",  keys: ["LTU3", "LTU1"],         label: "Left Esc + Left Del",        action: "TabSw — Tab Switcher" },
+      { id: "combo10", keys: ["LTU3", "LTU2"],         label: "Left Esc + Left Ins",        action: "WinSw — Window Switcher" },
+      { id: "combo11", keys: ["RTU3", "RTU0"],         label: "Right Enter + Right Space",  action: "Hyper (Ctrl+Alt+Gui+Shift)" },
+      { id: "combo12", keys: ["RTU3", "RTU1"],         label: "Right Enter + Right Tab",    action: "Meh (Ctrl+Alt+Shift)" },
+      { id: "combo13", keys: ["LTU0", "LTU1", "LTU2"], label: "Left 3 Upper Thumbs",        action: "TO(0) — Return to Base (L9)" },
+      { id: "combo14", keys: ["RTU0", "RTU1", "RTU2"], label: "Right 3 Upper Thumbs",       action: "TO(0) — Return to Base (L9)" }
     ];
 
     const PALETTE = {
@@ -1579,12 +1588,12 @@
       LAYERS_META.forEach((m, idx) => {
         if (m && idx > 0) m.heldKey = null;
       });
-      const baseSources = [layers[0], layers[11]].filter(Boolean);
+      const baseSources = [layers[0], layers[8]].filter(Boolean);
       baseSources.forEach(baseLayer => {
         KEY_POSITIONS.forEach((pos, idx) => {
           const item = baseLayer[idx];
           if (!item) return;
-          if (item.type === "lt" || item.type === "mo") {
+          if (item.type === "lt" || item.type === "mo" || item.type === "osl") {
             const target = Number(item.hold);
             if (!isNaN(target) && target > 0 && LAYERS_META[target] && !LAYERS_META[target].heldKey) {
               LAYERS_META[target].heldKey = pos.id;
@@ -1694,7 +1703,7 @@
       quote: "#f43f5e", // Red
       arrow: "#22c55e", // Green
       group: "#3b82f6", // Blue
-      flip:  "#a855f7", // Purple
+      flip:  "#f97316", // Orange
       vim:   "#eab308", // Yellow
       space: "#14b8a6"  // Teal
     };
@@ -1735,7 +1744,7 @@
       const baseCandidates = [
         typeof currentMasterBase === "number" ? layers[currentMasterBase] : null,
         layers[0],
-        layers[11]
+        layers[8]
       ].filter(Boolean);
       for (const base of baseCandidates) {
         for (let i = 0; i < KEY_POSITIONS.length; i++) {
@@ -1810,7 +1819,7 @@
 
       // 1. Subtle Halves Chassis & Outer Underglow Ring
       const ugMap = underglowLayers[layerIdx] || {};
-      const defaultGlow = layerIdx === 1 ? "#a855f7" : (layerIdx === 3 ? "#38bdf8" : (layerIdx === 2 ? "#ef4444" : "#2dd4bf"));
+      const defaultGlow = layerIdx === 1 ? "#06b6d4" : (layerIdx === 3 ? "#38bdf8" : (layerIdx === 2 ? "#ef4444" : "#2dd4bf"));
       html += `<g class="underglow-layer" opacity="0.65">`;
       DEFY_UNDERGLOW_STRIPS.forEach(st => {
         const c = ugMap[st.id] || defaultGlow;
@@ -1835,8 +1844,8 @@
         } else if (!accentColor && useSymbolSemantics && symCat) {
           accentColor = CAT_COLORS[symCat];
         } else if (!accentColor) {
-          if (item.type === "mt") accentColor = "#a855f7";
-          else if (item.type === "lt" || item.type === "mo" || item.type === "to") accentColor = "#06b6d4";
+          if (item.type === "mt") accentColor = "#38bdf8";
+          else if (item.type === "lt" || item.type === "mo" || item.type === "to" || item.type === "osl") accentColor = "#06b6d4";
           else if (item.type === "osm") accentColor = "#22c55e";
           else if (item.type === "dual" || item.type === "morph") accentColor = "#f59e0b";
           else if (item.type === "macro") accentColor = "#38bdf8";
@@ -1863,8 +1872,8 @@
           fillInner = accentColor + "24"; // ~14% alpha tint
         }
         if (hotspot) {
-          fillInner = accentColor ? (accentColor + "38") : "rgba(168, 85, 247, 0.24)";
-          strokeInner = accentColor || "#c084fc";
+          fillInner = accentColor ? (accentColor + "38") : "rgba(6, 182, 212, 0.22)";
+          strokeInner = accentColor || "#22d3ee";
           strokeWidth = "2.2";
         }
         if (isHeld) {
@@ -1899,8 +1908,12 @@
           mainLabel = `MO(${item.hold})`;
           subLabel = "Hold Layer";
         } else if (item.type === "to") {
-          mainLabel = `TO(${item.hold})`;
-          subLabel = "Lock Layer";
+          const isTg = /^TG\(/i.test(String(item.tap || ""));
+          mainLabel = isTg ? `TG(${item.hold})` : `TO(${item.hold})`;
+          subLabel = isTg ? "Toggle Layer" : "Lock Layer";
+        } else if (item.type === "osl") {
+          mainLabel = `OSL(${item.hold})`;
+          subLabel = "1-Shot Layer";
         } else if (item.type === "osm") {
           topBadge = "1-SHOT";
           mainLabel = item.hold;
@@ -2055,8 +2068,8 @@
 
     function populateMasterSelect() {
       const prevVal = masterSelect.value;
-      const baseOptions = [0, 11, 8, 9];
-      // Include any custom layers added by the user (> 11) or all layers
+      const baseOptions = [0, 8, 9];
+      // Include any custom layers added by the user or remaining layers
       layers.forEach((_, idx) => {
         if (!baseOptions.includes(idx)) baseOptions.push(idx);
       });
@@ -2557,11 +2570,12 @@
           ]
         },
         {
-          title: "(Macro) Select Word / Line + Pinch to Copy",
+          title: "(Macro) Select Word → Extend Word → Pinch Copy",
           steps: [
             { keyId: "LTU0", isHold: true,  desc: "Hold Bksp (Cursor L3)" },
             { keyId: "RTU0", isHold: false, desc: "Tap SelWord (RTU0)" },
-            { keyId: "R20",  isHold: false, desc: "Pinch Copy (R20)" }
+            { keyId: "RTU3", isHold: false, desc: "Tap ExtWord (RTU3)" },
+            { keyId: "R21",  isHold: false, desc: "Pinch Copy (R21)" }
           ]
         },
         {
@@ -2700,7 +2714,7 @@
       ]
     });
 
-    // Aux Layers (Lower, Magic, System, Gaming, Typing + any custom layers)
+    // Aux Layers (Lower/OS, Sys/RGB, Typing, Base Win + any custom layers)
     const auxController = setupLayerSection({
       svgId: "svg-aux-layer",
       selectId: "aux-example-select",
@@ -2708,49 +2722,47 @@
       prevId: "aux-prev-btn",
       nextId: "aux-next-btn",
       clearId: "aux-clear-btn",
-      defaultLayerIdx: 10,
+      defaultLayerIdx: 7,
       examples: [
         {
-          title: "[Lower L10] Lock the Symbol Layer (Hold Lower + Tap Right Space)",
-          layerIdx: 10,
+          title: "[Lower L7] Lock the Symbol Layer (Hold Lower + Tap Right Space)",
+          layerIdx: 7,
           steps: [
-            { keyId: "LTU2", isHold: true,  desc: "Hold Ins (Lower L10)" },
+            { keyId: "LTU2", isHold: true,  desc: "Hold Ins (Lower L7)" },
             { keyId: "RTU0", isHold: false, desc: "Tap TO(1) Symbol Lock (RTU0)" }
           ]
         },
         {
-          title: "[Lower L10] Lock the Cursor Layer (Hold Lower + Tap Left Bksp)",
-          layerIdx: 10,
+          title: "[Lower L7] Lock the Cursor Layer (Hold Lower + Tap Left Bksp)",
+          layerIdx: 7,
           steps: [
-            { keyId: "RTU2", isHold: true,  desc: "Hold Ins (Lower L10)" },
+            { keyId: "RTU2", isHold: true,  desc: "Hold Ins (Lower L7)" },
             { keyId: "LTU0", isHold: false, desc: "Tap TO(3) Cursor Lock (LTU0)" }
           ]
         },
         {
-          title: "[Magic L7] Toggle macOS (CAGS) ↔ Windows/Linux (GACS) Mode",
+          title: "[Lower L7] Toggle macOS (CAGS) ↔ Windows/Linux (GACS) Mode",
           layerIdx: 7,
           steps: [
-            { keyId: "LTL0", isHold: true,  desc: "Hold MO(7) Magic (LTL0)" },
+            { keyId: "LTL0", isHold: true,  desc: "Hold MO(7) Lower/OS (LTL0)" },
             { keyId: "L03",  isHold: false, desc: "Tap OS_TOGG (L03)" }
           ]
         },
         {
-          title: "[System L6] Lock Screen (Ctrl+Cmd+Q) & RGB Controls",
-          layerIdx: 6,
+          title: "[Lower L7] Toggle HRM-Free Plain Typing / Gaming Layer TG(9)",
+          layerIdx: 7,
           steps: [
-            { keyId: "RTU3", isHold: true,  desc: "Hold Enter (System L6)" },
-            { keyId: "LTU0", isHold: false, desc: "Tap LockScr (LTU0)" },
-            { keyId: "L14",  isHold: false, desc: "Tap RGB_VAI (L14)" }
+            { keyId: "LTU2", isHold: true,  desc: "Hold Ins (Lower L7)" },
+            { keyId: "L06",  isHold: false, desc: "Tap TG(9) Typing Toggle (L06)" }
           ]
         },
         {
-          title: "[Gaming L8] WASD + Number Row + Thumb Arrow Cluster",
-          layerIdx: 8,
+          title: "[System L6] Lock Screen (OS-Aware) & Wireless / RGB Controls",
+          layerIdx: 6,
           steps: [
-            { keyId: "L22",  isHold: false, desc: "Q (L22)" },
-            { keyId: "L23",  isHold: false, desc: "W (L23)" },
-            { keyId: "L33",  isHold: false, desc: "S (L33)" },
-            { keyId: "LTU0", isHold: false, desc: "Thumb Space (LTU0)" }
+            { keyId: "RTU3", isHold: true,  desc: "Hold Enter (Sys/RGB L6)" },
+            { keyId: "LTU0", isHold: false, desc: "Tap LockScr (LTU0)" },
+            { keyId: "L04",  isHold: false, desc: "Tap BT_PAIR (L04)" }
           ]
         },
         {
@@ -2778,17 +2790,17 @@
 
     function populateAuxLayerBar() {
       if (!auxLayerBar) return;
-      const auxIndices = [10, 7, 6, 8, 9, 11];
+      const auxIndices = [7, 6, 9, 8];
       layers.forEach((_, idx) => {
         if (idx >= 6 && !auxIndices.includes(idx)) auxIndices.push(idx);
       });
       const currentAux = auxController.getLayerOverride();
       auxLayerBar.innerHTML = auxIndices
         .filter(idx => layers[idx])
-        .map(idx => {
+        .map((idx) => {
           const m = LAYERS_META[idx] || { short: `L${idx}`, name: `Layer ${idx}` };
           const activeCls = idx === currentAux ? "active" : "";
-          return `<button class="cat-pill ${activeCls}" data-layer="${idx}" style="border-color:rgba(56,189,248,0.4); color:#38bdf8;">${escapeXml(m.name || m.short || `Layer ${idx}`)}</button>`;
+          return `<button id="aux-layer-btn-${idx}" class="cat-pill ${activeCls}" data-layer="${idx}">${escapeXml(m.name || m.short || `Layer ${idx}`)}</button>`;
         }).join("");
       auxLayerBar.querySelectorAll(".cat-pill").forEach(btn => {
         btn.addEventListener("click", () => {
@@ -2818,7 +2830,7 @@
       updateLayerHoldSubtitles();
       populateMasterSelect();
       if (lastActiveLayer !== null && layers[lastActiveLayer]) {
-        if ([0, 11].includes(lastActiveLayer)) {
+        if ([0, 8].includes(lastActiveLayer)) {
           currentMasterBase = lastActiveLayer;
           masterSelect.value = String(currentMasterBase);
         } else if (lastActiveLayer >= 6) {
