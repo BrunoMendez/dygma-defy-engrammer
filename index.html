@@ -432,8 +432,9 @@
               </button>
             </div>
           </div>
-          <div id="combos-fw-banner" class="text-[10.5px] leading-snug px-2.5 py-1.5 rounded border border-amber-500/35 bg-amber-500/10 text-amber-200">
-            ⚠️ <b>Wireless Defy Firmware Note:</b> Official <code>Defy v2.3.0</code> lacks Dygma's <code>CombosDygma</code> plugin (<code>combos.map</code> was merged Oct 28, 2026 for upcoming <code>v2.4</code>). Until <code>v2.4</code> ships in Bazecor, assign <code>CW_TOGG</code> directly to a key on <code>L0</code> (or run <b>Kanata</b> on your OS for wireless chords today).
+          <div id="combos-fw-banner" class="text-[10.5px] leading-snug px-2.5 py-2 rounded border border-emerald-500/35 bg-emerald-500/10 text-emerald-100 flex flex-wrap items-center justify-between gap-2">
+            <span>⚡ <b>Custom Wireless Firmware (<code>v2.4.0-engrammer.1</code>):</b> Enables native hardware <b>Combos</b>, <b>Caps-Word</b> (<code>_</code> &amp; symbol exit), <b>Shift-Morph</b> (<code>Shift+( → &lt;</code>), <b>200ms Double-Tap+Hold Repeat</b> on thumb layer-taps, and <b>Superkey Hold Repeat</b> over USB, RF &amp; Bluetooth!</span>
+            <a href="./Defy_Wireless_Engrammer_v2.4.0_Custom_FW.zip" download="Defy_Wireless_Engrammer_v2.4.0_Custom_FW.zip" class="shrink-0 font-bold px-2.5 py-1 rounded bg-emerald-400 text-slate-950 hover:bg-emerald-300 transition">⬇️ Download Custom FW (.zip)</a>
           </div>
 
           <!-- INLINE COMBO / CHORD EDITOR -->
@@ -816,6 +817,20 @@
 
         <!-- PANE 1: BAZECOR REAL-TIME LIVE SYNC OVER WEBSERIAL -->
         <div id="hw-pane-bazecor" class="space-y-4">
+          <div class="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/35 flex flex-wrap items-center justify-between gap-3">
+            <div class="space-y-1 max-w-xl">
+              <div class="font-bold text-emerald-300 text-xs">
+                🚀 Step 0 (One-Time): Install Wireless Engrammer Custom Firmware (`v2.4.0-engrammer.1`)
+              </div>
+              <p class="text-[11px] text-[var(--app-muted-foreground)] leading-relaxed">
+                Unlocks 100% hardware <b>Combos</b>, <b>Caps-Word</b> (with <code>- → _</code>), <b>Shift-Morph</b> (<code>Shift+( → &lt;</code>, <code>Shift+) → &gt;</code>), <b>200ms Double-Tap+Hold Repeat</b> on thumb layer-taps (<code>Del</code>/<code>Bksp</code>), and <b>Superkey Hold Repeat</b> on your Wireless Neuron (<code>nRF52833</code>). Unzip, wire both halves + Neuron via USB, then in <b>Bazecor → Firmware Update → ⋮ Custom Firmware</b> select the unzipped folder.
+              </p>
+            </div>
+            <a href="./Defy_Wireless_Engrammer_v2.4.0_Custom_FW.zip" download="Defy_Wireless_Engrammer_v2.4.0_Custom_FW.zip" class="px-3.5 py-2 rounded-lg font-bold bg-emerald-400 text-slate-950 hover:bg-emerald-300 transition shadow shrink-0">
+              ⬇️ Download Wireless Custom FW (.zip)
+            </a>
+          </div>
+
           <div class="p-3.5 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex flex-wrap items-center justify-between gap-3">
             <div class="space-y-1 max-w-xl">
               <div class="font-bold text-cyan-300 text-xs flex items-center gap-2">
@@ -1343,7 +1358,7 @@
         osm("LShift"), kp("Z"), kp("X"), kp("C"), kp("V"), kp("B"),
         kp("N"), kp("M"), kp(","), kp("."), kp("/"), osm("RShift"),
 
-        mo(7), kp("\\"), dual("(", "<"), dual(")", ">"), lt("Esc", 5),
+        mo(7), kp("\\"), morph("(", "<"), morph(")", ">"), lt("Esc", 5),
         lt("Enter", 6), kp("["), kp("]"), kp("`"), mo(7),
 
         lt("Bksp", 3), lt("Del", 2), lt("Ins", 7),
@@ -4807,6 +4822,7 @@
       const winLayerIdx = clampLayer(opts.winLayerIdx !== undefined ? opts.winLayerIdx : 8);
       const cwLayerIdx = clampLayer(opts.cwLayerIdx !== undefined ? opts.cwLayerIdx : 9);
       const supportsNativeCapsWord = Boolean(opts.supportsNativeCapsWord);
+      const supportsNativeShiftMorph = Boolean(opts.supportsNativeShiftMorph);
 
       if (b.type === "mo") return 17450 + clampLayer(b.hold);
       if (b.type === "to") {
@@ -4936,15 +4952,23 @@
         }
         return baseTap;
       }
-      if ((b.type === "dual" || b.type === "morph") && baseTap > 0 && superkeyAlloc) {
+      if ((b.type === "dual" || b.type === "morph") && baseTap > 0) {
         const holdStr = String(b.hold || "").trim();
-        const holdCode =
-          FOCUS_HID_CODES[holdStr] !== undefined
-            ? FOCUS_HID_CODES[holdStr]
-            : resolveEngrammerFocusAlias(holdStr, maxLayers) || 0;
-        if (holdCode > 0) {
-          const allocIdx = superkeyAlloc.getOrCreate(baseTap, holdCode, tapStr);
-          if (allocIdx >= 0) return 53980 + allocIdx;
+        if (
+          supportsNativeShiftMorph &&
+          ((tapStr === "(" && holdStr === "<") || (tapStr === ")" && holdStr === ">"))
+        ) {
+          return baseTap;
+        }
+        if (superkeyAlloc) {
+          const holdCode =
+            FOCUS_HID_CODES[holdStr] !== undefined
+              ? FOCUS_HID_CODES[holdStr]
+              : resolveEngrammerFocusAlias(holdStr, maxLayers) || 0;
+          if (holdCode > 0) {
+            const allocIdx = superkeyAlloc.getOrCreate(baseTap, holdCode, tapStr);
+            if (allocIdx >= 0) return 53980 + allocIdx;
+          }
         }
       }
       return baseTap;
@@ -5350,7 +5374,8 @@
       existingKmNums = null,
       fallbackSuperkeys = [],
       existingMacrosRaw = rawMacrosMap,
-      supportsNativeCapsWord = false
+      supportsNativeCapsWord = false,
+      supportsNativeShiftMorph = false
     ) {
       const maxLayers = Math.max(1, Math.floor(targetTokenCount / 80));
       const keepExplicitSuperkeys = hasExplicitSuperkeyMacroInLayers(maxLayers);
@@ -5448,7 +5473,7 @@
         }
       }
 
-      const encodeOpts = { winLayerIdx, cwLayerIdx, supportsNativeCapsWord };
+      const encodeOpts = { winLayerIdx, cwLayerIdx, supportsNativeCapsWord, supportsNativeShiftMorph };
       const tokens = [];
       for (let lIdx = 0; lIdx < maxLayers; lIdx++) {
         let lyr = layers[lIdx];
@@ -5821,19 +5846,24 @@
       }
       try {
         appendSerialLog("=== Pushing Superkeys, Macros, Keymap, Palette, Colormap & Device Settings to Dygma Defy ===");
-        // Probe firmware capabilities (Defy v2.3.0 uses L9 CapsWord + macros.map; 2026+ Neuron adds capsword.enabled & combos.map)
+        // Probe firmware capabilities (v2.4.0-engrammer.1 adds shiftmorph.enabled, qukeys.quickTapTimeout, capsword.enabled & combos.map)
         const helpRaw = await sendFocusCommand("help", 3000);
         const supportsNativeCapsWord = /\bcapsword\.enabled\b/.test(helpRaw || "");
         const supportsNativeCombos = /\bcombos\.map\b/.test(helpRaw || "");
+        const supportsNativeShiftMorph = /\bshiftmorph\.enabled\b/.test(helpRaw || "");
+        const supportsNativeQuickTap = /\bqukeys\.quickTapTimeout\b/.test(helpRaw || "");
 
         const combosBanner = document.getElementById("combos-fw-banner");
         if (combosBanner) {
-          if (supportsNativeCombos) {
+          if (supportsNativeCombos && supportsNativeShiftMorph) {
+            combosBanner.className = "text-[10.5px] leading-snug px-2.5 py-2 rounded border border-emerald-500/40 bg-emerald-500/10 text-emerald-200";
+            combosBanner.innerHTML = `✅ Connected Wireless Neuron is running <b>Engrammer Custom FW</b> — hardware <code>Combos</code>, <code>Caps-Word</code>, <code>Shift-Morph</code> &amp; <code>200ms Quick-Tap Repeat</code> active!`;
+          } else if (supportsNativeCombos) {
             combosBanner.className = "text-[10.5px] leading-snug px-2.5 py-1.5 rounded border border-emerald-500/40 bg-emerald-500/10 text-emerald-200";
-            combosBanner.innerHTML = `✅ Connected Neuron firmware supports hardware <code>combos.map</code> — chords sync live to L0 + L8 (Win) + L9 (CapsWord)!`;
+            combosBanner.innerHTML = `✅ Connected Neuron firmware supports hardware <code>combos.map</code> — chords sync live to L0 + L8 (Win)!`;
           } else {
-            combosBanner.className = "text-[10.5px] leading-snug px-2.5 py-1.5 rounded border border-rose-500/40 bg-rose-500/10 text-rose-200";
-            combosBanner.innerHTML = `⚠️ Connected Wireless Neuron (<code>Defy v2.3.0</code>) lacks <code>CombosDygma</code> (<code>combos.map</code> was merged Oct 28, 2026 for upcoming <code>v2.4</code>). Use a dedicated <code>CW_TOGG</code> key on <code>L0</code> (or run <b>Kanata</b> on your OS for wireless chords today).`;
+            combosBanner.className = "text-[10.5px] leading-snug px-2.5 py-2 rounded border border-rose-500/40 bg-rose-500/10 text-rose-200 flex flex-wrap items-center justify-between gap-2";
+            combosBanner.innerHTML = `<span>⚠️ Connected Wireless Neuron (<code>Defy v2.3.0</code>) lacks <code>CombosDygma</code>, <code>ShiftMorph</code> &amp; <code>QuickTap</code>. Install our Wireless Custom FW via Bazecor to unlock all hardware features:</span><a href="./Defy_Wireless_Engrammer_v2.4.0_Custom_FW.zip" download="Defy_Wireless_Engrammer_v2.4.0_Custom_FW.zip" class="shrink-0 font-bold px-2.5 py-1 rounded bg-emerald-400 text-slate-950 hover:bg-emerald-300 transition">⬇️ Download Custom FW (.zip)</a>`;
           }
         }
 
@@ -5856,14 +5886,15 @@
           existingKmNums,
           existingSuperkeys,
           existingMacrosRaw || rawMacrosMap,
-          supportsNativeCapsWord
+          supportsNativeCapsWord,
+          supportsNativeShiftMorph
         );
         deviceSuperkeys = built.superkeysList;
         deviceMacros = built.macrosList;
         rawMacrosMap = built.macrosPayload;
 
         appendSerialLog(
-          `[Safety Check] Neuron EEPROM: ${maxDeviceLayers} layers (${kmTokenCount} keycodes, ${cmTokenCount} LEDs, ${built.superkeysList.length} superkeys, ${built.macrosList.length} macros, CapsWord=${supportsNativeCapsWord ? "native-54371" : `L${built.cwLayerIdx}-layer`}).`
+          `[Safety Check] Neuron EEPROM: ${maxDeviceLayers} layers (${kmTokenCount} keycodes, ${cmTokenCount} LEDs, ${built.superkeysList.length} superkeys, ${built.macrosList.length} macros, CapsWord=${supportsNativeCapsWord ? "native-54371" : `L${built.cwLayerIdx}-layer`}, ShiftMorph=${supportsNativeShiftMorph ? "native" : "superkey"}, QuickTap=${supportsNativeQuickTap ? "200ms" : "n/a"}).`
         );
         if (layers.length > maxDeviceLayers) {
           appendSerialLog(`[Note] Stock Neuron EEPROM stores ${maxDeviceLayers} layers (L0..L${maxDeviceLayers - 1}); layers L${maxDeviceLayers}+ require custom firmware.`);
@@ -5884,14 +5915,17 @@
         if (supportsNativeCapsWord) {
           await sendFocusCommand("capsword.enabled 1");
         }
+        if (supportsNativeShiftMorph) {
+          await sendFocusCommand("shiftmorph.enabled 1");
+        }
         // CombosDygma.cpp validates comboPositionsAllowed against EEPROMKeymap, so write combos.map AFTER keymap.custom!
         if (supportsNativeCombos) {
-          await sendFocusCommand("combos.window 50");
-          await sendFocusCommand("combos.idleTime 100");
+          await sendFocusCommand("combos.window 45");
+          await sendFocusCommand("combos.idleTime 40");
           await sendFocusCommand(`combos.map ${built.combosPayload}`, 4500);
-          appendSerialLog(`[Combos] Synced ${built.combosCount} hardware combo entries across L0/L${built.winLayerIdx}/L${built.cwLayerIdx}.`);
+          appendSerialLog(`[Combos] Synced ${built.combosCount} hardware combo entries across L0/L${built.winLayerIdx}.`);
         } else if (Array.isArray(combos) && combos.length > 0) {
-          appendSerialLog("[Combos Notice] Connected Wireless Neuron (Defy v2.3.0) lacks Focus 'combos.map' (merged Oct 28, 2026 for upcoming v2.4). Use a dedicated CW_TOGG key on L0 or Kanata on your OS for chords.");
+          appendSerialLog("[Combos Notice] Connected Wireless Neuron (Defy v2.3.0) lacks Focus 'combos.map'. Flash Defy_Wireless_Engrammer_v2.4.0_Custom_FW via Bazecor to enable hardware combos!");
         }
         await sendFocusCommand(`colormap.map ${serializeFocusColormap(cmTokenCount, maxDeviceLayers, existingCmNums)}`, 5000);
         await sendFocusCommand(`palette ${serializeFocusPalette()}`, 3000);
@@ -5912,6 +5946,9 @@
         const holdMs = getQukeysThresholdMs();
         await sendFocusCommand(`qukeys.holdTimeout ${holdMs}`);
         await sendFocusCommand("qukeys.overlapThreshold 80");
+        if (supportsNativeQuickTap) {
+          await sendFocusCommand("qukeys.quickTapTimeout 200");
+        }
         await sendFocusCommand(`superkeys.holdstart ${holdMs}`);
         await sendFocusCommand("superkeys.overlap 80");
         await pushDeviceSettingsToDefy();
@@ -6032,7 +6069,8 @@
       macrosRaw = "",
       storedSuperMeta = [],
       neuronLayersMeta = [],
-      combosRaw = ""
+      combosRaw = "",
+      supportsNativeShiftMorph = false
     ) {
       const nums = String(kmRaw || "").trim().split(/\s+/).map(Number).filter(Number.isFinite);
       if (nums.length < 80) return 0;
@@ -6080,7 +6118,7 @@
           const mIdx = getMatrixIndexFromAddr(pos.addr);
           return focusCodeToBinding(slice80[mIdx], deviceSuperkeys, deviceMacros, decodeOpts);
         });
-        // Restore OS_MAC label where MoveToLayer(0) sits adjacent to OS_WIN or OS_TOGG
+        // Restore OS_MAC label where MoveToLayer(0) sits adjacent to OS_WIN or OS_TOGG, and ShiftMorph badges on base layers
         for (let k = 0; k < lyr70.length; k++) {
           const cur = lyr70[k];
           if (cur && cur.type === "to" && cur.hold === "0" && cur.tap === "TO(0)") {
@@ -6089,6 +6127,9 @@
             if (prevTap === "OS_TOGG" || nextTap === "OS_WIN") {
               lyr70[k] = mac("OS_MAC", "CAGS", "#10b981");
             }
+          } else if (supportsNativeShiftMorph && (l === 0 || l === detectedWinIdx) && cur && cur.type === "kp") {
+            if (cur.tap === "(") lyr70[k] = morph("(", "<", cur.color);
+            else if (cur.tap === ")") lyr70[k] = morph(")", ">", cur.color);
           }
         }
         newLayers.push(lyr70);
@@ -6202,6 +6243,7 @@
         }
         const helpRaw = await sendFocusCommand("help", 3000);
         const supportsNativeCombos = /\bcombos\.map\b/.test(helpRaw || "");
+        const supportsNativeShiftMorph = /\bshiftmorph\.enabled\b/.test(helpRaw || "");
         const superRaw = await sendFocusCommand("superkeys.map", 3500);
         const macrosRaw = await sendFocusCommand("macros.map", 4500);
         const combosRaw = supportsNativeCombos ? await sendFocusCommand("combos.map", 3500) : "";
@@ -6224,7 +6266,17 @@
           deviceSettings.ledBrightnessUgWireless = Math.round((brUgWl / 255) * 100);
         }
         renderWirelessAndDeviceTab();
-        const pulledCount = applyPulledFocusData(kmRaw, palRaw, cmRaw, superRaw, macrosRaw, [], [], combosRaw);
+        const pulledCount = applyPulledFocusData(
+          kmRaw,
+          palRaw,
+          cmRaw,
+          superRaw,
+          macrosRaw,
+          [],
+          [],
+          combosRaw,
+          supportsNativeShiftMorph
+        );
         if (!pulledCount) {
           appendSerialLog("[Pull Warning] Neuron returned fewer than 80 keymap tokens.");
         }
