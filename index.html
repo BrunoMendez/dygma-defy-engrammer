@@ -236,7 +236,15 @@
     .hover\:text-cyan-300:hover { color: rgb(103 232 249); }
     .hover\:text-rose-300:hover { color: rgb(253 164 175); }
     .col-span-2 { grid-column: span 2 / span 2; }
+    .col-span-full { grid-column: 1 / -1; }
+    .w-14 { width: 3.5rem; }
+    .w-16 { width: 4rem; }
+    .w-20 { width: 5rem; }
     .w-44 { width: 11rem; }
+    .grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    @media (min-width: 640px) {
+      .sm\:grid-cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    }
 
     /* Bazecor-Authentic SVG Key Stage */
     .svg-key-group {
@@ -249,11 +257,16 @@
     .svg-key-group.trans-key {
       opacity: 0.55;
     }
+    .svg-key-group.inherited-trans-key {
+      opacity: 0.74;
+    }
     .svg-key-group.dimmed-trans-key {
       opacity: 0.48;
     }
     .svg-key-group.trans-key:hover,
     .svg-key-group.trans-key.selected,
+    .svg-key-group.inherited-trans-key:hover,
+    .svg-key-group.inherited-trans-key.selected,
     .svg-key-group.dimmed-trans-key:hover,
     .svg-key-group.dimmed-trans-key.selected {
       opacity: 0.95;
@@ -433,6 +446,9 @@
           <button id="btn-rename-layer" class="btn-studio text-[11px] py-0.5 px-2 text-[var(--app-muted-foreground)]" title="Rename active layer">
             ✎ Rename
           </button>
+          <button id="btn-make-win-sparse" type="button" class="hidden btn-studio btn-studio-subtle text-[11px] py-0.5 px-2 text-cyan-300" title="Reset L8: Base Win to GACS Home-Row Mods only and make all other keys Transparent (___)">
+            🧹 HRM-Only Sparse
+          </button>
           <button id="btn-delete-layer" class="hidden text-[11px] px-2 py-0.5 rounded bg-rose-500/15 text-rose-300 hover:bg-rose-500/25 transition" title="Delete this custom layer">
             🗑 Delete
           </button>
@@ -451,6 +467,12 @@
           <button id="btn-paint-mode" class="btn-studio btn-studio-subtle text-[11px] py-1 px-2" title="Click any key or underglow segment to paint it with the selected swatch">
             🖌️ Paint: OFF
           </button>
+          <div class="flex items-center bg-slate-950/80 border border-[var(--app-border)] rounded-md px-2 py-1" title="Inherit per-key LED colors (keys 0–69 only; outer underglow stays independent) from another layer">
+            <span class="text-[10.5px] text-[var(--app-muted-foreground)]">Key RGB:</span>
+            <select id="layer-inherit-key-colors" class="bg-transparent text-[11px] font-medium focus:outline-none ml-1 text-cyan-300">
+              <option value="">Own Colors</option>
+            </select>
+          </div>
           <div class="flex items-center bg-slate-950/80 border border-[var(--app-border)] rounded-md px-2 py-1">
             <span class="text-[10.5px] text-[var(--app-muted-foreground)]">Keys:</span>
             <select id="apply-keys-color-scope" class="bg-transparent text-[11px] font-medium focus:outline-none ml-1 text-slate-200">
@@ -459,7 +481,7 @@
               <option value="all">All 70 Keys</option>
               <option value="left">Left Half (35)</option>
               <option value="right">Right Half (35)</option>
-              <option value="auto">Auto Category</option>
+              <option value="auto">Reset Overrides</option>
             </select>
           </div>
           <div class="flex items-center bg-slate-950/80 border border-[var(--app-border)] rounded-md px-2 py-1">
@@ -532,21 +554,22 @@
           <button id="btn-convert-capsword" type="button" class="shrink-0 btn-studio btn-studio-amber text-[11px] py-1 px-2.5"></button>
         </div>
 
-        <!-- BEHAVIOR EDITOR FORM (SUPPORTS SHIFT-MORPH TAP / HOLD & PER-KEY COLOR) -->
-        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+        <!-- BEHAVIOR EDITOR FORM (CONTEXT-AWARE CONTROLS, CUSTOM KEYCAP LABEL & PER-KEY COLOR) -->
+        <div class="grid grid-cols-1 sm:grid-cols-5 gap-2.5">
           <div>
             <label class="block text-[10.5px] font-semibold uppercase tracking-wider text-[var(--app-muted-foreground)] mb-1">Behavior Type</label>
-            <select id="edit-type" class="w-full text-xs px-2.5 py-1.5 studio-input">
-              <option value="kp">Key Press (KP / Shifted)</option>
-              <option value="morph">Shift-Morph ('(' Tap • '&lt;' Shift+Tap)</option>
-              <option value="dual">Parang Shift-Morph ('(' Tap • '&lt;' Shift+Tap)</option>
-              <option value="mt">Home-Row Mod-Tap (Qukey MT)</option>
-              <option value="lt">Thumb Layer-Tap (Qukey LT)</option>
-              <option value="mo">Momentary Layer (MO / ShiftTo)</option>
-              <option value="to">Move To Layer (TO / Lock)</option>
+            <select id="edit-type" class="w-full text-xs px-2 py-1.5 studio-input">
+              <option value="kp">Key Press / Shortcut</option>
+              <option value="mod">Modifier (Regular / Chord)</option>
+              <option value="osm">One-Shot + Hold Mod (OSM)</option>
+              <option value="mt">Home-Row Mod-Tap (MT)</option>
+              <option value="lt">Thumb Layer-Tap (LT)</option>
+              <option value="mo">Momentary Layer (MO)</option>
+              <option value="to">Layer Switch / Toggle (TO/TG)</option>
               <option value="osl">One-Shot Layer (OSL)</option>
-              <option value="osm">One-Shot Modifier (OSM)</option>
-              <option value="macro">Engrammer Custom Action</option>
+              <option value="morph">Shift-Morph ('(' • '&lt;' ⇧Tap)</option>
+              <option value="dual">Dual-Action Tap / Hold</option>
+              <option value="macro">Macro / Custom Action</option>
               <option value="mouse">Mouse / Scroll Wheel</option>
               <option value="trans">Transparent (___)</option>
               <option value="none">No Key (XXX)</option>
@@ -554,27 +577,51 @@
           </div>
 
           <div id="wrap-primary-val">
-            <label id="lbl-primary-val" class="block text-[10.5px] font-semibold uppercase tracking-wider text-[var(--app-muted-foreground)] mb-1">Tap / Unshifted Key</label>
-            <input id="edit-tap" type="text" placeholder="e.g. A, Space, (" class="w-full text-xs font-mono px-2.5 py-1.5 studio-input" />
+            <label id="lbl-primary-val" class="block text-[10.5px] font-semibold uppercase tracking-wider text-[var(--app-muted-foreground)] mb-1">Key / Output</label>
+            <input id="edit-tap" type="text" placeholder="e.g. A, Space, C-S-P" class="w-full text-xs font-mono px-2 py-1.5 studio-input" />
+            <select id="edit-mod-select" class="hidden w-full text-xs font-mono px-2 py-1.5 studio-input"></select>
+            <select id="edit-macro-select" class="hidden w-full text-xs font-mono px-2 py-1.5 studio-input"></select>
+            <select id="edit-mouse-select" class="hidden w-full text-xs font-mono px-2 py-1.5 studio-input"></select>
+            <select id="edit-to-mode" class="hidden w-full text-xs font-mono px-2 py-1.5 studio-input">
+              <option value="TO">TO — Switch Layer</option>
+              <option value="TG">TG — Toggle On/Off</option>
+            </select>
           </div>
 
           <div id="wrap-secondary-val">
-            <label id="lbl-secondary-val" class="block text-[10.5px] font-semibold uppercase tracking-wider text-[var(--app-muted-foreground)] mb-1">Hold Mod / Target Layer</label>
-            <select id="edit-hold" class="w-full text-xs font-mono px-2.5 py-1.5 studio-input">
+            <label id="lbl-secondary-val" class="block text-[10.5px] font-semibold uppercase tracking-wider text-[var(--app-muted-foreground)] mb-1">Hold Modifier</label>
+            <select id="edit-hold" class="w-full text-xs font-mono px-2 py-1.5 studio-input">
               <!-- Populated dynamically -->
             </select>
-            <input id="edit-shifted-custom" type="text" placeholder="Shifted output, e.g. < or >" class="hidden w-full text-xs font-mono px-2.5 py-1.5 studio-input" />
+            <input id="edit-shifted-custom" type="text" placeholder="Shifted output, e.g. < or >" class="hidden w-full text-xs font-mono px-2 py-1.5 studio-input" />
+            <input id="edit-badge-input" type="text" placeholder="Optional badge" class="hidden w-full text-xs font-mono px-2 py-1.5 studio-input" />
+          </div>
+
+          <div id="wrap-custom-label">
+            <label class="block text-[10.5px] font-semibold uppercase tracking-wider text-[var(--app-muted-foreground)] mb-1" title="Custom main text displayed on this keycap in Studio and Visualizer">Keycap Label</label>
+            <div class="flex items-center gap-1">
+              <input id="edit-custom-label" type="text" maxlength="14" placeholder="Auto" class="w-full min-w-0 text-xs font-mono px-2 py-1.5 studio-input" />
+              <button id="btn-clear-custom-label" type="button" class="hidden btn-studio btn-studio-subtle text-[10px] py-1 px-1.5 shrink-0" title="Reset to automatic keycap label">✕</button>
+            </div>
           </div>
 
           <div>
             <label class="block text-[10.5px] font-semibold uppercase tracking-wider text-[var(--app-muted-foreground)] mb-1">Key RGB Color</label>
             <div class="flex items-center gap-1.5">
-              <input id="edit-key-color" type="color" value="#2dd4bf" class="h-7 w-10 rounded cursor-pointer bg-transparent border border-[var(--app-border)]" />
-              <button id="btn-clear-key-color" class="btn-studio btn-studio-subtle text-[11px] py-1 px-2.5">
+              <input id="edit-key-color" type="color" value="#2dd4bf" class="h-7 w-9 shrink-0 rounded cursor-pointer bg-transparent border border-[var(--app-border)]" />
+              <button id="btn-clear-key-color" class="btn-studio btn-studio-subtle text-[10.5px] py-1 px-2 truncate">
                 Auto Color
               </button>
             </div>
           </div>
+        </div>
+
+        <!-- CONTEXTUAL ACTION / MODIFIER PREVIEW BAR -->
+        <div id="insp-action-preview" class="hidden items-center justify-between gap-2 px-3 py-2 rounded-lg studio-subcard text-[11px]">
+          <div id="insp-action-preview-text" class="text-slate-200 min-w-0"></div>
+          <button id="btn-insp-open-macros" type="button" class="hidden shrink-0 btn-studio btn-studio-cyan text-[10.5px] py-1 px-2">
+            🎬 Edit / Create Macro →
+          </button>
         </div>
 
         <!-- SEARCHABLE QUICK PICKER PALETTE -->
@@ -590,11 +637,14 @@
         </div>
       </div>
 
-      <!-- RIGHT PANEL: COMBOS, ENGRAMMER TUNING, WIRELESS & C++ / JSON EXPORTER (5 COLS) -->
+      <!-- RIGHT PANEL: COMBOS, MACROS & ACTIONS, ENGRAMMER TUNING, WIRELESS & C++ / JSON EXPORTER (5 COLS) -->
       <div class="lg:col-span-5 studio-panel p-4 flex flex-col gap-3">
         <div class="flex flex-wrap items-center gap-1 border-b border-[var(--app-border)] pb-2">
           <button id="tab-btn-combos" data-tab="combos" class="studio-tab text-xs font-semibold px-2.5 py-1 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
             Combos &amp; Chords
+          </button>
+          <button id="tab-btn-macros" data-tab="macros" class="studio-tab text-xs font-semibold px-2.5 py-1 rounded border border-transparent hover:border-[var(--app-border)] text-[var(--app-muted-foreground)]">
+            🎬 Macros &amp; Actions
           </button>
           <button id="tab-btn-config" data-tab="config" class="studio-tab text-xs font-semibold px-2.5 py-1 rounded border border-transparent hover:border-[var(--app-border)] text-[var(--app-muted-foreground)]">
             ⚡ Engrammer Tuning
@@ -623,7 +673,7 @@
             </div>
           </div>
           <div id="combos-fw-banner" class="text-[10.5px] leading-snug px-3 py-2 rounded-lg studio-subcard text-slate-300 flex flex-wrap items-center justify-between gap-2">
-            <span>⚡ <b class="text-emerald-300">Wireless Custom FW (<code>v2.4.0-engrammer.2</code>):</b> Native <b>Bilateral HRMs</b>, <b>Streak Cooldown</b>, <b>Per-Finger Timing</b>, <b>500ms Quick-Release Shift</b>, <b>Selection Primitives</b> &amp; <b>Sustained App/Tab/Win Switchers</b>.</span>
+            <span>⚡ <b class="text-emerald-300">Wireless Custom FW (<code>v2.4.0-engrammer.3</code>):</b> Native <b>OS Toggle (Mac/Win)</b>, <b>OSM Tap=1-Shot / Hold=Regular</b>, <b>Per-Finger Hold %</b>, <b>Bilateral HRMs</b> &amp; <b>Selection/Switchers</b>.</span>
             <a id="link-download-custom-fw-combos" href="./Defy_Wireless_Engrammer_v2.4.0_Custom_FW.zip" download="Defy_Wireless_Engrammer_v2.4.0_Custom_FW.zip" class="shrink-0 btn-studio btn-studio-primary text-[10.5px] py-1 px-2.5">⬇ Custom FW (.zip)</a>
           </div>
 
@@ -890,13 +940,155 @@
 
         </div>
 
+        <!-- TAB 2: MACROS & ENGRAMMER CUSTOM ACTIONS INSPECTOR / CREATOR -->
+        <div id="tab-pane-macros" class="hidden flex-col gap-2.5 text-xs max-h-[460px] overflow-y-auto pr-1">
+          <!-- Custom Macros & Shortcut Actions Creator -->
+          <div class="p-2.5 studio-subcard space-y-2">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <div class="font-bold text-[11px] uppercase tracking-wider text-emerald-300">🎬 Custom Macros &amp; Shortcut Actions</div>
+                <div class="text-[10px] text-[var(--app-muted-foreground)]">Create hardware text/key sequences (<code>macros.map</code>) or OS-aware modifier chords</div>
+              </div>
+              <button id="btn-new-custom-macro" type="button" class="btn-studio btn-studio-primary text-[11px] py-1 px-2.5">
+                + New Macro / Action
+              </button>
+            </div>
+
+            <!-- Collapsible Custom Macro / Action Editor Form -->
+            <div id="custom-macro-editor" class="hidden p-2.5 rounded-lg border border-cyan-400/50 bg-slate-950/90 space-y-2">
+              <div class="flex items-center justify-between">
+                <span id="custom-macro-editor-title" class="font-bold text-[11px] text-cyan-300">Create Custom Macro / Action</span>
+                <button id="btn-cancel-custom-macro" type="button" class="text-[10.5px] text-slate-400 hover:text-white">✕ Cancel</button>
+              </div>
+
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-[10px] font-mono uppercase text-[var(--app-muted-foreground)] mb-0.5">Action ID (Unique)</label>
+                  <input id="cm-id" type="text" maxlength="16" placeholder="e.g. ArrowFn, SaveAll" class="w-full text-xs font-mono px-2 py-1 studio-input" />
+                </div>
+                <div>
+                  <label class="block text-[10px] font-mono uppercase text-[var(--app-muted-foreground)] mb-0.5">Action Kind</label>
+                  <select id="cm-kind" class="w-full text-xs px-2 py-1 studio-input">
+                    <option value="text">Text / Key Sequence (DynamicMacro)</option>
+                    <option value="chord">Modifier + Key Shortcut Chord</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-3 gap-2">
+                <div>
+                  <label class="block text-[10px] font-mono uppercase text-[var(--app-muted-foreground)] mb-0.5">Keycap Label</label>
+                  <input id="cm-label" type="text" maxlength="14" placeholder="Optional (e.g. =>)" class="w-full text-xs font-mono px-2 py-1 studio-input" />
+                </div>
+                <div>
+                  <label class="block text-[10px] font-mono uppercase text-[var(--app-muted-foreground)] mb-0.5">Badge / Subtitle</label>
+                  <input id="cm-badge" type="text" maxlength="12" placeholder="e.g. Macro" class="w-full text-xs font-mono px-2 py-1 studio-input" />
+                </div>
+                <div>
+                  <label class="block text-[10px] font-mono uppercase text-[var(--app-muted-foreground)] mb-0.5">Default RGB</label>
+                  <input id="cm-color" type="color" value="#14b8a6" class="h-7 w-full rounded cursor-pointer bg-transparent border border-[var(--app-border)]" />
+                </div>
+              </div>
+
+              <!-- Kind = Text / Key Sequence -->
+              <div id="cm-pane-text" class="space-y-1">
+                <label class="block text-[10px] font-mono uppercase text-[var(--app-muted-foreground)]">Sequence to Type (Supports <code>{Enter}</code>, <code>{Tab}</code>, <code>{Left}</code>, <code>{Bksp}</code>, <code>{Esc}</code>, <code>{Wait:50}</code>)</label>
+                <input id="cm-text" type="text" maxlength="120" placeholder="e.g. () => {}{Left}  or  git status{Enter}" class="w-full text-xs font-mono px-2 py-1.5 studio-input" />
+              </div>
+
+              <!-- Kind = Modifier + Key Chord -->
+              <div id="cm-pane-chord" class="hidden space-y-1.5">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <div class="flex flex-wrap items-center gap-2 text-[11px]">
+                    <label class="inline-flex items-center gap-1 cursor-pointer"><input id="cm-mod-g" type="checkbox" checked class="accent-emerald-500" /><span>Cmd/Gui</span></label>
+                    <label class="inline-flex items-center gap-1 cursor-pointer"><input id="cm-mod-c" type="checkbox" class="accent-emerald-500" /><span>Ctrl</span></label>
+                    <label class="inline-flex items-center gap-1 cursor-pointer"><input id="cm-mod-a" type="checkbox" class="accent-emerald-500" /><span>Alt/Opt</span></label>
+                    <label class="inline-flex items-center gap-1 cursor-pointer"><input id="cm-mod-s" type="checkbox" class="accent-emerald-500" /><span>Shift</span></label>
+                  </div>
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-[10px] font-mono uppercase text-[var(--app-muted-foreground)]">+ Key:</span>
+                    <select id="cm-chord-key" class="text-xs font-mono px-2 py-1 studio-input"></select>
+                  </div>
+                </div>
+                <div class="text-[10px] text-cyan-300">
+                  Tip: On overlay layers (<code>L1–L7</code>), <code>Cmd/Gui</code> chords automatically translate to <code>Ctrl</code> when <code>L8: Base Win</code> is active!
+                </div>
+              </div>
+
+              <div class="flex flex-wrap items-center justify-end gap-1.5 pt-1">
+                <button id="btn-save-custom-macro" type="button" class="btn-studio btn-studio-subtle text-[11px] py-1 px-2.5">
+                  💾 Save Action
+                </button>
+                <button id="btn-save-assign-custom-macro" type="button" class="btn-studio btn-studio-primary text-[11px] py-1 px-2.5">
+                  ⚡ Save &amp; Assign to Selected Key
+                </button>
+              </div>
+            </div>
+
+            <div id="custom-macros-list" class="space-y-1.5"></div>
+          </div>
+
+          <!-- Built-In Engrammer & Hardware Actions Reference + Customization -->
+          <div class="p-2.5 studio-subcard space-y-2">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <div class="font-bold text-[11px] uppercase tracking-wider text-amber-300">📖 Built-In Engrammer Actions (Mac vs Win/Linux)</div>
+                <div class="text-[10px] text-[var(--app-muted-foreground)]">Inspect exact behavior on <code>L0</code> (macOS) &amp; <code>L8</code> (Win/Linux), assign to keys, or customize shortcuts</div>
+              </div>
+              <input id="builtin-actions-search" type="search" placeholder="Filter Copy, Paste, OS_TOGG..." class="text-[11px] font-mono px-2 py-1 w-44 studio-input" />
+            </div>
+
+            <!-- Inline Built-in Action Override Editor -->
+            <div id="builtin-override-editor" class="hidden p-2.5 rounded-lg border border-amber-500/35 bg-slate-950/90 space-y-2">
+              <div class="flex items-center justify-between">
+                <span id="builtin-override-title" class="font-bold text-[11px] text-amber-300">Customize Built-In Action</span>
+                <button id="btn-cancel-builtin-override" type="button" class="text-[10.5px] text-slate-400 hover:text-white">✕ Close</button>
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-[10px] font-mono uppercase text-[var(--app-muted-foreground)] mb-0.5">Override Mode</label>
+                  <select id="bo-kind" class="w-full text-xs px-2 py-1 studio-input">
+                    <option value="chord">Modifier + Key Shortcut</option>
+                    <option value="text">Text / Key Sequence</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[10px] font-mono uppercase text-[var(--app-muted-foreground)] mb-0.5">Badge / Subtitle</label>
+                  <input id="bo-badge" type="text" maxlength="12" placeholder="Optional subtitle" class="w-full text-xs font-mono px-2 py-1 studio-input" />
+                </div>
+              </div>
+              <div id="bo-pane-chord" class="flex flex-wrap items-center justify-between gap-2">
+                <div class="flex flex-wrap items-center gap-2 text-[11px]">
+                  <label class="inline-flex items-center gap-1 cursor-pointer"><input id="bo-mod-g" type="checkbox" checked class="accent-amber-500" /><span>Cmd/Gui</span></label>
+                  <label class="inline-flex items-center gap-1 cursor-pointer"><input id="bo-mod-c" type="checkbox" class="accent-amber-500" /><span>Ctrl</span></label>
+                  <label class="inline-flex items-center gap-1 cursor-pointer"><input id="bo-mod-a" type="checkbox" class="accent-amber-500" /><span>Alt/Opt</span></label>
+                  <label class="inline-flex items-center gap-1 cursor-pointer"><input id="bo-mod-s" type="checkbox" class="accent-amber-500" /><span>Shift</span></label>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <span class="text-[10px] font-mono uppercase text-[var(--app-muted-foreground)]">+ Key:</span>
+                  <select id="bo-chord-key" class="text-xs font-mono px-2 py-1 studio-input"></select>
+                </div>
+              </div>
+              <div id="bo-pane-text" class="hidden">
+                <input id="bo-text" type="text" maxlength="120" placeholder="Custom text or {Key} sequence..." class="w-full text-xs font-mono px-2 py-1 studio-input" />
+              </div>
+              <div class="flex items-center justify-between gap-2 pt-1">
+                <button id="btn-reset-builtin-override" type="button" class="btn-studio text-[10.5px] py-1 px-2 text-rose-300">↺ Restore Default</button>
+                <button id="btn-save-builtin-override" type="button" class="btn-studio btn-studio-amber text-[11px] py-1 px-2.5">💾 Save Override</button>
+              </div>
+            </div>
+
+            <div id="builtin-actions-list" class="space-y-1.5"></div>
+          </div>
+        </div>
+
         <!-- TAB 3: LIVE HARDWARE ENGRAMMER TUNING (`engrammer.config` + `qukeys.holdTimeout`) -->
         <div id="tab-pane-config" class="hidden flex-col gap-2.5 text-xs max-h-[460px] overflow-y-auto pr-1">
           <div class="p-2.5 studio-subcard space-y-2.5">
             <div class="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <div class="font-bold text-[11px] uppercase tracking-wider text-amber-300">⚡ Glove80 Hardware HRM &amp; Thumb Engine</div>
-                <div class="text-[10px] text-[var(--app-muted-foreground)]">Synced live via Focus <code>engrammer.config</code> &amp; <code>qukeys.holdTimeout</code> on <code>v2.4.0-engrammer.2</code></div>
+                <div class="text-[10px] text-[var(--app-muted-foreground)]">Synced live via Focus <code>engrammer.config</code> &amp; <code>qukeys.holdTimeout</code> on <code>v2.4.0-engrammer.3</code></div>
               </div>
               <div class="flex items-center gap-1.5">
                 <button id="btn-reset-engrammer-config" type="button" class="btn-studio btn-studio-subtle text-[10.5px] py-0.5 px-2" title="Restore Sunaku Glove80 v52 recommended defaults">
@@ -909,33 +1101,63 @@
             </div>
 
             <!-- Home-Row Modifiers Section -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-              <label class="flex items-center justify-between gap-2 p-2 rounded border border-[var(--app-border)] bg-[var(--app-card)] cursor-pointer" title="Enforces opposite-hand triggers for Home-Row Mods while permitting same-hand multi-mod chords (e.g. Cmd+Shift)">
-                <div>
-                  <div class="font-semibold text-[11px] text-white">Bilateral Home-Row Mods</div>
-                  <div class="text-[10px] text-[var(--app-muted-foreground)]">Opposite-hand + multi-mod chords</div>
-                </div>
-                <input id="eg-bilateral-hrm" type="checkbox" checked class="accent-emerald-500" />
-              </label>
+            <label class="flex items-center justify-between gap-2 p-2 rounded border border-[var(--app-border)] bg-[var(--app-card)] cursor-pointer" title="Enforces opposite-hand triggers for Home-Row Mods while permitting same-hand multi-mod chords (e.g. Cmd+Shift)">
+              <div>
+                <div class="font-semibold text-[11px] text-white">Bilateral Home-Row Mods</div>
+                <div class="text-[10px] text-[var(--app-muted-foreground)]">Opposite-hand triggers + same-hand multi-modifier chords</div>
+              </div>
+              <input id="eg-bilateral-hrm" type="checkbox" checked class="accent-emerald-500" />
+            </label>
 
-              <label class="flex items-center justify-between gap-2 p-2 rounded border border-[var(--app-border)] bg-[var(--app-card)] cursor-pointer" title="Scales hold timeout per finger: Index 90%, Middle 105%, Ring 120%, Pinky 135%">
-                <div>
-                  <div class="font-semibold text-[11px] text-white">Per-Finger Hold Scaling</div>
-                  <div class="text-[10px] text-[var(--app-muted-foreground)]">90% / 105% / 120% / 135%</div>
-                </div>
-                <input id="eg-per-finger" type="checkbox" checked class="accent-emerald-500" />
-              </label>
-            </div>
-
-            <!-- Base Hold Timeout + Per-Finger Summary -->
-            <div class="p-2 rounded border border-[var(--app-border)] bg-[var(--app-card)] space-y-1">
+            <!-- Base Hold Timeout + Adjustable Per-Finger Hold Scaling (%) -->
+            <div class="p-2.5 rounded border border-[var(--app-border)] bg-[var(--app-card)] space-y-2">
               <div class="flex items-center justify-between text-[10.5px]">
                 <span class="font-mono uppercase text-[var(--app-muted-foreground)]">Base Qukeys Hold Timeout</span>
                 <span id="lbl-eg-base-hold" class="font-mono font-bold text-amber-300">200 ms</span>
               </div>
               <input id="eg-base-hold-ms" type="range" min="140" max="280" step="5" value="200" class="w-full accent-amber-500 cursor-pointer" />
-              <div id="eg-finger-ms-summary" class="text-[10px] font-mono text-cyan-300">
-                Idx 180ms • Mid 210ms • Ring 240ms • Pinky 270ms • Thumbs 200ms
+
+              <div class="pt-1 border-t border-[var(--app-border)] space-y-1.5">
+                <div class="flex flex-wrap items-center justify-between gap-1.5">
+                  <span class="text-[10.5px] font-semibold text-white">Per-Finger Hold Scaling (50%–200%)</span>
+                  <div class="flex items-center gap-1">
+                    <button id="btn-eg-preset-glove80" type="button" class="btn-studio btn-studio-subtle text-[10px] py-0.5 px-1.5" title="Sunaku Glove80 curve: Index 90%, Middle 105%, Ring 120%, Pinky 135%">Glove80</button>
+                    <button id="btn-eg-preset-flat" type="button" class="btn-studio btn-studio-subtle text-[10px] py-0.5 px-1.5" title="Uniform 100% hold timeout across all four fingers">Flat 100%</button>
+                  </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <div>
+                    <div class="flex items-center justify-between text-[10px] font-mono">
+                      <span class="text-[var(--app-muted-foreground)]">Index (<code>F/J</code>)</span>
+                      <span id="lbl-eg-scale-index" class="text-cyan-300 font-bold">90% (180ms)</span>
+                    </div>
+                    <input id="eg-scale-index" type="range" min="50" max="200" step="5" value="90" class="w-full accent-cyan-400 cursor-pointer" />
+                  </div>
+                  <div>
+                    <div class="flex items-center justify-between text-[10px] font-mono">
+                      <span class="text-[var(--app-muted-foreground)]">Middle (<code>D/K</code>)</span>
+                      <span id="lbl-eg-scale-middle" class="text-cyan-300 font-bold">105% (210ms)</span>
+                    </div>
+                    <input id="eg-scale-middle" type="range" min="50" max="200" step="5" value="105" class="w-full accent-cyan-400 cursor-pointer" />
+                  </div>
+                  <div>
+                    <div class="flex items-center justify-between text-[10px] font-mono">
+                      <span class="text-[var(--app-muted-foreground)]">Ring (<code>S/L</code>)</span>
+                      <span id="lbl-eg-scale-ring" class="text-cyan-300 font-bold">120% (240ms)</span>
+                    </div>
+                    <input id="eg-scale-ring" type="range" min="50" max="200" step="5" value="120" class="w-full accent-cyan-400 cursor-pointer" />
+                  </div>
+                  <div>
+                    <div class="flex items-center justify-between text-[10px] font-mono">
+                      <span class="text-[var(--app-muted-foreground)]">Pinky (<code>A/;</code>)</span>
+                      <span id="lbl-eg-scale-pinky" class="text-cyan-300 font-bold">135% (270ms)</span>
+                    </div>
+                    <input id="eg-scale-pinky" type="range" min="50" max="200" step="5" value="135" class="w-full accent-cyan-400 cursor-pointer" />
+                  </div>
+                </div>
+                <div id="eg-finger-ms-summary" class="text-[10px] font-mono text-emerald-300">
+                  Idx 180ms • Mid 210ms • Ring 240ms • Pinky 270ms • Thumbs 200ms
+                </div>
               </div>
             </div>
 
@@ -1113,7 +1335,7 @@
               </span>
             </h2>
             <p class="text-[11px] text-[var(--app-muted-foreground)]">
-              WebSerial Focus Protocol (`0x35ef:0x0010/0x0012`) • Wireless Engrammer Custom Firmware (`v2.4.0-engrammer.2`)
+              WebSerial Focus Protocol (`0x35ef:0x0010/0x0012`) • Wireless Engrammer Custom Firmware (`v2.4.0-engrammer.3`)
             </p>
           </div>
         </div>
@@ -1143,10 +1365,10 @@
           <div class="p-3.5 studio-subcard flex flex-wrap items-center justify-between gap-3">
             <div class="space-y-1 max-w-xl">
               <div class="font-bold text-emerald-300 text-xs">
-                🚀 Step 0 (One-Time): Install Wireless Engrammer Custom Firmware (`v2.4.0-engrammer.2`)
+                🚀 Step 0 (One-Time): Install Wireless Engrammer Custom Firmware (`v2.4.0-engrammer.3`)
               </div>
               <p class="text-[11px] text-[var(--app-muted-foreground)] leading-relaxed">
-                Brings full Glove80 ZMK parity to your Wireless Neuron (<code>nRF52833</code>): <b>Bilateral Home-Row Mods</b>, <b>150ms/80ms Streak Cooldown</b>, <b>Per-Finger Hold Scaling</b>, <b>500ms Quick-Release One-Shot Shift</b>, <b>OS-Aware L8 Shortcuts</b>, <b>Shift-Reversible Selection Primitives</b> (<code>SelWord</code>/<code>ExtWord</code>/<code>SelLine</code>/<code>ExtLine</code>), and <b>Sustained Switcher Chords</b> (<code>AppSw</code>/<code>TabSw</code>/<code>WinSw</code>). Unzip, connect Neuron + halves via USB, and select the unzipped folder in <b>Bazecor → Firmware Update → ⋮ Custom Firmware</b>.
+                Brings full Glove80 ZMK parity to your Wireless Neuron (<code>nRF52833</code>): <b>Deterministic <code>OS_TOGG</code> / <code>OS_MAC</code> / <code>OS_WIN</code></b>, <b>Release-Safe OS Shortcut Translation</b>, <b>Tap=1-Shot / Hold=Regular <code>OSM</code></b>, <b>Adjustable Per-Finger Hold Scaling</b>, <b>Bilateral Home-Row Mods</b>, <b>Streak Cooldown</b>, <b>Selection Primitives</b>, and <b>Sustained Switcher Chords</b>. Unzip, connect Neuron + halves via USB, and select the unzipped folder in <b>Bazecor → Firmware Update → ⋮ Custom Firmware</b>.
               </p>
             </div>
             <a id="link-download-custom-fw-modal" href="./Defy_Wireless_Engrammer_v2.4.0_Custom_FW.zip" download="Defy_Wireless_Engrammer_v2.4.0_Custom_FW.zip" class="btn-studio btn-studio-primary py-2 px-3.5 text-xs shrink-0">
@@ -1554,20 +1776,21 @@
     // 2. LAYER METADATA & ACTIVE THUMB HOLD ORIGINS (10 HARDWARE LAYERS L0..L9)
     // =========================================================================
     const DEFAULT_LAYERS_META = [
-      { id: 0, short: "L0: Base Mac", name: "Layer 0: Base QWERTY (macOS — CAGS Home-Row Mods)",                     heldKey: null },
-      { id: 1, short: "L1: Symbol",   name: "Layer 1: Programming Symbol Layer",                                     heldKey: "RTU0" },
-      { id: 2, short: "L2: Number",   name: "Layer 2: Number & Hex Numpad Layer",                                    heldKey: "LTU1" },
-      { id: 3, short: "L3: Cursor",   name: "Layer 3: Cursor Navigation & Selection Layer",                          heldKey: "LTU0" },
-      { id: 4, short: "L4: Mouse",    name: "Layer 4: Mouse & Natural Scroll Layer",                                 heldKey: "RTU1" },
-      { id: 5, short: "L5: Function", name: "Layer 5: Function (F1–F15) & Media Layer",                              heldKey: "LTU3" },
-      { id: 6, short: "L6: Sys/RGB",  name: "Layer 6: System, Modifiers, RGB, Wireless & Battery Layer",             heldKey: "RTU3" },
-      { id: 7, short: "L7: Lower/OS", name: "Layer 7: Lower Numpad, Layer Locks, Typing Mode & OS Switch",           heldKey: "LTU2" },
-      { id: 8, short: "L8: Base Win", name: "Layer 8: Base QWERTY (Windows/Linux — GACS Home-Row Mods)",             heldKey: null },
-      { id: 9, short: "L9: Typing",   name: "Layer 9: Plain Typing / Gaming (HRM-Free QWERTY — Thumbs & Layers On)", heldKey: null }
+      { id: 0, short: "L0: Base Mac", name: "Layer 0: Base QWERTY (macOS — CAGS Home-Row Mods)",                     heldKey: null,   inheritKeyColorsFrom: null },
+      { id: 1, short: "L1: Symbol",   name: "Layer 1: Programming Symbol Layer",                                     heldKey: "RTU0", inheritKeyColorsFrom: null },
+      { id: 2, short: "L2: Number",   name: "Layer 2: Number & Hex Numpad Layer",                                    heldKey: "LTU1", inheritKeyColorsFrom: null },
+      { id: 3, short: "L3: Cursor",   name: "Layer 3: Cursor Navigation & Selection Layer",                          heldKey: "LTU0", inheritKeyColorsFrom: null },
+      { id: 4, short: "L4: Mouse",    name: "Layer 4: Mouse & Natural Scroll Layer",                                 heldKey: "RTU1", inheritKeyColorsFrom: null },
+      { id: 5, short: "L5: Function", name: "Layer 5: Function (F1–F15) & Media Layer",                              heldKey: "LTU3", inheritKeyColorsFrom: null },
+      { id: 6, short: "L6: Sys/RGB",  name: "Layer 6: System, Modifiers, RGB, Wireless & Battery Layer",             heldKey: "RTU3", inheritKeyColorsFrom: null },
+      { id: 7, short: "L7: Lower/OS", name: "Layer 7: Lower Numpad, Layer Locks, Typing Mode & OS Switch",           heldKey: "LTU2", inheritKeyColorsFrom: null },
+      { id: 8, short: "L8: Base Win", name: "Layer 8: Base QWERTY (Windows/Linux — Sparse GACS Home-Row Mods)",      heldKey: null,   inheritKeyColorsFrom: 0 },
+      { id: 9, short: "L9: Typing",   name: "Layer 9: Plain Typing / Gaming (HRM-Free QWERTY — Thumbs & Layers On)", heldKey: null,   inheritKeyColorsFrom: 0 }
     ];
     const LAYERS_META = JSON.parse(JSON.stringify(DEFAULT_LAYERS_META));
 
     const kp    = (tap, c)       => ({ type: "kp",    tap, hold: "",   color: c || "" });
+    const mod   = (tap, sub, c)  => ({ type: "mod",   tap, hold: sub || "", color: c || "#38bdf8" });
     const mt    = (tap, mod, c)  => ({ type: "mt",    tap, hold: mod,  color: c || "" });
     const lt    = (tap, lyr, c)  => ({ type: "lt",    tap, hold: String(lyr), color: c || "#06b6d4" });
     const mo    = (lyr, c)       => ({ type: "mo",    tap: `MO(${lyr})`, hold: String(lyr), color: c || "" });
@@ -1581,6 +1804,11 @@
     const mse   = (name, sub, c) => ({ type: "mouse", tap: name, hold: sub || "MOUSE", color: c || "" });
     const trns  = ()             => ({ type: "trans", tap: "___", hold: "", color: "" });
 
+    const REGULAR_MODIFIER_NAMES = new Set([
+      "LShift", "RShift", "LCtrl", "RCtrl", "LAlt", "RAlt", "LGui", "RGui",
+      "Meh", "Hyper", "Ctrl+Shift", "Ctrl+Alt", "Alt+Shift", "Gui+Shift", "Gui+Alt", "Ctrl+Gui"
+    ]);
+
     function swapMacWinModName(modStr) {
       if (modStr === "LCtrl") return "LGui";
       if (modStr === "LGui") return "LCtrl";
@@ -1589,19 +1817,25 @@
       return modStr;
     }
 
+    // Sparse Windows/Linux Base Layer: ONLY populates Home-Row Mods (GACS) + explicit LCtrl<->LGui base keys;
+    // all other ~62 keys are Transparent (___) so they fall through to L0 while inheriting L0 key colors!
     function convertMacBindingToWin(b) {
       if (!b) return trns();
-      const copy = { ...b };
-      if (copy.type === "mt" || copy.type === "osm") {
-        const nextHold = swapMacWinModName(copy.hold);
-        if (nextHold !== copy.hold && copy.type === "mt" && !copy.color) {
-          copy.color = "#38bdf8"; // Distinct Sky-Blue LED highlight for GACS Windows home-row mods
-        }
-        copy.hold = nextHold;
-      } else if (copy.type === "kp") {
-        copy.tap = swapMacWinModName(copy.tap);
+      if (b.type === "mt") {
+        const next = { ...b, hold: swapMacWinModName(b.hold), color: "" };
+        return next;
       }
-      return copy;
+      if (b.type === "osm") {
+        const nextHold = swapMacWinModName(b.hold);
+        if (nextHold !== b.hold) return { ...b, hold: nextHold, color: "" };
+        return trns();
+      }
+      if (b.type === "kp" || b.type === "mod") {
+        const nextTap = swapMacWinModName(b.tap);
+        if (nextTap !== b.tap) return { ...b, type: "mod", tap: nextTap, color: "" };
+        return trns();
+      }
+      return trns();
     }
 
     function deriveWindowsLayerFromMacBase(baseMacLayer) {
@@ -1615,9 +1849,10 @@
       return baseMacLayer.map((b, kIdx) => {
         if (!b || b.type === "trans" || b.type === "none") return trns();
         if (kIdx === 13) return tg(9, "#14b8a6");
-        if (b.type === "mt") return kp(b.tap, "#14b8a6");
-        if (b.type === "kp" && !/^(?:L|R)(?:Ctrl|Alt|Gui|Shift)$/.test(String(b.tap || ""))) {
-          return kp(b.tap, b.color || "");
+        if (b.type === "mt") {
+          const out = kp(b.tap, "");
+          if (b.label) out.label = b.label;
+          return out;
         }
         return trns();
       });
@@ -1728,7 +1963,7 @@
           kp(";"), kp("\""), kp("'"), kp("`"), kp("\\"), trns(),
 
           mac("..", "ST_M0"), kp("&"), kp("'"), kp("\""), kp("\\"),
-          kp("RShift"), kp("LGui"), kp("LAlt"), kp("LCtrl"), trns(),
+          mod("RShift"), mod("LGui"), mod("LAlt"), mod("LCtrl"), trns(),
 
           kp("%"), kp(":"), trns(),
           trns(), trns(), to(0, "#10b981")
@@ -1742,7 +1977,7 @@
           trns(), kp("Enter"), kp("Space"), kp("Tab"), kp("Bksp"), kp("KP_0"), trns(),
           kp(">"), kp("G"), kp("KP_7", "#ef4444"), kp("KP_8", "#ef4444"), kp("KP_9", "#ef4444"), kp(":"), kp("%"),
 
-          osm("LShift"), kp("LCtrl"), kp("LAlt"), kp("LGui"), kp("LShift"), kp("X"), trns(),
+          osm("LShift"), mod("LCtrl"), mod("LAlt"), mod("LGui"), mod("LShift"), kp("X"), trns(),
           kp("<"), kp("K"), kp("KP_4", "#ef4444"), kp("KP_5", "#ef4444"), kp("KP_6", "#ef4444"), kp("KP_-"), kp("KP_+"),
 
           kp("E"), mac("SelAll", "Cmd+A"), mac("SelLine", "Line", "#14b8a6"), mac("SelWord", "Word", "#14b8a6"), mac("Find", "Cmd+F"), kp("F"),
@@ -1763,7 +1998,7 @@
           trns(), kp("Enter"), kp("Space"), kp("Tab"), kp("Bksp"), mac("Cut", "Cmd+X"), trns(),
           mac("ExtLine", "+Line", "#14b8a6"), mac("Cut", "Cmd+X"), kp("Bksp"), mac("Undo", "Cmd+Z"), mac("Redo", "Cmd+S+Z"), kp("Tab"), trns(),
 
-          osm("LShift"), kp("LCtrl"), kp("LAlt"), kp("LGui"), kp("LShift"), mac("Copy", "Cmd+C"), trns(),
+          osm("LShift"), mod("LCtrl"), mod("LAlt"), mod("LGui"), mod("LShift"), mac("Copy", "Cmd+C"), trns(),
           mac("SelNone", "Deselect", "#06b6d4"), mac("Copy", "Cmd+C"), kp("Left", "#3b82f6"), kp("Up", "#3b82f6"), kp("Down", "#3b82f6"), kp("Right", "#3b82f6"), osm("LShift"),
 
           mac("GotoLn", "Cmd+L"), mac("SelAll", "Cmd+A"), mac("SelLine", "Line", "#14b8a6"), mac("SelWord", "Word", "#14b8a6"), mac("Find", "Cmd+F"), mac("Paste", "Cmd+V"),
@@ -1791,7 +2026,7 @@
           mse("WhlUp", "Scroll"), mse("MsLeft", "Move", "#ef4444"), mse("MsUp", "Move", "#ef4444"), mse("MsDown", "Move", "#ef4444"), mse("MsRight", "Move", "#ef4444"), mse("Btn5", "Click"),
 
           trns(), mac("Cut", "Cmd+X"), mac("Copy", "Cmd+C"), mac("Paste", "Cmd+V"), mse("Btn3", "MidClk", "#f59e0b"),
-          trns(), kp("LShift"), kp("LGui"), kp("LAlt"), kp("LCtrl"),
+          trns(), mod("LShift"), mod("LGui"), mod("LAlt"), mod("LCtrl"),
 
           mse("Btn1", "LeftClk", "#f59e0b"), mse("Btn2", "RightClk", "#f59e0b"), mse("Btn4", "BackClk", "#f59e0b"),
           trns(), to(0, "#10b981"), trns()
@@ -1800,12 +2035,12 @@
         // [5] LAYER_FUNCTION
         [
           trns(), kp("Esc"), kp("Ins"), kp("S-Tab"), kp("Del"), trns(), trns(),
-          trns(), kp("RGui"), kp("Play/Pse"), kp("PrevTrk"), kp("NextTrk"), kp("Stop"), trns(),
+          trns(), mod("RGui"), kp("Play/Pse"), kp("PrevTrk"), kp("NextTrk"), kp("Stop"), trns(),
 
           trns(), kp("Enter"), kp("Space"), kp("Tab"), kp("Bksp"), trns(), kp("VolUp"),
           kp("NextTrk"), trns(), kp("F7", "#f97316"), kp("F8", "#f97316"), kp("F9", "#f97316"), kp("F10", "#f97316"), kp("F13"),
 
-          osm("LShift"), kp("LCtrl"), kp("LAlt"), kp("LGui"), kp("LShift"), trns(), kp("VolDn"),
+          osm("LShift"), mod("LCtrl"), mod("LAlt"), mod("LGui"), mod("LShift"), trns(), kp("VolDn"),
           kp("PrevTrk"), trns(), kp("F4", "#f97316"), kp("F5", "#f97316"), kp("F6", "#f97316"), kp("F11", "#f97316"), kp("F14"),
 
           trns(), mac("SelAll", "Cmd+A"), mac("SelLine", "Line", "#14b8a6"), mac("SelWord", "Word", "#14b8a6"), mac("Find", "Cmd+F"), trns(),
@@ -1826,8 +2061,8 @@
           trns(), kp("LED Next"), kp("LED Prev"), kp("LED Togg"), kp("BriUp"), trns(), trns(),
           trns(), trns(), kp("BriUp"), kp("LED Togg"), kp("LED Prev"), kp("LED Next"), trns(),
 
-          trns(), kp("LCtrl"), kp("LAlt"), kp("LGui"), kp("LShift"), kp("BriDn"), trns(),
-          trns(), kp("BriDn"), kp("RShift"), kp("RGui"), kp("RAlt"), kp("RCtrl"), trns(),
+          trns(), mod("LCtrl"), mod("LAlt"), mod("LGui"), mod("LShift"), kp("BriDn"), trns(),
+          trns(), kp("BriDn"), mod("RShift"), mod("RGui"), mod("RAlt"), mod("RCtrl"), trns(),
 
           trns(), trns(), kp("App"), kp("PrtSc"), kp("Pause"), trns(),
           trns(), kp("ScrlLk"), kp("NumLk"), kp("Caps"), mac("LockScr", "LockOS", "#f59e0b"), kp("Sleep"),
@@ -1892,8 +2127,71 @@
     let nextComboKeySlot = 0;
     let lastAutoComboLabel = "";
 
+    const BUILTIN_ACTIONS_CATALOG = [
+      { id: "OS_TOGG",  title: "Toggle macOS ↔ Win/Linux", badge: "Mac/Win",  cat: "OS & Modes", macDesc: "Switches cleanly to L8: Base Win (GACS + Ctrl shortcuts)", winDesc: "Switches cleanly back to L0: Base Mac (CAGS + Cmd shortcuts)", customizable: false, defaultColor: "#10b981" },
+      { id: "OS_MAC",   title: "Select macOS Mode (L0)",   badge: "CAGS",     cat: "OS & Modes", macDesc: "Activates L0: Base Mac (CAGS home-row + Cmd shortcuts)", winDesc: "Deactivates L8 & restores L0: Base Mac while preserving held overlays", customizable: false, defaultColor: "#10b981" },
+      { id: "OS_WIN",   title: "Select Win/Linux Mode (L8)", badge: "GACS",   cat: "OS & Modes", macDesc: "Locks L8: Base Win on top of L0 (sparse GACS + Ctrl shortcuts)", winDesc: "Keeps L8: Base Win active cleanly", customizable: false, defaultColor: "#10b981" },
+      { id: "CW_TOGG",  title: "Caps-Word Toggle",         badge: "CapsWord", cat: "OS & Modes", macDesc: "Auto-shifts A–Z & '-'→'_', exits on Space or punctuation", winDesc: "Auto-shifts A–Z & '-'→'_', exits on Space or punctuation", customizable: false, defaultColor: "#14b8a6" },
+      { id: "LockScr",  title: "Lock Workstation Screen",  badge: "LockOS",   cat: "OS & Modes", macDesc: "Ctrl + Cmd + Q (macOS Lock Screen)", winDesc: "Win + L (Windows / Linux Lock Screen)", customizable: false, defaultColor: "#f59e0b" },
+
+      { id: "Copy",     title: "Copy Selection",           badge: "Cmd+C",    cat: "Clipboard & Edit", macDesc: "Cmd + C", winDesc: "Ctrl + C (auto-translated on L8)", customizable: true, defChord: { mods: ["G"], key: "C" } },
+      { id: "Paste",    title: "Paste Clipboard",          badge: "Cmd+V",    cat: "Clipboard & Edit", macDesc: "Cmd + V", winDesc: "Ctrl + V (release-latched on L8)", customizable: true, defChord: { mods: ["G"], key: "V" } },
+      { id: "Cut",      title: "Cut Selection",            badge: "Cmd+X",    cat: "Clipboard & Edit", macDesc: "Cmd + X", winDesc: "Ctrl + X (auto-translated on L8)", customizable: true, defChord: { mods: ["G"], key: "X" } },
+      { id: "Undo",     title: "Undo",                     badge: "Cmd+Z",    cat: "Clipboard & Edit", macDesc: "Cmd + Z", winDesc: "Ctrl + Z (auto-translated on L8)", customizable: true, defChord: { mods: ["G"], key: "Z" } },
+      { id: "Redo",     title: "Redo",                     badge: "Cmd+S+Z",  cat: "Clipboard & Edit", macDesc: "Cmd + Shift + Z", winDesc: "Ctrl + Y (auto-translated on L8)", customizable: true, defChord: { mods: ["G", "S"], key: "Z" } },
+      { id: "SelAll",   title: "Select All",               badge: "Cmd+A",    cat: "Clipboard & Edit", macDesc: "Cmd + A", winDesc: "Ctrl + A (auto-translated on L8)", customizable: true, defChord: { mods: ["G"], key: "A" } },
+      { id: "Find",     title: "Find in File / Page",      badge: "Cmd+F",    cat: "Clipboard & Edit", macDesc: "Cmd + F", winDesc: "Ctrl + F (auto-translated on L8)", customizable: true, defChord: { mods: ["G"], key: "F" } },
+      { id: "FindNxt",  title: "Find Next Match",          badge: "Cmd+G",    cat: "Clipboard & Edit", macDesc: "Cmd + G", winDesc: "F3 (auto-translated on L8)", customizable: true, defChord: { mods: ["G"], key: "G" } },
+      { id: "FindPrv",  title: "Find Previous Match",      badge: "Cmd+S+G",  cat: "Clipboard & Edit", macDesc: "Cmd + Shift + G", winDesc: "Shift + F3 (auto-translated on L8)", customizable: true, defChord: { mods: ["G", "S"], key: "G" } },
+      { id: "Replace",  title: "Find & Replace",           badge: "Opt+Cmd+F",cat: "Clipboard & Edit", macDesc: "Opt + Cmd + F", winDesc: "Ctrl + H (auto-translated on L8)", customizable: true, defChord: { mods: ["G", "A"], key: "F" } },
+      { id: "GotoLn",   title: "Go to Line / Address Bar", badge: "Cmd+L",    cat: "Clipboard & Edit", macDesc: "Cmd + L", winDesc: "Ctrl + G (auto-translated on L8)", customizable: true, defChord: { mods: ["G"], key: "L" } },
+      { id: "QuickOpn", title: "Quick Open / Command",     badge: "Cmd+P",    cat: "Clipboard & Edit", macDesc: "Cmd + P", winDesc: "Ctrl + P (auto-translated on L8)", customizable: true, defChord: { mods: ["G"], key: "P" } },
+
+      { id: "SelWord",  title: "Select Current Word",      badge: "Word",     cat: "Selection & Switchers", macDesc: "Opt+Left → Opt+Shift+Right (⇧ reverses)", winDesc: "Ctrl+Left → Ctrl+Shift+Right (⇧ reverses)", customizable: false, defaultColor: "#14b8a6" },
+      { id: "ExtWord",  title: "Extend Selection by Word", badge: "+Word",    cat: "Selection & Switchers", macDesc: "Opt + Shift + Right (⇧ selects Left)", winDesc: "Ctrl + Shift + Right (⇧ selects Left)", customizable: false, defaultColor: "#14b8a6" },
+      { id: "SelLine",  title: "Select Entire Line",       badge: "Line",     cat: "Selection & Switchers", macDesc: "Cmd+Left → Cmd+Shift+Right (⇧ up)", winDesc: "Home → Shift+End (⇧ up)", customizable: false, defaultColor: "#14b8a6" },
+      { id: "ExtLine",  title: "Extend Line Selection",    badge: "+Line",    cat: "Selection & Switchers", macDesc: "Down → Cmd+Shift+Right", winDesc: "Down → Shift+End", customizable: false, defaultColor: "#14b8a6" },
+      { id: "SelNone",  title: "Collapse Selection",       badge: "Deselect", cat: "Selection & Switchers", macDesc: "Right Arrow (⇧ collapses Left)", winDesc: "Right Arrow (⇧ collapses Left)", customizable: false, defaultColor: "#06b6d4" },
+      { id: "AppSw",    title: "Sustained App Switcher",   badge: "SwitchApp",cat: "Selection & Switchers", macDesc: "Holds Cmd + taps Tab + activates L3 arrows until release", winDesc: "Holds Alt + taps Tab + activates L3 arrows until release", customizable: false, defaultColor: "#06b6d4" },
+      { id: "TabSw",    title: "Sustained Tab Switcher",   badge: "SwitchTab",cat: "Selection & Switchers", macDesc: "Holds Ctrl + taps Tab + activates L3 arrows until release", winDesc: "Holds Ctrl + taps Tab + activates L3 arrows until release", customizable: false, defaultColor: "#06b6d4" },
+      { id: "WinSw",    title: "Same-App Window Switcher", badge: "SwitchWin",cat: "Selection & Switchers", macDesc: "Holds Cmd + taps ` (backtick) until release", winDesc: "Holds Alt + taps ` / Win+Tab until release", customizable: false, defaultColor: "#06b6d4" },
+
+      { id: "..",       title: "Parent Dir (..)",          badge: "ST_M0",    cat: "Text & Wireless", macDesc: "Types '..' via hardware DynamicMacro", winDesc: "Types '..' via hardware DynamicMacro", customizable: true, defText: ".." },
+      { id: "```",      title: "Markdown Code Fence",      badge: "ST_M1",    cat: "Text & Wireless", macDesc: "Types '```' via hardware DynamicMacro", winDesc: "Types '```' via hardware DynamicMacro", customizable: true, defText: "```" },
+      { id: "BT_PAIR",  title: "Bluetooth Pair / Slot 1–5",badge: "Pair/1-5", cat: "Text & Wireless", macDesc: "Tap then press 1–5 to switch host or Q–T to pair", winDesc: "Tap then press 1–5 to switch host or Q–T to pair", customizable: false, defaultColor: "#06b6d4" },
+      { id: "BatLvl",   title: "Show Battery Level LEDs",  badge: "LED%",     cat: "Text & Wireless", macDesc: "Displays left/right battery % on number row LEDs", winDesc: "Displays left/right battery % on number row LEDs", customizable: false, defaultColor: "#10b981" },
+      { id: "RF_MODE",  title: "RF / Wireless Mode",       badge: "RF/Lens",  cat: "Text & Wireless", macDesc: "Switches/queries Neuron 2.4GHz RF status", winDesc: "Switches/queries Neuron 2.4GHz RF status", customizable: false, defaultColor: "#10b981" },
+      { id: "EngySt",   title: "Energy Saving Toggle",     badge: "Energy",   cat: "Text & Wireless", macDesc: "Toggles wireless low-battery LED power saving", winDesc: "Toggles wireless low-battery LED power saving", customizable: false, defaultColor: "#10b981" }
+    ];
+
     const PALETTE = {
       "Alphas & Digits": ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z","1","2","3","4","5","6","7","8","9","0"],
+      "Modifiers": [
+        { type:"mod", tap:"LShift",     hold:"", pickerTag:"Hold",        color:"#38bdf8" },
+        { type:"mod", tap:"RShift",     hold:"", pickerTag:"Hold",        color:"#38bdf8" },
+        { type:"mod", tap:"LCtrl",      hold:"", pickerTag:"Hold",        color:"#38bdf8" },
+        { type:"mod", tap:"RCtrl",      hold:"", pickerTag:"Hold",        color:"#38bdf8" },
+        { type:"mod", tap:"LAlt",       hold:"", pickerTag:"Hold",        color:"#38bdf8" },
+        { type:"mod", tap:"RAlt",       hold:"", pickerTag:"Hold",        color:"#38bdf8" },
+        { type:"mod", tap:"LGui",       hold:"", pickerTag:"Hold",        color:"#38bdf8" },
+        { type:"mod", tap:"RGui",       hold:"", pickerTag:"Hold",        color:"#38bdf8" },
+        { type:"osm", tap:"OSM",        hold:"LShift", pickerTag:"1S+Hold", color:"#22c55e" },
+        { type:"osm", tap:"OSM",        hold:"RShift", pickerTag:"1S+Hold", color:"#22c55e" },
+        { type:"osm", tap:"OSM",        hold:"LCtrl",  pickerTag:"1S+Hold", color:"#22c55e" },
+        { type:"osm", tap:"OSM",        hold:"RCtrl",  pickerTag:"1S+Hold", color:"#22c55e" },
+        { type:"osm", tap:"OSM",        hold:"LAlt",   pickerTag:"1S+Hold", color:"#22c55e" },
+        { type:"osm", tap:"OSM",        hold:"RAlt",   pickerTag:"1S+Hold", color:"#22c55e" },
+        { type:"osm", tap:"OSM",        hold:"LGui",   pickerTag:"1S+Hold", color:"#22c55e" },
+        { type:"osm", tap:"OSM",        hold:"RGui",   pickerTag:"1S+Hold", color:"#22c55e" },
+        { type:"mod", tap:"Meh",        hold:"C+A+S",  pickerTag:"C+A+S",   color:"#06b6d4" },
+        { type:"mod", tap:"Hyper",      hold:"C+A+G+S",pickerTag:"C+A+G+S", color:"#06b6d4" },
+        { type:"mod", tap:"Ctrl+Shift", hold:"", pickerTag:"Chord",       color:"#06b6d4" },
+        { type:"mod", tap:"Ctrl+Alt",   hold:"", pickerTag:"Chord",       color:"#06b6d4" },
+        { type:"mod", tap:"Alt+Shift",  hold:"", pickerTag:"Chord",       color:"#06b6d4" },
+        { type:"mod", tap:"Gui+Shift",  hold:"", pickerTag:"Chord",       color:"#06b6d4" },
+        { type:"mod", tap:"Gui+Alt",    hold:"", pickerTag:"Chord",       color:"#06b6d4" },
+        { type:"mod", tap:"Ctrl+Gui",   hold:"", pickerTag:"Chord",       color:"#06b6d4" }
+      ],
       "Symbols": ["=","-","'","\\","[","]","`",";",",",".","/","!","@","#","$","%","^","&","*","(",")","_","+","{","}","|",":","\"","<",">","?","~"],
       "Navigation": ["Esc","Tab","S-Tab","Enter","Space","Bksp","Del","Ins","Menu","PrtSc","ScrlLk","Pause","Left","Up","Down","Right","Home","End","PgUp","PgDn","Caps"],
       "F-Keys & Media": ["F1","F2","F3","F4","F5","F6","F7","F8","F9","F10","F11","F12","F13","F14","F15","Play/Pse","PrevTrk","NextTrk","Stop","Shuffle","Eject","Mute","VolDn","VolUp","BriUp","BriDn","Sleep","ShutDn","LED Next","LED Prev","LED Togg"],
@@ -1945,18 +2243,22 @@
     // 4B. BAZECOR WIRELESS, BATTERY TELEMETRY, ENGRAMMER ENGINE & DEVICE SETTINGS
     // =========================================================================
     const DEFAULT_ENGRAMMER_CONFIG = {
-      baseHoldMs: 200,          // Focus qukeys.holdTimeout (scaled 90%/105%/120%/135% per finger)
+      baseHoldMs: 200,          // Focus qukeys.holdTimeout
       bilateralHrm: true,       // Focus engrammer.config[0]
       hrmStreakMs: 150,         // Focus engrammer.config[1]
       shiftStreakMs: 80,        // Focus engrammer.config[2]
-      perFingerTiming: true,    // Focus engrammer.config[3]
-      balancedThumbs: true,     // Focus engrammer.config[4]
-      retroShift: false,        // Focus engrammer.config[5] bit 0
-      retroThumb: false,        // Focus engrammer.config[5] bit 1
-      quickTapMs: 200,          // Focus engrammer.config[6] & qukeys.quickTapTimeout
-      oneshotTimeoutMs: 500,    // Focus engrammer.config[7]
-      oneshotQuickRel: true,    // Focus engrammer.config[8]
-      osShortcuts: true         // Focus engrammer.config[9]
+      scaleIndex: 90,           // Focus engrammer.config[3] (50..200%)
+      scaleMiddle: 105,         // Focus engrammer.config[4] (50..200%)
+      scaleRing: 120,           // Focus engrammer.config[5] (50..200%)
+      scalePinky: 135,          // Focus engrammer.config[6] (50..200%)
+      perFingerTiming: true,    // Legacy compat flag (true unless all 4 == 100%)
+      balancedThumbs: true,     // Focus engrammer.config[7]
+      retroShift: false,        // Focus engrammer.config[8] bit 0
+      retroThumb: false,        // Focus engrammer.config[8] bit 1
+      quickTapMs: 200,          // Focus engrammer.config[9] & qukeys.quickTapTimeout
+      oneshotTimeoutMs: 500,    // Focus engrammer.config[10]
+      oneshotQuickRel: true,    // Focus engrammer.config[11]
+      osShortcuts: true         // Focus engrammer.config[12]
     };
 
     const DEFAULT_DEVICE_SETTINGS = {
@@ -1987,7 +2289,7 @@
     // 5. STATE MANAGEMENT (LAYERS, UNDERGLOW, PALETTE, CLIPBOARD, SWAP/COPY)
     // =========================================================================
     const STORAGE_KEY = "dygma_defy_engrammer_v5";
-    const SCHEMA_VERSION = 5;
+    const SCHEMA_VERSION = 6;
 
     // Bazecor's 16-Swatch Default Hardware RGBW Palette (stored on Neuron EEPROM)
     const DEFAULT_RGB_PALETTE = [
@@ -2004,6 +2306,11 @@
     let deviceSuperkeys = [];  // Preserved/decoded Bazecor superkeys ({ actions: [a0..a4], name, id })
     let deviceMacros = [];     // Parsed Focus DynamicMacros byte-step arrays
     let rawMacrosMap = "";     // Preserved Bazecor macros.map string for round-trip push
+    let customMacros = [];     // User-created Custom Macros & Shortcut Actions ({ id, kind, label, badge, color, text, chord })
+    let actionOverrides = {};  // Optional user overrides for built-in Engrammer actions ({ [id]: { kind, badge, text, chord } })
+    let editingCustomMacroIdx = null;
+    let editingBuiltinActionId = null;
+    let builtinActionsFilter = "";
     let selectedSwatchIdx = 4; // Default to Cyan/Teal (#2dd4bf)
     let paintMode = false;
     let isPaintingDrag = false;
@@ -2166,18 +2473,27 @@
       if (layers[9]) {
         if (isTypingLayerMeta(LAYERS_META[9]) || isLayerAllEmptyOrTrans(layers[9])) {
           layers[9] = generateTypingLayerFromBase(layers[0]);
-          LAYERS_META[9] = { ...DEFAULT_LAYERS_META[9] };
+          const prevInh9 = LAYERS_META[9] ? LAYERS_META[9].inheritKeyColorsFrom : undefined;
+          LAYERS_META[9] = {
+            ...DEFAULT_LAYERS_META[9],
+            inheritKeyColorsFrom: prevInh9 !== undefined ? prevInh9 : 0
+          };
         } else if (isCapsWordLayerMeta(LAYERS_META[9])) {
           layers[9] = generateCapsWordLayerFromBase(layers[0]);
         }
       }
     }
 
-    // Mirror L0 (Base Mac) key/underglow RGB edits to Base Win (L8) so Windows-mode keyboards display L0 color updates
+    // Mirror L0 (Base Mac) key/underglow RGB edits to Base Win (L8) ONLY when L8 does not inherit key colors dynamically
     function syncBaseWinColorsFromMac(keyIndices = null, syncUnderglow = false) {
       if (!Array.isArray(layers) || !Array.isArray(layers[0])) return;
       const winIdx = LAYERS_META.findIndex((m, i) => i > 0 && isWinBaseLayerMeta(m));
       if (winIdx <= 0 || !Array.isArray(layers[winIdx])) return;
+      const inheritsKeys =
+        LAYERS_META[winIdx] &&
+        LAYERS_META[winIdx].inheritKeyColorsFrom !== null &&
+        LAYERS_META[winIdx].inheritKeyColorsFrom !== undefined;
+      if (inheritsKeys) return;
       if (keyIndices === "all") {
         for (let k = 0; k < Math.min(layers[0].length, layers[winIdx].length); k++) {
           if (layers[0][k] && layers[winIdx][k]) {
@@ -2221,10 +2537,29 @@
       const base = JSON.parse(JSON.stringify(DEFAULT_DEVICE_SETTINGS));
       if (!incoming || typeof incoming !== "object") return base;
       const merged = { ...base, ...incoming };
-      merged.engrammerConfig = {
+      const rawEg = incoming.engrammerConfig && typeof incoming.engrammerConfig === "object" ? incoming.engrammerConfig : {};
+      const eg = {
         ...DEFAULT_ENGRAMMER_CONFIG,
-        ...(incoming.engrammerConfig && typeof incoming.engrammerConfig === "object" ? incoming.engrammerConfig : {})
+        ...rawEg
       };
+      if (rawEg.perFingerTiming === false && rawEg.scaleIndex === undefined) {
+        eg.scaleIndex = 100;
+        eg.scaleMiddle = 100;
+        eg.scaleRing = 100;
+        eg.scalePinky = 100;
+      }
+      const clampPct = (v, def) => Math.max(50, Math.min(200, Math.round(Number(v) || def)));
+      eg.scaleIndex = clampPct(eg.scaleIndex, 90);
+      eg.scaleMiddle = clampPct(eg.scaleMiddle, 105);
+      eg.scaleRing = clampPct(eg.scaleRing, 120);
+      eg.scalePinky = clampPct(eg.scalePinky, 135);
+      eg.perFingerTiming = !(
+        eg.scaleIndex === 100 &&
+        eg.scaleMiddle === 100 &&
+        eg.scaleRing === 100 &&
+        eg.scalePinky === 100
+      );
+      merged.engrammerConfig = eg;
       return merged;
     }
 
@@ -2336,6 +2671,9 @@
           }
           if (t === "CW_TOGG" && String(b.color || "").toLowerCase() === "#a855f7") {
             b.color = "#14b8a6";
+          }
+          if (b.type === "kp" && REGULAR_MODIFIER_NAMES.has(t)) {
+            b.type = "mod";
           }
           if (l < 8 && /^BT_[1-5]$/.test(t)) {
             layers[l][idx] = l === 6 ? trns() : mac("BT_PAIR", "Pair/1-5", "#06b6d4");
@@ -2487,19 +2825,35 @@
         layers[9][29] && layers[9][29].type === "kp" && layers[9][29].tap === "A";
 
       if (layers.length >= 12 || l8WasLower || l8LooksLegacyGaming || !layers[8] || isWinBaseLayerMeta(LAYERS_META[8])) {
+        const prevL8Snapshot = !l8WasLower && !l8LooksLegacyGaming && Array.isArray(layers[8])
+          ? layers[8].map((b) => (b ? { ...b } : trns()))
+          : oldWinLayerSnapshot;
         layers[8] = deriveWindowsLayerFromMacBase(layers[0]);
-        if (oldWinLayerSnapshot) {
+        if (prevL8Snapshot) {
           for (let k = 0; k < 70; k++) {
-            if (oldWinLayerSnapshot[k] && oldWinLayerSnapshot[k].color && !layers[0][k].color) {
-              layers[8][k].color = oldWinLayerSnapshot[k].color;
+            const oldB = prevL8Snapshot[k];
+            const macB = layers[0] ? layers[0][k] : null;
+            if (oldB && oldB.label && !layers[8][k].label) {
+              layers[8][k].label = oldB.label;
+            }
+            if (oldB && oldB.color && (!macB || oldB.color !== macB.color)) {
+              // Keep explicit per-key color override ONLY if it genuinely differs from L0's key color
+              const macDefaultColor = macB ? getKeyAccentColor(KEY_POSITIONS[k], macB) : "";
+              if (oldB.color.toLowerCase() !== String(macDefaultColor || "").toLowerCase()) {
+                layers[8][k].color = oldB.color;
+              }
             }
           }
         }
-        LAYERS_META[8] = { ...DEFAULT_LAYERS_META[8] };
+        const prevInherit8 = LAYERS_META[8] ? LAYERS_META[8].inheritKeyColorsFrom : undefined;
+        LAYERS_META[8] = {
+          ...DEFAULT_LAYERS_META[8],
+          inheritKeyColorsFrom: prevInherit8 !== undefined ? prevInherit8 : 0
+        };
         if (oldWinUnderglow) {
           underglowLayers[8] = oldWinUnderglow;
         } else if (!underglowLayers[8] || l8WasLower) {
-          underglowLayers[8] = underglowLayers[0] ? { ...underglowLayers[0] } : createDefaultUnderglowMap("#38bdf8");
+          underglowLayers[8] = createDefaultUnderglowMap("#38bdf8");
         }
       }
       if (
@@ -2512,11 +2866,23 @@
         isLayerAllEmptyOrTrans(layers[9])
       ) {
         layers[9] = generateTypingLayerFromBase(layers[0]);
-        LAYERS_META[9] = { ...DEFAULT_LAYERS_META[9] };
+        const prevInherit9 = LAYERS_META[9] ? LAYERS_META[9].inheritKeyColorsFrom : undefined;
+        LAYERS_META[9] = {
+          ...DEFAULT_LAYERS_META[9],
+          inheritKeyColorsFrom: prevInherit9 !== undefined ? prevInherit9 : 0
+        };
         if (!underglowLayers[9] || l9WasWin || l9WasCapsWord) {
           underglowLayers[9] = createDefaultUnderglowMap("#14b8a6");
         }
       }
+
+      // Ensure inheritKeyColorsFrom exists on all layer metadata entries
+      LAYERS_META.forEach((lm, idx) => {
+        if (!lm) return;
+        if (lm.inheritKeyColorsFrom === undefined) {
+          lm.inheritKeyColorsFrom = idx === 8 || idx === 9 ? 0 : null;
+        }
+      });
 
       // 5. Glove80 v52 Overlay Upgrades (Non-destructive: only populates transparent / legacy slots)
       populateThumbRepeatCompanions(layers);
@@ -2679,6 +3045,21 @@
             if (parsed.deviceSettings && typeof parsed.deviceSettings === "object") {
               deviceSettings = mergeDeviceSettingsWithDefaults(parsed.deviceSettings);
             }
+            if (Array.isArray(parsed.customMacros)) {
+              customMacros = parsed.customMacros;
+            } else {
+              customMacros = [];
+            }
+            if (parsed.actionOverrides && typeof parsed.actionOverrides === "object") {
+              actionOverrides = parsed.actionOverrides;
+            } else {
+              actionOverrides = {};
+            }
+            LAYERS_META.forEach((lm, idx) => {
+              if (lm && lm.inheritKeyColorsFrom === undefined) {
+                lm.inheritKeyColorsFrom = idx === 8 || idx === 9 ? 0 : null;
+              }
+            });
             healAndMigrateLayoutState(parsed);
             syncLayersHeldKeysFromBase();
             localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -2688,6 +3069,8 @@
               layersMeta: LAYERS_META,
               underglowLayers,
               combos,
+              customMacros,
+              actionOverrides,
               deviceSettings
             }));
             return;
@@ -2701,6 +3084,8 @@
         createDefaultUnderglowMap(idx === 8 ? "#38bdf8" : idx === 9 ? "#14b8a6" : "#2dd4bf")
       );
       combos = JSON.parse(JSON.stringify(DEFAULT_COMBOS));
+      customMacros = [];
+      actionOverrides = {};
       deviceSettings = JSON.parse(JSON.stringify(DEFAULT_DEVICE_SETTINGS));
       syncLayersHeldKeysFromBase();
     }
@@ -2722,6 +3107,8 @@
           deviceSuperkeys,
           rawMacrosMap,
           combos,
+          customMacros,
+          actionOverrides,
           deviceSettings
         };
         const serialized = JSON.stringify(payload);
@@ -2881,17 +3268,53 @@
       return h === "#000000" || h === "#0f172a";
     }
 
-    function getKeyAccentColor(pos, binding) {
+    function resolveInheritedKeyColor(layerIndex, keyIdx, visited = new Set()) {
+      if (layerIndex === null || layerIndex === undefined || keyIdx === null || keyIdx === undefined) return "";
+      if (visited.has(layerIndex)) return "";
+      visited.add(layerIndex);
+      const meta = LAYERS_META[layerIndex];
+      if (!meta || meta.inheritKeyColorsFrom === null || meta.inheritKeyColorsFrom === undefined || meta.inheritKeyColorsFrom === "") {
+        return "";
+      }
+      const srcIdx = Number(meta.inheritKeyColorsFrom);
+      if (!Number.isFinite(srcIdx) || srcIdx < 0 || srcIdx >= layers.length || srcIdx === layerIndex) return "";
+      const srcLayer = layers[srcIdx];
+      if (!Array.isArray(srcLayer) || !srcLayer[keyIdx]) return "";
+      const srcBinding = srcLayer[keyIdx];
+      if (srcBinding.color) return srcBinding.color;
+      const deeper = resolveInheritedKeyColor(srcIdx, keyIdx, visited);
+      if (deeper) return deeper;
+      if (srcBinding.type !== "trans" && srcBinding.type !== "none") {
+        return getKeyAccentColor(KEY_POSITIONS[keyIdx], srcBinding);
+      }
+      return "";
+    }
+
+    function getKeyAccentColor(pos, binding, layerIndex = null, keyIdx = null) {
       if (binding.color) {
         if (isOffColor(binding.color)) return "#1e293b";
         return binding.color;
+      }
+      if (layerIndex !== null && keyIdx !== null) {
+        const inherited = resolveInheritedKeyColor(layerIndex, keyIdx);
+        if (inherited) {
+          if (isOffColor(inherited)) return "#1e293b";
+          return inherited;
+        }
+      }
+      if (binding.type === "mod") {
+        return /Meh|Hyper|\+/.test(binding.tap || "") ? "#06b6d4" : "#38bdf8";
       }
       if (binding.type === "mt") return "#2dd4bf";     // Teal/Cyan Home-Row Mod
       if (binding.type === "lt") return "#22c55e";     // Emerald Layer-Tap
       if (binding.type === "mo" || binding.type === "to" || binding.type === "osl") return "#eab308"; // Amber Layer Shift/Lock
       if (binding.type === "osm") return "#f59e0b";    // Warm Gold One-Shot Mod
       if (binding.type === "morph" || binding.type === "dual") return "#38bdf8"; // Sky Blue Shift-Morph / Dual
-      if (binding.type === "macro") return "#14b8a6";  // Teal Engrammer Action
+      if (binding.type === "macro") {
+        const cm = Array.isArray(customMacros) ? customMacros.find((m) => m && m.id === binding.tap) : null;
+        if (cm && cm.color) return cm.color;
+        return "#14b8a6";  // Teal Engrammer Action
+      }
       if (binding.type === "mouse") return "#60a5fa";  // Blue Mouse/Wheel
       if (binding.type === "trans" || binding.type === "none") return "#334155";
       if (/^(L06|L16|L26|R00|R10|R20|L00|L10|L20|L30|R06|R16|R26|R36)$/.test(pos.id)) {
@@ -2915,7 +3338,7 @@
         return { text: `1Shot L${binding.hold}`, bg: "rgba(234, 179, 8, 0.30)", fg: "#fde047", border: "rgba(250, 204, 21, 0.55)" };
       }
       if (binding.type === "osm") {
-        return { text: binding.hold, bg: "rgba(245, 158, 11, 0.32)", fg: "#fcd34d", border: "rgba(251, 191, 36, 0.5)" };
+        return { text: `1S ${binding.hold}`, bg: "rgba(245, 158, 11, 0.32)", fg: "#fcd34d", border: "rgba(251, 191, 36, 0.5)" };
       }
       if (binding.type === "morph") {
         return { text: `⇧ ${binding.hold || "<"}`, bg: "rgba(14, 165, 233, 0.35)", fg: "#7dd3fc", border: "rgba(56, 189, 248, 0.55)" };
@@ -2923,10 +3346,26 @@
       if (binding.type === "dual") {
         return { text: `⇧/Hold ${binding.hold || "<"}`, bg: "rgba(14, 165, 233, 0.35)", fg: "#7dd3fc", border: "rgba(56, 189, 248, 0.55)" };
       }
+      if (binding.type === "mod" && binding.hold) {
+        return { text: binding.hold, bg: "rgba(56, 189, 248, 0.26)", fg: "#bae6fd", border: "rgba(56, 189, 248, 0.48)" };
+      }
       if ((binding.type === "macro" || binding.type === "mouse") && binding.hold) {
         return { text: binding.hold, bg: "rgba(20, 184, 166, 0.28)", fg: "#99f6e4", border: "rgba(45, 212, 191, 0.45)" };
       }
+      if (binding.type === "kp" && binding.hold) {
+        return { text: binding.hold, bg: "rgba(148, 163, 184, 0.24)", fg: "#e2e8f0", border: "rgba(148, 163, 184, 0.42)" };
+      }
       return null;
+    }
+
+    function getEffectiveKeycapLabel(binding) {
+      if (!binding) return "";
+      if (binding.label && String(binding.label).trim()) return String(binding.label).trim();
+      if (binding.type === "macro" && Array.isArray(customMacros)) {
+        const cm = customMacros.find((m) => m && m.id === binding.tap);
+        if (cm && cm.label && String(cm.label).trim()) return String(cm.label).trim();
+      }
+      return binding.tap || "";
     }
 
     function fitTapFontSize(text) {
@@ -2940,7 +3379,8 @@
 
     function buildKeyLabelsSVG(cx, cy, pos, binding, isHeldOrigin, rotDeg, isUnlitOffKey = false) {
       const badge = getHoldBadgeInfo(binding, isHeldOrigin);
-      const tapFont = fitTapFontSize(binding.tap);
+      const displayTap = getEffectiveKeycapLabel(binding);
+      const tapFont = fitTapFontSize(displayTap);
       const tapY = badge ? cy - 2 : cy + 2;
       const tapFill = isUnlitOffKey && binding.type === "none" ? "#64748b" : "#f8fafc";
 
@@ -2952,7 +3392,7 @@
         inner += `<text x="${cx}" y="${cy - 15.5}" text-anchor="middle" dominant-baseline="middle" font-size="6.8" font-weight="700" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#94a3b8" pointer-events="none">${escapeXml(binding.type.toUpperCase())}</text>`;
       }
 
-      inner += `<text x="${cx}" y="${tapY}" text-anchor="middle" dominant-baseline="middle" font-size="${tapFont}" font-weight="700" fill="${tapFill}" pointer-events="none">${escapeXml(binding.tap)}</text>`;
+      inner += `<text x="${cx}" y="${tapY}" text-anchor="middle" dominant-baseline="middle" font-size="${tapFont}" font-weight="700" fill="${tapFill}" pointer-events="none">${escapeXml(displayTap)}</text>`;
 
       if (badge) {
         const bw = Math.max(24, Math.min(48, badge.text.length * 5.0 + 8));
@@ -3015,9 +3455,14 @@
         const isComboHi = isInteractive && highlightedComboKeys.includes(pos.id);
         const isLivePressed = isInteractive && typeof livePressedKeyIndices !== "undefined" && livePressedKeyIndices.has(idx);
 
-        const isExplicitlyOff = Boolean(binding.color && isOffColor(binding.color));
+        const inheritedColor = !binding.color ? resolveInheritedKeyColor(layerIndex, idx) : "";
+        const isExplicitlyOff = Boolean(
+          (binding.color && isOffColor(binding.color)) ||
+          (!binding.color && inheritedColor && isOffColor(inheritedColor))
+        );
         const hasExplicitLitColor = Boolean(binding.color && !isOffColor(binding.color));
-        const accent = getKeyAccentColor(pos, binding);
+        const hasInheritedLitColor = Boolean(!binding.color && inheritedColor && !isOffColor(inheritedColor));
+        const accent = getKeyAccentColor(pos, binding, layerIndex, idx);
         const effectiveShowRgb = showRgb && keyBrScale > 0.01;
         const keyShowRgb = effectiveShowRgb && !isExplicitlyOff;
         let rimStroke = keyShowRgb ? accent : "#334155";
@@ -3061,7 +3506,9 @@
 
         const transClass =
           binding.type === "trans" && !hasExplicitLitColor
-            ? highlightLayerActive
+            ? hasInheritedLitColor
+              ? " inherited-trans-key"
+              : highlightLayerActive
               ? " dimmed-trans-key"
               : " trans-key"
             : "";
@@ -3317,8 +3764,30 @@
         const baseBinding = heldIdx >= 0 && layers[0] ? layers[0][heldIdx] : null;
         const tapInfo = baseBinding && baseBinding.tap ? ` (${baseBinding.tap})` : "";
         triggerText = `• Activated by holding key [${meta.heldKey}]${tapInfo}`;
+      } else if (meta.inheritKeyColorsFrom !== null && meta.inheritKeyColorsFrom !== undefined && LAYERS_META[meta.inheritKeyColorsFrom]) {
+        triggerText = `• Key RGB inherited from ${LAYERS_META[meta.inheritKeyColorsFrom].short} (outer glow independent)`;
       }
       document.getElementById("layer-trigger-info").textContent = triggerText;
+
+      const sparseBtn = document.getElementById("btn-make-win-sparse");
+      if (sparseBtn) {
+        sparseBtn.classList.toggle("hidden", !isWinBaseLayerMeta(meta));
+      }
+
+      const inheritSel = document.getElementById("layer-inherit-key-colors");
+      if (inheritSel) {
+        inheritSel.innerHTML = `<option value="">Own Colors</option>`;
+        LAYERS_META.forEach((lm, lIdx) => {
+          if (lIdx === currentLayer) return;
+          const opt = document.createElement("option");
+          opt.value = String(lIdx);
+          opt.textContent = `Inherit ${lm.short}`;
+          if (meta.inheritKeyColorsFrom !== null && meta.inheritKeyColorsFrom !== undefined && Number(meta.inheritKeyColorsFrom) === lIdx) {
+            opt.selected = true;
+          }
+          inheritSel.appendChild(opt);
+        });
+      }
 
       const container = document.getElementById("keys-container");
       container.innerHTML = "";
@@ -3348,48 +3817,361 @@
     // 7. INSPECTOR, SHIFT-MORPH, COPY/PASTE/SWAP & LAYER MANAGEMENT
     // =========================================================================
     const MOD_OPTIONS = ["LCtrl", "LAlt", "LGui", "LShift", "RShift", "RGui", "RAlt", "RCtrl"];
+    const REGULAR_MOD_OPTIONS = [
+      { value: "LShift",     label: "LShift — Left Shift (Hold)" },
+      { value: "RShift",     label: "RShift — Right Shift (Hold)" },
+      { value: "LCtrl",      label: "LCtrl — Left Ctrl (Hold)" },
+      { value: "RCtrl",      label: "RCtrl — Right Ctrl (Hold)" },
+      { value: "LAlt",       label: "LAlt — Left Alt / Opt (Hold)" },
+      { value: "RAlt",       label: "RAlt — Right Alt / Opt (Hold)" },
+      { value: "LGui",       label: "LGui — Left Cmd / Win (Hold)" },
+      { value: "RGui",       label: "RGui — Right Cmd / Win (Hold)" },
+      { value: "Meh",        label: "Meh — Ctrl + Alt + Shift" },
+      { value: "Hyper",      label: "Hyper — Ctrl + Alt + Gui + Shift" },
+      { value: "Ctrl+Shift", label: "Ctrl + Shift" },
+      { value: "Ctrl+Alt",   label: "Ctrl + Alt" },
+      { value: "Alt+Shift",  label: "Alt + Shift" },
+      { value: "Gui+Shift",  label: "Cmd/Gui + Shift" },
+      { value: "Gui+Alt",    label: "Cmd/Gui + Alt" },
+      { value: "Ctrl+Gui",   label: "Ctrl + Cmd/Gui" }
+    ];
+    const MOUSE_ACTION_OPTIONS = [
+      { value: "MsUp",    label: "MsUp — Cursor Up",          badge: "Move" },
+      { value: "MsDown",  label: "MsDown — Cursor Down",      badge: "Move" },
+      { value: "MsLeft",  label: "MsLeft — Cursor Left",      badge: "Move" },
+      { value: "MsRight", label: "MsRight — Cursor Right",    badge: "Move" },
+      { value: "Btn1",    label: "Btn1 — Left Click",         badge: "LeftClk" },
+      { value: "Btn2",    label: "Btn2 — Right Click",        badge: "RightClk" },
+      { value: "Btn3",    label: "Btn3 — Middle Click",       badge: "MidClk" },
+      { value: "Btn4",    label: "Btn4 — Back Click",         badge: "BackClk" },
+      { value: "Btn5",    label: "Btn5 — Forward Click",      badge: "FwdClk" },
+      { value: "WhlUp",   label: "WhlUp — Scroll Up",         badge: "Scroll" },
+      { value: "WhlDn",   label: "WhlDn — Scroll Down",       badge: "Scroll" },
+      { value: "WhlLt",   label: "WhlLt — Scroll Left",       badge: "Scroll" },
+      { value: "WhlRt",   label: "WhlRt — Scroll Right",      badge: "Scroll" },
+      { value: "Accel0",  label: "Accel0 — Slow Precision",   badge: "Speed" },
+      { value: "Accel1",  label: "Accel1 — Normal Speed",     badge: "Speed" },
+      { value: "Accel2",  label: "Accel2 — Fast Turbo Speed", badge: "Speed" }
+    ];
 
-    function populateHoldSelect(type, currentHold) {
-      const sel = document.getElementById("edit-hold");
-      const customShiftInput = document.getElementById("edit-shifted-custom");
+    function formatChordReadable(chord, forWin = false) {
+      if (!chord || !chord.key) return "None";
+      const mods = Array.isArray(chord.mods) ? chord.mods : [];
+      const parts = [];
+      if (forWin) {
+        if (mods.includes("C") || mods.includes("G")) parts.push("Ctrl");
+        if (mods.includes("A")) parts.push("Alt");
+        if (mods.includes("S")) parts.push("Shift");
+      } else {
+        if (mods.includes("C")) parts.push("Ctrl");
+        if (mods.includes("A")) parts.push("Opt");
+        if (mods.includes("G")) parts.push("Cmd");
+        if (mods.includes("S")) parts.push("Shift");
+      }
+      parts.push(chord.key);
+      return parts.join(" + ");
+    }
+
+    function describeActionBehavior(actionId) {
+      const cm = Array.isArray(customMacros) ? customMacros.find((m) => m && m.id === actionId) : null;
+      if (cm) {
+        if (cm.kind === "chord" && cm.chord) {
+          const hasGui = Array.isArray(cm.chord.mods) && cm.chord.mods.includes("G") && !cm.chord.mods.includes("C");
+          return {
+            isCustom: true,
+            title: cm.label ? `${cm.id} (${cm.label})` : cm.id,
+            badge: cm.badge || "Custom",
+            macDesc: formatChordReadable(cm.chord, false),
+            winDesc: hasGui ? `${formatChordReadable(cm.chord, true)} (auto-translated on L8)` : formatChordReadable(cm.chord, false)
+          };
+        }
+        return {
+          isCustom: true,
+          title: cm.label ? `${cm.id} (${cm.label})` : cm.id,
+          badge: cm.badge || "Macro",
+          macDesc: `Types "${cm.text || ""}"`,
+          winDesc: `Types "${cm.text || ""}"`
+        };
+      }
+      const catItem = BUILTIN_ACTIONS_CATALOG.find((a) => a.id === actionId);
+      const ov = actionOverrides && actionOverrides[actionId] ? actionOverrides[actionId] : null;
+      if (ov) {
+        if (ov.kind === "chord" && ov.chord) {
+          const hasGui = Array.isArray(ov.chord.mods) && ov.chord.mods.includes("G") && !ov.chord.mods.includes("C");
+          return {
+            isCustom: false,
+            isOverridden: true,
+            title: catItem ? catItem.title : actionId,
+            badge: ov.badge || (catItem ? catItem.badge : "Custom"),
+            macDesc: `${formatChordReadable(ov.chord, false)} (Customized)`,
+            winDesc: hasGui ? `${formatChordReadable(ov.chord, true)} (Customized • L8)` : `${formatChordReadable(ov.chord, false)} (Customized)`
+          };
+        }
+        if (ov.kind === "text") {
+          return {
+            isCustom: false,
+            isOverridden: true,
+            title: catItem ? catItem.title : actionId,
+            badge: ov.badge || (catItem ? catItem.badge : "Macro"),
+            macDesc: `Types "${ov.text || ""}" (Customized)`,
+            winDesc: `Types "${ov.text || ""}" (Customized)`
+          };
+        }
+      }
+      if (catItem) {
+        return {
+          isCustom: false,
+          isOverridden: false,
+          title: catItem.title,
+          badge: catItem.badge,
+          macDesc: catItem.macDesc,
+          winDesc: catItem.winDesc
+        };
+      }
+      return null;
+    }
+
+    function populateMacroSelectOptions(sel, selectedId) {
+      sel.innerHTML = "";
+      const seen = new Set();
+      if (Array.isArray(customMacros) && customMacros.length > 0) {
+        const grp = document.createElement("optgroup");
+        grp.label = "Custom Macros & Shortcut Actions";
+        customMacros.forEach((cm) => {
+          if (!cm || !cm.id) return;
+          seen.add(cm.id);
+          const opt = document.createElement("option");
+          opt.value = cm.id;
+          opt.textContent = `${cm.id} — ${cm.kind === "chord" ? formatChordReadable(cm.chord, false) : `"${(cm.text || "").slice(0, 22)}"`}`;
+          if (cm.id === selectedId) opt.selected = true;
+          grp.appendChild(opt);
+        });
+        sel.appendChild(grp);
+      }
+      const cats = [...new Set(BUILTIN_ACTIONS_CATALOG.map((a) => a.cat))];
+      cats.forEach((cat) => {
+        const grp = document.createElement("optgroup");
+        grp.label = cat;
+        BUILTIN_ACTIONS_CATALOG.filter((a) => a.cat === cat).forEach((a) => {
+          seen.add(a.id);
+          const opt = document.createElement("option");
+          opt.value = a.id;
+          opt.textContent = `${a.id} — ${a.title}`;
+          if (a.id === selectedId) opt.selected = true;
+          grp.appendChild(opt);
+        });
+        sel.appendChild(grp);
+      });
+      ["LENS_TAP", "LENS_HOLD"].forEach((extraId) => {
+        seen.add(extraId);
+        const opt = document.createElement("option");
+        opt.value = extraId;
+        opt.textContent = extraId;
+        if (extraId === selectedId) opt.selected = true;
+        sel.appendChild(opt);
+      });
+      if (selectedId && !seen.has(selectedId)) {
+        const opt = document.createElement("option");
+        opt.value = selectedId;
+        opt.textContent = `${selectedId} (Custom)`;
+        opt.selected = true;
+        sel.appendChild(opt);
+      }
+    }
+
+    function configureInspectorControls(type, binding) {
+      const wrapPri = document.getElementById("wrap-primary-val");
+      const lblPri = document.getElementById("lbl-primary-val");
+      const tapEl = document.getElementById("edit-tap");
+      const modSel = document.getElementById("edit-mod-select");
+      const macroSel = document.getElementById("edit-macro-select");
+      const mouseSel = document.getElementById("edit-mouse-select");
+      const toModeSel = document.getElementById("edit-to-mode");
+
       const wrapSec = document.getElementById("wrap-secondary-val");
       const lblSec = document.getElementById("lbl-secondary-val");
-      sel.innerHTML = "";
+      const holdSel = document.getElementById("edit-hold");
+      const customShiftInput = document.getElementById("edit-shifted-custom");
+      const badgeInput = document.getElementById("edit-badge-input");
 
-      if (type === "morph" || type === "dual") {
-        wrapSec.classList.remove("hidden");
-        sel.classList.add("hidden");
-        customShiftInput.classList.remove("hidden");
-        lblSec.textContent = "Shifted / Hold Output (Shift+Tap on v2.4 • Hold on v2.3)";
-        customShiftInput.value = currentHold || "<";
-      } else if (type === "mt" || type === "osm") {
-        wrapSec.classList.remove("hidden");
-        sel.classList.remove("hidden");
-        customShiftInput.classList.add("hidden");
-        lblSec.textContent = type === "mt" ? "Hold Modifier" : "One-Shot Modifier";
-        MOD_OPTIONS.forEach((m) => {
-          const opt = document.createElement("option");
-          opt.value = m;
-          opt.textContent = m;
-          if (m === currentHold) opt.selected = true;
-          sel.appendChild(opt);
-        });
-      } else if (type === "lt" || type === "mo" || type === "to" || type === "osl") {
-        wrapSec.classList.remove("hidden");
-        sel.classList.remove("hidden");
-        customShiftInput.classList.add("hidden");
-        lblSec.textContent = "Target Layer";
+      [tapEl, modSel, macroSel, mouseSel, toModeSel].forEach((el) => el && el.classList.add("hidden"));
+      [holdSel, customShiftInput, badgeInput].forEach((el) => el && el.classList.add("hidden"));
+      holdSel.innerHTML = "";
+
+      const populateLayerHold = (selectedHold) => {
         LAYERS_META.forEach((lm, lIdx) => {
           const opt = document.createElement("option");
           opt.value = String(lIdx);
           opt.textContent = lm.short;
-          if (String(lIdx) === String(currentHold)) opt.selected = true;
-          sel.appendChild(opt);
+          if (String(lIdx) === String(selectedHold)) opt.selected = true;
+          holdSel.appendChild(opt);
         });
+      };
+      const populateModHold = (selectedHold) => {
+        MOD_OPTIONS.forEach((m) => {
+          const opt = document.createElement("option");
+          opt.value = m;
+          opt.textContent = m;
+          if (m === selectedHold) opt.selected = true;
+          holdSel.appendChild(opt);
+        });
+      };
+
+      if (type === "kp") {
+        wrapPri.classList.remove("hidden");
+        lblPri.textContent = "Key / Shortcut";
+        tapEl.classList.remove("hidden");
+        tapEl.value = binding.tap === "___" || binding.tap === "XXX" || binding.tap === "OSM" ? "A" : (binding.tap || "A");
+
+        wrapSec.classList.remove("hidden");
+        lblSec.textContent = "Badge / Subtitle";
+        badgeInput.classList.remove("hidden");
+        badgeInput.placeholder = "Optional badge";
+        badgeInput.value = binding.hold || "";
+      } else if (type === "mod") {
+        wrapPri.classList.remove("hidden");
+        lblPri.textContent = "Held Modifier / Chord";
+        modSel.classList.remove("hidden");
+        modSel.innerHTML = "";
+        const selMod = REGULAR_MODIFIER_NAMES.has(binding.tap) ? binding.tap : (MOD_OPTIONS.includes(binding.hold) ? binding.hold : "LShift");
+        REGULAR_MOD_OPTIONS.forEach((mo) => {
+          const opt = document.createElement("option");
+          opt.value = mo.value;
+          opt.textContent = mo.label;
+          if (mo.value === selMod) opt.selected = true;
+          modSel.appendChild(opt);
+        });
+
+        wrapSec.classList.remove("hidden");
+        lblSec.textContent = "Badge / Subtitle";
+        badgeInput.classList.remove("hidden");
+        badgeInput.placeholder = "Optional (e.g. Hold)";
+        badgeInput.value = MOD_OPTIONS.includes(binding.hold) ? "" : (binding.hold || "");
+      } else if (type === "osm") {
+        wrapPri.classList.add("hidden");
+        wrapSec.classList.remove("hidden");
+        lblSec.textContent = "Modifier (Tap=1S • Hold=Reg)";
+        holdSel.classList.remove("hidden");
+        const selMod = MOD_OPTIONS.includes(binding.hold) ? binding.hold : (MOD_OPTIONS.includes(binding.tap) ? binding.tap : "LShift");
+        populateModHold(selMod);
+      } else if (type === "mt") {
+        wrapPri.classList.remove("hidden");
+        lblPri.textContent = "Tap Key";
+        tapEl.classList.remove("hidden");
+        tapEl.value = binding.tap && !/^(OSM|___|XXX|MO\(|TO\(|TG\(|OSL\()/i.test(binding.tap) ? binding.tap : "A";
+
+        wrapSec.classList.remove("hidden");
+        lblSec.textContent = "Hold Modifier";
+        holdSel.classList.remove("hidden");
+        populateModHold(MOD_OPTIONS.includes(binding.hold) ? binding.hold : "LCtrl");
+      } else if (type === "lt") {
+        wrapPri.classList.remove("hidden");
+        lblPri.textContent = "Tap Key";
+        tapEl.classList.remove("hidden");
+        tapEl.value = binding.tap && !/^(OSM|___|XXX|MO\(|TO\(|TG\(|OSL\()/i.test(binding.tap) ? binding.tap : "Space";
+
+        wrapSec.classList.remove("hidden");
+        lblSec.textContent = "Hold Layer";
+        holdSel.classList.remove("hidden");
+        populateLayerHold(Number.isFinite(Number(binding.hold)) ? binding.hold : "1");
+      } else if (type === "mo" || type === "osl") {
+        wrapPri.classList.add("hidden");
+        wrapSec.classList.remove("hidden");
+        lblSec.textContent = type === "mo" ? "Hold Target Layer" : "One-Shot Target Layer";
+        holdSel.classList.remove("hidden");
+        populateLayerHold(Number.isFinite(Number(binding.hold)) ? binding.hold : (type === "mo" ? "7" : "1"));
+      } else if (type === "to") {
+        wrapPri.classList.remove("hidden");
+        lblPri.textContent = "Switch Mode";
+        toModeSel.classList.remove("hidden");
+        toModeSel.value = /^TG\(/i.test(binding.tap || "") ? "TG" : "TO";
+
+        wrapSec.classList.remove("hidden");
+        lblSec.textContent = "Target Layer";
+        holdSel.classList.remove("hidden");
+        populateLayerHold(Number.isFinite(Number(binding.hold)) ? binding.hold : "0");
+      } else if (type === "morph" || type === "dual") {
+        wrapPri.classList.remove("hidden");
+        lblPri.textContent = type === "morph" ? "Unshifted Tap Key" : "Tap Output";
+        tapEl.classList.remove("hidden");
+        tapEl.value = binding.tap && binding.tap !== "___" && binding.tap !== "OSM" ? binding.tap : "(";
+
+        wrapSec.classList.remove("hidden");
+        lblSec.textContent = type === "morph" ? "Shift + Tap Output" : "Hold Output";
+        customShiftInput.classList.remove("hidden");
+        customShiftInput.value = binding.hold || (tapEl.value === ")" ? ">" : "<");
+      } else if (type === "macro") {
+        wrapPri.classList.remove("hidden");
+        lblPri.textContent = "Action / Macro";
+        macroSel.classList.remove("hidden");
+        const validMacroId =
+          binding.type === "macro" && binding.tap && binding.tap !== "___"
+            ? binding.tap
+            : (customMacros[0] ? customMacros[0].id : "Copy");
+        populateMacroSelectOptions(macroSel, validMacroId);
+
+        wrapSec.classList.remove("hidden");
+        lblSec.textContent = "Badge / Subtitle";
+        badgeInput.classList.remove("hidden");
+        badgeInput.placeholder = "e.g. Cmd+V, Macro";
+        const info = describeActionBehavior(macroSel.value);
+        badgeInput.value = binding.type === "macro" ? (binding.hold || "") : (info ? info.badge : "");
+      } else if (type === "mouse") {
+        wrapPri.classList.remove("hidden");
+        lblPri.textContent = "Mouse / Wheel Action";
+        mouseSel.classList.remove("hidden");
+        mouseSel.innerHTML = "";
+        const selMse = MOUSE_ACTION_OPTIONS.some((m) => m.value === binding.tap) ? binding.tap : "Btn1";
+        MOUSE_ACTION_OPTIONS.forEach((mo) => {
+          const opt = document.createElement("option");
+          opt.value = mo.value;
+          opt.textContent = mo.label;
+          if (mo.value === selMse) opt.selected = true;
+          mouseSel.appendChild(opt);
+        });
+
+        wrapSec.classList.remove("hidden");
+        lblSec.textContent = "Badge / Subtitle";
+        badgeInput.classList.remove("hidden");
+        const mseMeta = MOUSE_ACTION_OPTIONS.find((m) => m.value === selMse);
+        badgeInput.value = binding.type === "mouse" ? (binding.hold || "") : (mseMeta ? mseMeta.badge : "Mouse");
       } else {
+        // trans | none
+        wrapPri.classList.add("hidden");
         wrapSec.classList.add("hidden");
-        sel.classList.remove("hidden");
-        customShiftInput.classList.add("hidden");
+      }
+    }
+
+    function renderInspectorActionPreview(binding) {
+      const bar = document.getElementById("insp-action-preview");
+      const txt = document.getElementById("insp-action-preview-text");
+      const btn = document.getElementById("btn-insp-open-macros");
+      if (!bar || !txt || !btn) return;
+
+      if (binding.type === "macro") {
+        const info = describeActionBehavior(binding.tap);
+        bar.classList.remove("hidden");
+        bar.classList.add("flex");
+        btn.classList.remove("hidden");
+        if (info) {
+          txt.innerHTML = `<span class="font-mono font-bold text-emerald-300">${escapeXml(binding.tap)}</span> — <span class="text-slate-300"><b>Mac (L0):</b> ${escapeXml(info.macDesc)}</span> <span class="text-slate-500">•</span> <span class="text-cyan-200"><b>Win (L8):</b> ${escapeXml(info.winDesc)}</span>`;
+        } else {
+          txt.innerHTML = `<span class="font-mono font-bold text-emerald-300">${escapeXml(binding.tap)}</span> — Hardware Macro / Action`;
+        }
+      } else if (binding.type === "osm") {
+        bar.classList.remove("hidden");
+        bar.classList.add("flex");
+        btn.classList.add("hidden");
+        txt.innerHTML = `✨ <b>OSM(${escapeXml(binding.hold || "LShift")}):</b> <b>Tap</b> = Sticky 1-Shot (500ms quick-release) • <b>Hold</b> = Regular held <code>${escapeXml(binding.hold || "LShift")}</code> for the entire physical press.`;
+      } else if (binding.type === "mod") {
+        bar.classList.remove("hidden");
+        bar.classList.add("flex");
+        btn.classList.add("hidden");
+        txt.innerHTML = `⌨️ <b>Regular Modifier (<code>${escapeXml(binding.tap)}</code>):</b> Acts purely as a held modifier while pressed and releases immediately on key-up.`;
+      } else {
+        bar.classList.add("hidden");
+        bar.classList.remove("flex");
+        btn.classList.add("hidden");
       }
     }
 
@@ -3410,15 +4192,35 @@
       document.getElementById("insp-key-title").textContent = pos.name;
       document.getElementById("insp-key-addr").textContent = `${pos.addr} • Physical Key #${selectedKeyIndex + 1}/70`;
 
+      const effectiveType =
+        binding.type === "kp" && REGULAR_MODIFIER_NAMES.has(binding.tap) ? "mod" : binding.type;
       const typeEl = document.getElementById("edit-type");
-      const tapEl = document.getElementById("edit-tap");
-      typeEl.value = binding.type;
-      tapEl.value = binding.tap;
+      typeEl.value = effectiveType;
 
-      populateHoldSelect(binding.type, binding.hold);
+      configureInspectorControls(effectiveType, binding);
+      renderInspectorActionPreview({ ...binding, type: effectiveType });
+
+      const customLabelEl = document.getElementById("edit-custom-label");
+      const clearLabelBtn = document.getElementById("btn-clear-custom-label");
+      if (customLabelEl) {
+        customLabelEl.value = binding.label || "";
+        customLabelEl.placeholder = binding.tap || "Auto";
+      }
+      if (clearLabelBtn) {
+        clearLabelBtn.classList.toggle("hidden", !binding.label);
+      }
 
       const colorEl = document.getElementById("edit-key-color");
-      colorEl.value = getKeyAccentColor(pos, binding);
+      colorEl.value = getKeyAccentColor(pos, binding, currentLayer, selectedKeyIndex);
+      const clearColorBtn = document.getElementById("btn-clear-key-color");
+      if (clearColorBtn) {
+        const inherited = resolveInheritedKeyColor(currentLayer, selectedKeyIndex);
+        if (inherited) {
+          clearColorBtn.textContent = binding.color ? "Use Inherited" : "Inherited ✓";
+        } else {
+          clearColorBtn.textContent = "Auto Color";
+        }
+      }
 
       const cwHelper = document.getElementById("insp-capsword-helper");
       const cwMsg = document.getElementById("insp-capsword-msg");
@@ -3473,39 +4275,88 @@
       renderWirelessAndDeviceTab();
     }
 
-    function applyCurrentInspectorEdit() {
+    function applyCurrentInspectorEdit(typeChanged = false) {
+      const cur = layers[currentLayer][selectedKeyIndex];
       const type = document.getElementById("edit-type").value;
+      if (typeChanged) {
+        configureInspectorControls(type, cur);
+      }
+
       const tapInput = document.getElementById("edit-tap").value.trim() || "NoKey";
+      const modSelectVal = document.getElementById("edit-mod-select").value || "LShift";
+      const macroSelectVal = document.getElementById("edit-macro-select").value || "Copy";
+      const mouseSelectVal = document.getElementById("edit-mouse-select").value || "Btn1";
+      const toModeVal = document.getElementById("edit-to-mode").value || "TO";
       const holdSelectVal = document.getElementById("edit-hold").value;
       const shiftedCustomVal = document.getElementById("edit-shifted-custom").value.trim();
+      const badgeVal = document.getElementById("edit-badge-input").value.trim();
+      const customLabelVal = document.getElementById("edit-custom-label").value.trim();
 
-      const cur = layers[currentLayer][selectedKeyIndex];
+      const prevType = cur.type;
+      const prevTap = cur.tap;
       cur.type = type;
+
       if (type === "trans") {
         cur.tap = "___";
         cur.hold = "";
       } else if (type === "none") {
         cur.tap = "XXX";
         cur.hold = "";
+      } else if (type === "kp") {
+        cur.tap = tapInput;
+        cur.hold = badgeVal;
+      } else if (type === "mod") {
+        cur.tap = modSelectVal;
+        if (typeChanged || prevTap !== modSelectVal) {
+          cur.hold = modSelectVal === "Meh" ? "C+A+S" : modSelectVal === "Hyper" ? "C+A+G+S" : "";
+        } else {
+          cur.hold = badgeVal;
+        }
+      } else if (type === "osm") {
+        cur.tap = "OSM";
+        cur.hold = holdSelectVal || "LShift";
+      } else if (type === "mt") {
+        cur.tap = tapInput;
+        cur.hold = holdSelectVal || "LCtrl";
+      } else if (type === "lt") {
+        cur.tap = tapInput;
+        cur.hold = holdSelectVal || "1";
       } else if (type === "mo") {
         cur.hold = holdSelectVal || "7";
         cur.tap = `MO(${cur.hold})`;
       } else if (type === "to") {
-        const wasTg = /^TG\(/i.test(cur.tap || "") || /^TG\(/i.test(tapInput);
         cur.hold = holdSelectVal || "0";
-        cur.tap = wasTg ? `TG(${cur.hold})` : `TO(${cur.hold})`;
+        cur.tap = toModeVal === "TG" ? `TG(${cur.hold})` : `TO(${cur.hold})`;
       } else if (type === "osl") {
         cur.hold = holdSelectVal || "1";
         cur.tap = `OSL(${cur.hold})`;
-      } else if (type === "osm") {
-        cur.tap = "OSM";
-        cur.hold = holdSelectVal || "LShift";
       } else if (type === "morph" || type === "dual") {
         cur.tap = tapInput;
         cur.hold = shiftedCustomVal || (tapInput === ")" ? ">" : "<");
+      } else if (type === "macro") {
+        cur.tap = macroSelectVal;
+        if (typeChanged || prevType !== "macro" || prevTap !== macroSelectVal) {
+          const info = describeActionBehavior(macroSelectVal);
+          cur.hold = info ? info.badge : "MACRO";
+          const cm = Array.isArray(customMacros) ? customMacros.find((m) => m && m.id === macroSelectVal) : null;
+          if (cm && cm.color && !cur.color) cur.color = cm.color;
+        } else {
+          cur.hold = badgeVal;
+        }
+      } else if (type === "mouse") {
+        cur.tap = mouseSelectVal;
+        if (typeChanged || prevType !== "mouse" || prevTap !== mouseSelectVal) {
+          const mseMeta = MOUSE_ACTION_OPTIONS.find((m) => m.value === mouseSelectVal);
+          cur.hold = mseMeta ? mseMeta.badge : "Mouse";
+        } else {
+          cur.hold = badgeVal;
+        }
+      }
+
+      if (customLabelVal) {
+        cur.label = customLabelVal;
       } else {
-        cur.tap = tapInput;
-        cur.hold = holdSelectVal || cur.hold;
+        delete cur.label;
       }
 
       onLayerKeysEdited(currentLayer, [selectedKeyIndex]);
@@ -3552,7 +4403,8 @@
         id: newIdx,
         short: shortName,
         name: `Layer ${newIdx}: ${cleanTitle.replace(/^Layer\s*\d+:\s*/i, "")}`,
-        heldKey: null
+        heldKey: null,
+        inheritKeyColorsFrom: cloneCurrent ? (LAYERS_META[currentLayer].inheritKeyColorsFrom ?? null) : null
       });
       layers.push(newKeys);
       underglowLayers.push(newUg);
@@ -3580,12 +4432,18 @@
     function deleteCurrentLayer() {
       if (layers.length <= 1) return;
       if (!confirm(`Delete ${LAYERS_META[currentLayer].name}?`)) return;
+      const deletedIdx = currentLayer;
       layers.splice(currentLayer, 1);
       LAYERS_META.splice(currentLayer, 1);
       underglowLayers.splice(currentLayer, 1);
       LAYERS_META.forEach((m, idx) => {
         m.id = idx;
         m.short = m.short.replace(/^L\d+:/, `L${idx}:`);
+        if (m.inheritKeyColorsFrom === deletedIdx) {
+          m.inheritKeyColorsFrom = null;
+        } else if (typeof m.inheritKeyColorsFrom === "number" && m.inheritKeyColorsFrom > deletedIdx) {
+          m.inheritKeyColorsFrom -= 1;
+        }
       });
       if (currentLayer >= layers.length) currentLayer = layers.length - 1;
       saveState();
@@ -3600,7 +4458,21 @@
       catsEl.innerHTML = "";
       keysEl.innerHTML = "";
 
-      const categories = ["All", ...Object.keys(PALETTE)];
+      const customMacroItems = (Array.isArray(customMacros) ? customMacros : []).map((cm) => ({
+        type: "macro",
+        tap: cm.id,
+        hold: cm.badge || "Custom",
+        ...(cm.label ? { label: cm.label } : {}),
+        color: cm.color || "#14b8a6",
+        pickerTag: cm.kind === "chord" ? formatChordReadable(cm.chord, false) : "Macro"
+      }));
+
+      const dynamicPalette = {
+        ...PALETTE,
+        ...(customMacroItems.length > 0 ? { "Custom Macros": customMacroItems } : {})
+      };
+
+      const categories = ["All", ...Object.keys(dynamicPalette)];
       if (!categories.includes(activePaletteCat)) {
         activePaletteCat = "All";
       }
@@ -3629,8 +4501,8 @@
 
       const rawItems =
         q || activePaletteCat === "All"
-          ? Object.values(PALETTE).flat()
-          : PALETTE[activePaletteCat] || [];
+          ? Object.values(dynamicPalette).flat()
+          : dynamicPalette[activePaletteCat] || [];
 
       const seen = new Set();
       const filteredItems = rawItems.filter((item) => {
@@ -3644,7 +4516,7 @@
         const hay =
           typeof item === "string"
             ? item.toLowerCase()
-            : `${item.tap} ${item.hold} ${item.type}`.toLowerCase();
+            : `${item.tap} ${item.hold} ${item.pickerTag || ""} ${item.label || ""} ${item.type}`.toLowerCase();
         return hay.includes(q);
       });
 
@@ -3660,7 +4532,17 @@
           kb.textContent = item;
           kb.onclick = () => {
             const cur = layers[currentLayer][selectedKeyIndex];
-            if (cur.type === "trans" || cur.type === "none" || cur.type === "mo" || cur.type === "to" || cur.type === "osl" || cur.type === "osm") {
+            if (
+              cur.type === "trans" ||
+              cur.type === "none" ||
+              cur.type === "mo" ||
+              cur.type === "to" ||
+              cur.type === "osl" ||
+              cur.type === "osm" ||
+              cur.type === "mod" ||
+              cur.type === "macro" ||
+              cur.type === "mouse"
+            ) {
               cur.type = "kp";
               cur.hold = "";
             }
@@ -3671,10 +4553,26 @@
             renderInspector();
           };
         } else {
-          const tag = item.type === "morph" ? `⇧${item.hold}` : item.type === "dual" ? `⇧/Hold ${item.hold}` : item.hold;
-          kb.textContent = `${item.tap} (${tag})`;
+          const displayPrimary = item.type === "osm" ? `OSM ${item.hold}` : item.tap;
+          const tag =
+            item.pickerTag !== undefined
+              ? item.pickerTag
+              : item.type === "morph"
+              ? `⇧${item.hold}`
+              : item.type === "dual"
+              ? `⇧/Hold ${item.hold}`
+              : item.hold;
+          kb.textContent = tag ? `${displayPrimary} (${tag})` : displayPrimary;
           kb.onclick = () => {
-            layers[currentLayer][selectedKeyIndex] = { ...item, color: item.color || layers[currentLayer][selectedKeyIndex].color || "" };
+            const prevColor = layers[currentLayer][selectedKeyIndex].color || "";
+            const nextBinding = {
+              type: item.type,
+              tap: item.tap,
+              hold: item.hold || "",
+              color: item.color || prevColor
+            };
+            if (item.label) nextBinding.label = item.label;
+            layers[currentLayer][selectedKeyIndex] = nextBinding;
             onLayerKeysEdited(currentLayer, [selectedKeyIndex]);
             saveState();
             renderKeyboardStage();
@@ -3683,6 +4581,20 @@
         }
         keysEl.appendChild(kb);
       });
+
+      if (activePaletteCat === "Engrammer Macros" || activePaletteCat === "Custom Macros") {
+        const newMacroBtn = document.createElement("button");
+        newMacroBtn.type = "button";
+        newMacroBtn.className = "text-xs font-semibold px-2.5 py-1 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/35 hover:bg-emerald-500/25 transition";
+        newMacroBtn.textContent = "🎬 + New / Edit Macros";
+        newMacroBtn.onclick = () => {
+          const tabBtn = document.getElementById("tab-btn-macros");
+          if (tabBtn) tabBtn.click();
+          const newBtn = document.getElementById("btn-new-custom-macro");
+          if (newBtn) newBtn.click();
+        };
+        keysEl.appendChild(newMacroBtn);
+      }
     }
 
     function normalizeComboLayer(val) {
@@ -4279,6 +5191,9 @@
       ":": "KC_COLN", "\"": "KC_DQUO", "<": "KC_LABK", ">": "KC_RABK", "?": "KC_QUES", "~": "KC_TILD",
       "LCtrl": "Key_LeftControl", "LAlt": "Key_LeftAlt", "LGui": "Key_LeftGui", "LShift": "Key_LeftShift",
       "RCtrl": "Key_RightControl", "RAlt": "Key_RightAlt", "RGui": "Key_RightGui", "RShift": "Key_RightShift",
+      "Meh": "MEH(Key_NoKey)", "Hyper": "LCTRL(LALT(LGUI(Key_LeftShift)))",
+      "Ctrl+Shift": "LCTRL(Key_LeftShift)", "Ctrl+Alt": "LCTRL(Key_LeftAlt)", "Alt+Shift": "LALT(Key_LeftShift)",
+      "Gui+Shift": "LGUI(Key_LeftShift)", "Gui+Alt": "LGUI(Key_LeftAlt)", "Ctrl+Gui": "LCTRL(Key_LeftGui)",
       "CW_TOGG": "M(M_CAPS_WORD)", "..": "M(M_ST_MACRO_0)", "```": "M(M_ST_MACRO_1)",
       "SelAll": "M(M_SELECT_ALL)", "SelLine": "M(M_SELECT_LINE)", "SelWord": "M(M_SELECT_WORD)",
       "ExtWord": "M(M_EXTEND_WORD)", "ExtLine": "M(M_EXTEND_LINE)", "SelNone": "M(M_SELECT_NONE)",
@@ -4294,7 +5209,7 @@
       "Mute": "Consumer_Mute", "VolUp": "Consumer_VolumeIncrement", "VolDn": "Consumer_VolumeDecrement",
       "BriUp": "Consumer_DisplayBrightnessIncrement", "BriDn": "Consumer_DisplayBrightnessDecrement",
       "Sleep": "System_Sleep", "ShutDn": "System_PowerDown", "Calc": "Consumer_AL_Calculator", "Camera": "Consumer_Snapshot",
-      "BatLvl": "M(M_BAT_LEVEL)", "BT_PAIR": "M(M_BT_PAIR)", "EngySt": "M(M_BAT_LEVEL)",
+      "BatLvl": "M(M_BAT_LEVEL)", "BT_PAIR": "M(M_BAT_PAIR)", "EngySt": "M(M_BAT_LEVEL)",
       "RF_MODE": "M(M_RF_MODE)", "LENS_TAP": "Key_LensTap", "LENS_HOLD": "Key_LensHold",
       "WhlUp": "ENGRAMMER_WH_UP", "WhlDn": "ENGRAMMER_WH_DOWN", "WhlLt": "ENGRAMMER_WH_LEFT", "WhlRt": "ENGRAMMER_WH_RIGHT",
       "MsUp": "ENGRAMMER_MS_UP", "MsDown": "ENGRAMMER_MS_DOWN", "MsLeft": "ENGRAMMER_MS_LEFT", "MsRight": "ENGRAMMER_MS_RIGHT",
@@ -4305,6 +5220,17 @@
       if (KALEIDOSCOPE_KEY_MAP[sym]) return KALEIDOSCOPE_KEY_MAP[sym];
       if (/^[A-Z0-9]$/.test(sym)) return `Key_${sym}`;
       return `Key_${String(sym || "NoKey").replace(/[^a-zA-Z0-9]/g, "")}`;
+    }
+
+    function chordToKaleidoscopeExpr(chord) {
+      if (!chord || !chord.key) return "Key_NoKey";
+      let expr = symbolToKaleidoscopeKey(chord.key);
+      const mods = Array.isArray(chord.mods) ? chord.mods : [];
+      if (mods.includes("S")) expr = `LSHIFT(${expr})`;
+      if (mods.includes("A")) expr = `LALT(${expr})`;
+      if (mods.includes("C")) expr = `LCTRL(${expr})`;
+      if (mods.includes("G")) expr = `LGUI(${expr})`;
+      return expr;
     }
 
     function bindingToKaleidoscopeToken(b) {
@@ -4320,14 +5246,33 @@
         const m = KALEIDOSCOPE_KEY_MAP[b.hold] || "Key_LeftShift";
         return `OSM(${m.replace("Key_", "")})`;
       }
+      if (b.type === "mod") {
+        return KALEIDOSCOPE_KEY_MAP[b.tap] || symbolToKaleidoscopeKey(b.tap);
+      }
       if (b.type === "morph" || b.type === "dual") {
         if (b.tap === "(" && b.hold === "<") return "M(M_DUAL_LPRN_LABK)";
         if (b.tap === ")" && b.hold === ">") return "M(M_DUAL_RPRN_RABK)";
         return symbolToKaleidoscopeKey(b.tap);
       }
-      if (b.type === "macro" && b.hold === "ExitCW") {
-        const baseTok = symbolToKaleidoscopeKey(b.tap);
-        return `/* ExitCW */ ${baseTok}`;
+      if (b.type === "macro") {
+        if (b.hold === "ExitCW") {
+          const baseTok = symbolToKaleidoscopeKey(b.tap);
+          return `/* ExitCW */ ${baseTok}`;
+        }
+        const cm = Array.isArray(customMacros) ? customMacros.find((m) => m && m.id === b.tap) : null;
+        if (cm) {
+          if (cm.kind === "chord" && cm.chord) return chordToKaleidoscopeExpr(cm.chord);
+          const safeMacroId = String(cm.id || "CUSTOM").replace(/[^a-zA-Z0-9_]/g, "_").toUpperCase();
+          return `/* "${String(cm.text || "").replace(/\*\//g, "")}" */ M(M_CUSTOM_${safeMacroId})`;
+        }
+        const ov = actionOverrides && actionOverrides[b.tap] ? actionOverrides[b.tap] : null;
+        if (ov) {
+          if (ov.kind === "chord" && ov.chord) return chordToKaleidoscopeExpr(ov.chord);
+          if (ov.kind === "text") {
+            const safeOvId = String(b.tap || "OVERRIDE").replace(/[^a-zA-Z0-9_]/g, "_").toUpperCase();
+            return `/* "${String(ov.text || "").replace(/\*\//g, "")}" */ M(M_OV_${safeOvId})`;
+          }
+        }
       }
       if (/^S-[A-Z]$/.test(b.tap)) return `LSHIFT(Key_${b.tap.slice(2)})`;
       if (KALEIDOSCOPE_KEY_MAP[b.tap]) return KALEIDOSCOPE_KEY_MAP[b.tap];
@@ -4414,6 +5359,10 @@
         `#define ENABLE_MOUSE_KEYS\n` +
         `${eg.bilateralHrm ? "" : "//"}#define ENFORCE_BILATERAL\n` +
         `${eg.perFingerTiming ? "" : "//"}#define PER_FINGER_HOLD_SCALING\n` +
+        `constexpr uint8_t FINGER_SCALE_INDEX_PCT  = ${eg.scaleIndex ?? 90};\n` +
+        `constexpr uint8_t FINGER_SCALE_MIDDLE_PCT = ${eg.scaleMiddle ?? 105};\n` +
+        `constexpr uint8_t FINGER_SCALE_RING_PCT   = ${eg.scaleRing ?? 120};\n` +
+        `constexpr uint8_t FINGER_SCALE_PINKY_PCT  = ${eg.scalePinky ?? 135};\n` +
         `${eg.balancedThumbs ? "" : "//"}#define BALANCED_THUMB_LT\n` +
         `${eg.oneshotQuickRel ? "" : "//"}#define ONESHOT_QUICK_RELEASE\n` +
         `${spc ? "" : "//"}#define SPACE_FORGIVENESS\n` +
@@ -4451,11 +5400,14 @@
       } else {
         box.value = JSON.stringify(
           {
+            schemaVersion: SCHEMA_VERSION,
             keyboard: "Dygma Defy 70",
             layout: "Glorious Engrammer QWERTY",
             layersMeta: LAYERS_META,
             rgbPalette,
             combos,
+            customMacros,
+            actionOverrides,
             deviceSettings,
             layers,
             underglowLayers
@@ -4502,13 +5454,94 @@
         saveComboFromEditor();
       }
     });
-    document.getElementById("edit-type").onchange = (e) => {
-      populateHoldSelect(e.target.value, "");
-      applyCurrentInspectorEdit();
+    document.getElementById("edit-type").onchange = () => applyCurrentInspectorEdit(true);
+    document.getElementById("edit-tap").oninput = () => applyCurrentInspectorEdit(false);
+    document.getElementById("edit-mod-select").onchange = () => applyCurrentInspectorEdit(false);
+    document.getElementById("edit-macro-select").onchange = () => applyCurrentInspectorEdit(false);
+    document.getElementById("edit-mouse-select").onchange = () => applyCurrentInspectorEdit(false);
+    document.getElementById("edit-to-mode").onchange = () => applyCurrentInspectorEdit(false);
+    document.getElementById("edit-hold").onchange = () => applyCurrentInspectorEdit(false);
+    document.getElementById("edit-shifted-custom").oninput = () => applyCurrentInspectorEdit(false);
+    document.getElementById("edit-badge-input").oninput = () => applyCurrentInspectorEdit(false);
+    document.getElementById("edit-custom-label").oninput = () => applyCurrentInspectorEdit(false);
+    document.getElementById("btn-clear-custom-label").onclick = () => {
+      delete layers[currentLayer][selectedKeyIndex].label;
+      saveState();
+      renderKeyboardStage();
+      renderInspector();
     };
-    document.getElementById("edit-tap").oninput = applyCurrentInspectorEdit;
-    document.getElementById("edit-hold").onchange = applyCurrentInspectorEdit;
-    document.getElementById("edit-shifted-custom").oninput = applyCurrentInspectorEdit;
+    document.getElementById("btn-insp-open-macros").onclick = () => {
+      const cur = layers[currentLayer][selectedKeyIndex];
+      const macTabBtn = document.getElementById("tab-btn-macros");
+      if (macTabBtn) {
+        macTabBtn.click();
+        macTabBtn.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+      if (cur && cur.type === "macro" && cur.tap) {
+        const cmIdx = Array.isArray(customMacros) ? customMacros.findIndex((m) => m && m.id === cur.tap) : -1;
+        if (cmIdx >= 0) {
+          openCustomMacroEditor(cmIdx);
+        } else {
+          const catItem = BUILTIN_ACTIONS_CATALOG.find((a) => a.id === cur.tap);
+          if (catItem && catItem.customizable) {
+            openBuiltinOverrideEditor(catItem.id);
+          } else {
+            const searchEl = document.getElementById("builtin-actions-search");
+            if (searchEl) {
+              searchEl.value = cur.tap;
+              builtinActionsFilter = cur.tap;
+              renderMacrosAndActionsTab();
+            }
+          }
+        }
+      }
+    };
+
+    const inheritKeyColorsSel = document.getElementById("layer-inherit-key-colors");
+    if (inheritKeyColorsSel) {
+      inheritKeyColorsSel.onchange = (e) => {
+        const val = e.target.value;
+        const srcIdx = val === "" ? null : Number(val);
+        LAYERS_META[currentLayer].inheritKeyColorsFrom = srcIdx;
+        if (srcIdx !== null && Array.isArray(layers[currentLayer]) && Array.isArray(layers[srcIdx])) {
+          // Clear redundant copied key colors that match the inherited source layer so transparent/inherited keys follow source live
+          layers[currentLayer].forEach((b, kIdx) => {
+            if (!b || !b.color) return;
+            const srcColor = getKeyAccentColor(KEY_POSITIONS[kIdx], layers[srcIdx][kIdx], srcIdx, kIdx);
+            if (b.type === "trans" || normalizeHexColor(b.color) === normalizeHexColor(srcColor)) {
+              b.color = "";
+            }
+          });
+        }
+        if (typeof markRgbDirtyForHardware === "function") markRgbDirtyForHardware();
+        saveState(
+          true,
+          srcIdx !== null
+            ? `Layer L${currentLayer} now inherits key RGB colors from L${srcIdx} (outer underglow remains independent)!`
+            : `Layer L${currentLayer} now uses its own per-key RGB colors.`
+        );
+        renderKeyboardStage();
+        renderInspector();
+      };
+    }
+
+    const btnMakeWinSparse = document.getElementById("btn-make-win-sparse");
+    if (btnMakeWinSparse) {
+      btnMakeWinSparse.onclick = () => {
+        if (!Array.isArray(layers[0])) return;
+        layers[currentLayer] = deriveWindowsLayerFromMacBase(layers[0]);
+        if (LAYERS_META[currentLayer]) {
+          LAYERS_META[currentLayer].inheritKeyColorsFrom = 0;
+        }
+        if (typeof markRgbDirtyForHardware === "function") markRgbDirtyForHardware();
+        saveState(
+          true,
+          `Reset L${currentLayer} to sparse GACS Home-Row Mods + transparent keys inheriting L0 key colors!`
+        );
+        renderKeyboardStage();
+        renderInspector();
+      };
+    }
 
     const paletteSearchEl = document.getElementById("palette-search");
     if (paletteSearchEl) {
@@ -4769,13 +5802,14 @@
           b.className = "studio-tab text-xs font-semibold px-2.5 py-1 rounded border border-transparent hover:border-[var(--app-border)] text-[var(--app-muted-foreground)]";
         });
         btn.className = "studio-tab text-xs font-semibold px-2.5 py-1 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30";
-        ["combos", "wireless", "config", "code"].forEach((t) => {
+        ["combos", "macros", "wireless", "config", "code"].forEach((t) => {
           const pane = document.getElementById(`tab-pane-${t}`);
           if (pane) {
             pane.classList.toggle("hidden", t !== target);
             pane.classList.toggle("flex", t === target);
           }
         });
+        if (target === "macros") renderMacrosAndActionsTab();
         if (target === "config") renderEngrammerTuningTab();
         if (target === "wireless") renderWirelessAndDeviceTab();
         if (target === "code") updateCodePreview();
@@ -4790,6 +5824,577 @@
         wlBtn.scrollIntoView({ behavior: "smooth", block: "nearest" });
       }
     };
+
+    // =========================================================================
+    // 8B. MACROS & ENGRAMMER CUSTOM ACTIONS INSPECTOR / CREATOR
+    // =========================================================================
+    const CHORD_KEY_OPTIONS = [
+      "A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z",
+      "1","2","3","4","5","6","7","8","9","0",
+      "Enter","Esc","Bksp","Del","Tab","Space","Ins",
+      "Left","Right","Up","Down","Home","End","PgUp","PgDn",
+      "-","=","[","]","\\",";","'","`",",",".","/",
+      "F1","F2","F3","F4","F5","F6","F7","F8","F9","F10","F11","F12"
+    ];
+
+    function populateChordKeySelects() {
+      ["cm-chord-key", "bo-chord-key"].forEach((selId) => {
+        const sel = document.getElementById(selId);
+        if (!sel) return;
+        const prev = sel.value || "C";
+        sel.innerHTML = "";
+        CHORD_KEY_OPTIONS.forEach((k) => {
+          const opt = document.createElement("option");
+          opt.value = k;
+          opt.textContent = k;
+          if (k === prev) opt.selected = true;
+          sel.appendChild(opt);
+        });
+      });
+    }
+
+    const MACRO_TOKEN_KEY_MAP = {
+      enter: "Enter", return: "Enter", ret: "Enter",
+      tab: "Tab",
+      esc: "Esc", escape: "Esc",
+      bksp: "Bksp", backspace: "Bksp", bspc: "Bksp",
+      del: "Del", delete: "Del",
+      space: "Space", spc: "Space",
+      ins: "Ins", insert: "Ins",
+      left: "Left", right: "Right", up: "Up", down: "Down",
+      home: "Home", end: "End", pgup: "PgUp", pgdn: "PgDn",
+      f1: "F1", f2: "F2", f3: "F3", f4: "F4", f5: "F5", f6: "F6",
+      f7: "F7", f8: "F8", f9: "F9", f10: "F10", f11: "F11", f12: "F12"
+    };
+
+    function compileTextToMacroSteps(text) {
+      const str = String(text || "");
+      const steps = [];
+      let i = 0;
+      while (i < str.length && steps.length < 360) {
+        if (str[i] === "{") {
+          const closeIdx = str.indexOf("}", i + 1);
+          if (closeIdx > i + 1) {
+            const rawTok = str.slice(i + 1, closeIdx).trim();
+            const waitM = /^wait\s*:\s*(\d+)$/i.exec(rawTok);
+            if (waitM) {
+              const ms = Math.max(1, Math.min(30000, parseInt(waitM[1], 10) || 50));
+              steps.push(2, (ms >> 8) & 0xff, ms & 0xff);
+              i = closeIdx + 1;
+              continue;
+            }
+            if (/^s-tab$/i.test(rawTok)) {
+              steps.push(5, 0x08, 43);
+              i = closeIdx + 1;
+              continue;
+            }
+            const chordM = /^((?:(?:C|A|S|G|Cmd|Ctrl|Alt|Opt|Shift)-)+)(.+)$/i.exec(rawTok);
+            if (chordM) {
+              const keyPart = chordM[2].trim();
+              const mappedKey = MACRO_TOKEN_KEY_MAP[keyPart.toLowerCase()] || (keyPart.length === 1 ? keyPart.toUpperCase() : keyPart);
+              const kc = FOCUS_HID_CODES[mappedKey];
+              if (kc !== undefined && kc > 0 && kc < 256) {
+                let fl = 0;
+                chordM[1].split("-").filter(Boolean).forEach((m) => {
+                  const ml = m.toLowerCase();
+                  if (ml === "c" || ml === "ctrl") fl |= 0x01;
+                  else if (ml === "a" || ml === "alt" || ml === "opt") fl |= 0x02;
+                  else if (ml === "s" || ml === "shift") fl |= 0x08;
+                  else if (ml === "g" || ml === "cmd") fl |= 0x10;
+                });
+                steps.push(5, fl, kc);
+                i = closeIdx + 1;
+                continue;
+              }
+            }
+            const namedKey = MACRO_TOKEN_KEY_MAP[rawTok.toLowerCase()];
+            if (namedKey && FOCUS_HID_CODES[namedKey] !== undefined) {
+              steps.push(8, FOCUS_HID_CODES[namedKey] & 0xff);
+              i = closeIdx + 1;
+              continue;
+            }
+          }
+        }
+        const ch = str[i];
+        if (ch === " ") {
+          steps.push(8, 44);
+        } else if (ch === "\n") {
+          steps.push(8, 40);
+        } else if (ch === "\t") {
+          steps.push(8, 43);
+        } else if (ch >= "a" && ch <= "z") {
+          const kc = FOCUS_HID_CODES[ch.toUpperCase()];
+          if (kc) steps.push(8, kc);
+        } else if (ch >= "A" && ch <= "Z") {
+          const kc = FOCUS_HID_CODES[ch];
+          if (kc) steps.push(5, 0x08, kc);
+        } else if (FOCUS_HID_CODES[ch] !== undefined) {
+          const kc = FOCUS_HID_CODES[ch];
+          if (kc < 256) steps.push(8, kc);
+          else if (kc >= 2048 && kc < 2304) steps.push(5, 0x08, kc & 0xff);
+        }
+        i++;
+      }
+      return steps;
+    }
+
+    function decompileMacroStepsToText(steps) {
+      if (!Array.isArray(steps) || steps.length === 0) return null;
+      const decodeSingleTap = (fl, kc) => {
+        if (kc === 0) return "";
+        if (fl === 0) {
+          if (kc === 44) return " ";
+          const nm = REVERSE_HID_CODES[kc];
+          if (!nm) return `{#${kc}}`;
+          if (/^[A-Z]$/.test(nm)) return nm.toLowerCase();
+          if (nm.length === 1) return nm;
+          return `{${nm}}`;
+        }
+        if (fl === 0x08) {
+          const shifted = 2048 + kc;
+          if (kc >= 4 && kc <= 29) return REVERSE_HID_CODES[kc] || "";
+          if (REVERSE_HID_CODES[shifted] && REVERSE_HID_CODES[shifted].length === 1) {
+            return REVERSE_HID_CODES[shifted];
+          }
+          const nm = REVERSE_HID_CODES[kc] || `#${kc}`;
+          return `{S-${nm}}`;
+        }
+        const mParts = [];
+        if (fl & 0x01) mParts.push("C");
+        if (fl & 0x02) mParts.push("A");
+        if (fl & 0x10) mParts.push("G");
+        if (fl & 0x08) mParts.push("S");
+        if (mParts.length === 0) return null;
+        const nm = REVERSE_HID_CODES[kc] || `#${kc}`;
+        return `{${mParts.join("-")}-${nm}}`;
+      };
+
+      let out = "";
+      let p = 0;
+      while (p < steps.length) {
+        const op = steps[p++];
+        if (op === 0) break;
+        if (op === 2 && p + 1 < steps.length) {
+          const ms = ((steps[p] & 0xff) << 8) | (steps[p + 1] & 0xff);
+          p += 2;
+          out += `{Wait:${ms}}`;
+        } else if (op === 5 && p + 1 < steps.length) {
+          const fl = steps[p++];
+          const kc = steps[p++];
+          if (fl === 68) return null; // System layer-switch macro
+          const piece = decodeSingleTap(fl, kc);
+          if (piece === null) return null;
+          out += piece;
+        } else if (op === 8 && p < steps.length) {
+          const kc = steps[p++];
+          const piece = decodeSingleTap(0, kc);
+          if (piece === null) return null;
+          out += piece;
+        } else if (op === 12) {
+          while (p + 1 < steps.length) {
+            const fl = steps[p++];
+            const kc = steps[p++];
+            if (fl === 0 && kc === 0) break;
+            const piece = decodeSingleTap(fl, kc);
+            if (piece === null) return null;
+            out += piece;
+          }
+        } else if (op === 13) {
+          while (p < steps.length) {
+            const kc = steps[p++];
+            if (kc === 0) break;
+            const piece = decodeSingleTap(0, kc);
+            if (piece === null) return null;
+            out += piece;
+          }
+        } else {
+          return null;
+        }
+      }
+      return out || null;
+    }
+
+    function chordToFocusCode(chord, forceMac = false) {
+      if (!chord || !chord.key) return 0;
+      const rawKc = FOCUS_HID_CODES[chord.key];
+      if (rawKc === undefined) return 0;
+      const baseKc = rawKc & 0xff;
+      let flags = (rawKc >> 8) & 0x1f;
+      const mods = Array.isArray(chord.mods) ? chord.mods : [];
+      const osEl = document.getElementById("cfg-os");
+      const isMac = forceMac ? true : (!osEl || osEl.value === "M");
+      mods.forEach((m) => {
+        if (m === "C") flags |= 0x01;
+        else if (m === "A") flags |= 0x02;
+        else if (m === "S") flags |= 0x08;
+        else if (m === "G") {
+          if (isMac || mods.includes("C")) flags |= 0x10;
+          else flags |= 0x01;
+        }
+      });
+      return (flags << 8) + baseKc;
+    }
+
+    function syncCustomMacroKindUI() {
+      const kind = document.getElementById("cm-kind")?.value || "text";
+      document.getElementById("cm-pane-text")?.classList.toggle("hidden", kind !== "text");
+      document.getElementById("cm-pane-chord")?.classList.toggle("hidden", kind !== "chord");
+    }
+
+    function openCustomMacroEditor(idx = null) {
+      populateChordKeySelects();
+      editingCustomMacroIdx = idx !== null && idx >= 0 && idx < customMacros.length ? idx : null;
+      const card = document.getElementById("custom-macro-editor");
+      const titleEl = document.getElementById("custom-macro-editor-title");
+      if (!card) return;
+      card.classList.remove("hidden");
+
+      if (editingCustomMacroIdx !== null) {
+        const cm = customMacros[editingCustomMacroIdx];
+        if (titleEl) titleEl.textContent = `Edit Custom Action: ${cm.id}`;
+        document.getElementById("cm-id").value = cm.id || "";
+        document.getElementById("cm-kind").value = cm.kind === "chord" ? "chord" : "text";
+        document.getElementById("cm-label").value = cm.label || "";
+        document.getElementById("cm-badge").value = cm.badge || "";
+        document.getElementById("cm-color").value = normalizeHexColor(cm.color || "#14b8a6");
+        document.getElementById("cm-text").value = cm.text || "";
+        const mods = cm.chord && Array.isArray(cm.chord.mods) ? cm.chord.mods : ["G"];
+        document.getElementById("cm-mod-g").checked = mods.includes("G");
+        document.getElementById("cm-mod-c").checked = mods.includes("C");
+        document.getElementById("cm-mod-a").checked = mods.includes("A");
+        document.getElementById("cm-mod-s").checked = mods.includes("S");
+        if (cm.chord && cm.chord.key) {
+          document.getElementById("cm-chord-key").value = cm.chord.key;
+        }
+      } else {
+        if (titleEl) titleEl.textContent = "Create Custom Macro / Action";
+        const nextNum = customMacros.length + 1;
+        document.getElementById("cm-id").value = `Custom${nextNum}`;
+        document.getElementById("cm-kind").value = "text";
+        document.getElementById("cm-label").value = "";
+        document.getElementById("cm-badge").value = "Macro";
+        document.getElementById("cm-color").value = "#14b8a6";
+        document.getElementById("cm-text").value = "";
+        document.getElementById("cm-mod-g").checked = true;
+        document.getElementById("cm-mod-c").checked = false;
+        document.getElementById("cm-mod-a").checked = false;
+        document.getElementById("cm-mod-s").checked = false;
+        document.getElementById("cm-chord-key").value = "K";
+      }
+      syncCustomMacroKindUI();
+    }
+
+    function closeCustomMacroEditor() {
+      editingCustomMacroIdx = null;
+      document.getElementById("custom-macro-editor")?.classList.add("hidden");
+    }
+
+    function assignActionToSelectedKey(actionId, badgeStr = "", colorHex = "", customLabel = "") {
+      if (!Array.isArray(layers[currentLayer])) return;
+      const nextBinding = {
+        type: "macro",
+        tap: actionId,
+        hold: badgeStr || "",
+        color: colorHex || ""
+      };
+      if (customLabel) nextBinding.label = customLabel;
+      layers[currentLayer][selectedKeyIndex] = nextBinding;
+      onLayerKeysEdited(currentLayer, [selectedKeyIndex]);
+      if (typeof markRgbDirtyForHardware === "function") markRgbDirtyForHardware();
+      saveState(true, `Assigned "${actionId}" to L${currentLayer} [${KEY_POSITIONS[selectedKeyIndex].id}]!`);
+      renderKeyboardStage();
+      renderInspector();
+      updateCodePreview();
+    }
+
+    function saveCustomMacroFromForm(assignToKey = false) {
+      const rawId = (document.getElementById("cm-id")?.value || "").trim().replace(/\s+/g, "_");
+      if (!rawId) {
+        triggerSaveToast("Please enter a unique Action ID!", "⚠️");
+        return;
+      }
+      const kind = document.getElementById("cm-kind")?.value === "chord" ? "chord" : "text";
+      const label = (document.getElementById("cm-label")?.value || "").trim();
+      const badge = (document.getElementById("cm-badge")?.value || "").trim() || (kind === "chord" ? "Shortcut" : "Macro");
+      const color = normalizeHexColor(document.getElementById("cm-color")?.value || "#14b8a6");
+
+      if (BUILTIN_ACTIONS_CATALOG.some((a) => a.id.toLowerCase() === rawId.toLowerCase())) {
+        triggerSaveToast(`"${rawId}" is a built-in action — customize it in the Built-In Actions list below!`, "⚠️");
+        return;
+      }
+      const dupIdx = customMacros.findIndex(
+        (m, idx) => m && idx !== editingCustomMacroIdx && m.id.toLowerCase() === rawId.toLowerCase()
+      );
+      if (dupIdx >= 0) {
+        triggerSaveToast(`Custom action "${rawId}" already exists!`, "⚠️");
+        return;
+      }
+
+      const entry = { id: rawId, kind, label, badge, color };
+      if (kind === "chord") {
+        const mods = [];
+        if (document.getElementById("cm-mod-g")?.checked) mods.push("G");
+        if (document.getElementById("cm-mod-c")?.checked) mods.push("C");
+        if (document.getElementById("cm-mod-a")?.checked) mods.push("A");
+        if (document.getElementById("cm-mod-s")?.checked) mods.push("S");
+        const key = document.getElementById("cm-chord-key")?.value || "C";
+        entry.chord = { mods, key };
+      } else {
+        const txt = document.getElementById("cm-text")?.value || "";
+        if (!txt) {
+          triggerSaveToast("Enter text or {Key} tokens to type!", "⚠️");
+          return;
+        }
+        entry.text = txt;
+      }
+
+      const prevId = editingCustomMacroIdx !== null && customMacros[editingCustomMacroIdx]
+        ? customMacros[editingCustomMacroIdx].id
+        : null;
+      if (editingCustomMacroIdx !== null) {
+        customMacros[editingCustomMacroIdx] = entry;
+        if (prevId && prevId !== rawId) {
+          layers.forEach((lyr) => {
+            if (!Array.isArray(lyr)) return;
+            lyr.forEach((b) => {
+              if (b && b.type === "macro" && b.tap === prevId) {
+                b.tap = rawId;
+              }
+            });
+          });
+        }
+      } else {
+        customMacros.push(entry);
+      }
+
+      closeCustomMacroEditor();
+      renderPalette();
+      renderMacrosAndActionsTab();
+      if (assignToKey) {
+        assignActionToSelectedKey(entry.id, entry.badge, entry.color, entry.label);
+      } else {
+        saveState(true, `Saved custom action "${entry.id}"!`);
+        renderKeyboardStage();
+        renderInspector();
+        updateCodePreview();
+      }
+    }
+
+    function deleteCustomMacro(idx) {
+      if (idx < 0 || idx >= customMacros.length) return;
+      const removed = customMacros[idx];
+      customMacros.splice(idx, 1);
+      if (editingCustomMacroIdx === idx) closeCustomMacroEditor();
+      renderPalette();
+      renderMacrosAndActionsTab();
+      saveState(true, `Deleted custom action "${removed.id}".`);
+      renderKeyboardStage();
+      renderInspector();
+      updateCodePreview();
+    }
+
+    function syncBuiltinOverrideKindUI() {
+      const kind = document.getElementById("bo-kind")?.value || "chord";
+      document.getElementById("bo-pane-chord")?.classList.toggle("hidden", kind !== "chord");
+      document.getElementById("bo-pane-text")?.classList.toggle("hidden", kind !== "text");
+    }
+
+    function openBuiltinOverrideEditor(actionId) {
+      populateChordKeySelects();
+      const catItem = BUILTIN_ACTIONS_CATALOG.find((a) => a.id === actionId);
+      if (!catItem || !catItem.customizable) return;
+      editingBuiltinActionId = actionId;
+      const card = document.getElementById("builtin-override-editor");
+      const titleEl = document.getElementById("builtin-override-title");
+      if (!card) return;
+      card.classList.remove("hidden");
+      if (titleEl) titleEl.textContent = `Customize "${catItem.id}" (${catItem.title})`;
+
+      const ov = actionOverrides && actionOverrides[actionId] ? actionOverrides[actionId] : null;
+      const kind = ov ? ov.kind : (catItem.defText !== undefined ? "text" : "chord");
+      document.getElementById("bo-kind").value = kind;
+      document.getElementById("bo-badge").value = (ov && ov.badge) || catItem.badge || "";
+      const chordSrc = (ov && ov.chord) || catItem.defChord || { mods: ["G"], key: "C" };
+      const mods = Array.isArray(chordSrc.mods) ? chordSrc.mods : [];
+      document.getElementById("bo-mod-g").checked = mods.includes("G");
+      document.getElementById("bo-mod-c").checked = mods.includes("C");
+      document.getElementById("bo-mod-a").checked = mods.includes("A");
+      document.getElementById("bo-mod-s").checked = mods.includes("S");
+      document.getElementById("bo-chord-key").value = chordSrc.key || "C";
+      document.getElementById("bo-text").value = (ov && ov.text !== undefined) ? ov.text : (catItem.defText || "");
+      syncBuiltinOverrideKindUI();
+      card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+
+    function closeBuiltinOverrideEditor() {
+      editingBuiltinActionId = null;
+      document.getElementById("builtin-override-editor")?.classList.add("hidden");
+    }
+
+    function saveBuiltinOverrideFromForm() {
+      if (!editingBuiltinActionId) return;
+      const kind = document.getElementById("bo-kind")?.value === "text" ? "text" : "chord";
+      const badge = (document.getElementById("bo-badge")?.value || "").trim();
+      const ov = { kind };
+      if (badge) ov.badge = badge;
+      if (kind === "chord") {
+        const mods = [];
+        if (document.getElementById("bo-mod-g")?.checked) mods.push("G");
+        if (document.getElementById("bo-mod-c")?.checked) mods.push("C");
+        if (document.getElementById("bo-mod-a")?.checked) mods.push("A");
+        if (document.getElementById("bo-mod-s")?.checked) mods.push("S");
+        ov.chord = { mods, key: document.getElementById("bo-chord-key")?.value || "C" };
+      } else {
+        const txt = document.getElementById("bo-text")?.value || "";
+        if (!txt) {
+          triggerSaveToast("Enter replacement text or {Key} sequence!", "⚠️");
+          return;
+        }
+        ov.text = txt;
+      }
+      if (!actionOverrides || typeof actionOverrides !== "object") actionOverrides = {};
+      actionOverrides[editingBuiltinActionId] = ov;
+      if (badge) {
+        layers.forEach((lyr) => {
+          if (!Array.isArray(lyr)) return;
+          lyr.forEach((b) => {
+            if (b && b.type === "macro" && b.tap === editingBuiltinActionId) b.hold = badge;
+          });
+        });
+      }
+      const savedId = editingBuiltinActionId;
+      closeBuiltinOverrideEditor();
+      renderMacrosAndActionsTab();
+      saveState(true, `Customized built-in action "${savedId}"!`);
+      renderKeyboardStage();
+      renderInspector();
+      updateCodePreview();
+    }
+
+    function resetBuiltinOverride() {
+      if (!editingBuiltinActionId) return;
+      const id = editingBuiltinActionId;
+      const catItem = BUILTIN_ACTIONS_CATALOG.find((a) => a.id === id);
+      if (actionOverrides && actionOverrides[id]) {
+        delete actionOverrides[id];
+      }
+      if (catItem) {
+        layers.forEach((lyr) => {
+          if (!Array.isArray(lyr)) return;
+          lyr.forEach((b) => {
+            if (b && b.type === "macro" && b.tap === id) b.hold = catItem.badge;
+          });
+        });
+      }
+      closeBuiltinOverrideEditor();
+      renderMacrosAndActionsTab();
+      saveState(true, `Restored "${id}" to default behavior!`);
+      renderKeyboardStage();
+      renderInspector();
+      updateCodePreview();
+    }
+
+    function renderMacrosAndActionsTab() {
+      const customListEl = document.getElementById("custom-macros-list");
+      if (customListEl) {
+        customListEl.innerHTML = "";
+        if (!Array.isArray(customMacros) || customMacros.length === 0) {
+          customListEl.innerHTML = `<div class="p-2.5 rounded border border-dashed border-[var(--app-border)] text-[11px] text-[var(--app-muted-foreground)] text-center">No custom macros or shortcut actions yet — click <b class="text-emerald-300">+ New Macro / Action</b> to create text snippets (<code>() =&gt; {}</code>) or OS-aware chords!</div>`;
+        } else {
+          customMacros.forEach((cm, idx) => {
+            if (!cm) return;
+            const info = describeActionBehavior(cm.id);
+            const row = document.createElement("div");
+            row.className = "p-2 rounded border border-[var(--app-border)] bg-[var(--app-card)] flex flex-wrap items-center justify-between gap-2";
+            const dotColor = normalizeHexColor(cm.color || "#14b8a6");
+            row.innerHTML = `
+              <div class="min-w-0 flex-1 space-y-0.5">
+                <div class="flex flex-wrap items-center gap-1.5">
+                  <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${dotColor}"></span>
+                  <span class="font-mono font-bold text-xs text-emerald-300">${escapeXml(cm.id)}</span>
+                  ${cm.label ? `<span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-white border border-slate-700">Keycap: ${escapeXml(cm.label)}</span>` : ""}
+                  <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">${escapeXml(cm.badge || (cm.kind === "chord" ? "Shortcut" : "Macro"))}</span>
+                </div>
+                <div class="text-[10.5px] text-slate-300 truncate">
+                  <span class="text-slate-400">Mac:</span> ${escapeXml(info ? info.macDesc : "")}
+                  <span class="text-slate-600 mx-1">•</span>
+                  <span class="text-cyan-200">Win:</span> ${escapeXml(info ? info.winDesc : "")}
+                </div>
+              </div>
+              <div class="flex items-center gap-1 shrink-0">
+                <button type="button" data-act="assign" class="btn-studio btn-studio-cyan text-[10.5px] py-0.5 px-2" title="Assign to currently selected key">⚡ Assign</button>
+                <button type="button" data-act="edit" class="btn-studio btn-studio-subtle text-[10.5px] py-0.5 px-2">✎</button>
+                <button type="button" data-act="del" class="btn-studio btn-studio-subtle text-[10.5px] py-0.5 px-2 text-rose-300">🗑</button>
+              </div>
+            `;
+            row.querySelector('[data-act="assign"]').onclick = () =>
+              assignActionToSelectedKey(cm.id, cm.badge || "Macro", cm.color || "#14b8a6", cm.label || "");
+            row.querySelector('[data-act="edit"]').onclick = () => openCustomMacroEditor(idx);
+            row.querySelector('[data-act="del"]').onclick = () => deleteCustomMacro(idx);
+            customListEl.appendChild(row);
+          });
+        }
+      }
+
+      const builtinListEl = document.getElementById("builtin-actions-list");
+      if (builtinListEl) {
+        builtinListEl.innerHTML = "";
+        const q = String(builtinActionsFilter || "").trim().toLowerCase();
+        const filtered = BUILTIN_ACTIONS_CATALOG.filter((a) => {
+          if (!q) return true;
+          return (
+            a.id.toLowerCase().includes(q) ||
+            a.title.toLowerCase().includes(q) ||
+            a.cat.toLowerCase().includes(q) ||
+            a.macDesc.toLowerCase().includes(q) ||
+            a.winDesc.toLowerCase().includes(q)
+          );
+        });
+        filtered.forEach((a) => {
+          const info = describeActionBehavior(a.id) || a;
+          const isOv = Boolean(actionOverrides && actionOverrides[a.id]);
+          const row = document.createElement("div");
+          row.className = "p-2 rounded border border-[var(--app-border)] bg-[var(--app-card)] flex flex-wrap items-center justify-between gap-2";
+          row.innerHTML = `
+            <div class="min-w-0 flex-1 space-y-0.5">
+              <div class="flex flex-wrap items-center gap-1.5">
+                <span class="font-mono font-bold text-xs text-amber-300">${escapeXml(a.id)}</span>
+                <span class="text-[11px] font-semibold text-slate-200">${escapeXml(a.title)}</span>
+                <span class="text-[10px] font-mono px-1.5 rounded bg-slate-800 text-slate-300 border border-slate-700">${escapeXml(info.badge)}</span>
+                ${isOv ? `<span class="text-[9.5px] font-mono px-1.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">Customized</span>` : ""}
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-x-3 gap-y-0.5 text-[10.5px]">
+                <div class="text-slate-300 truncate"><b class="text-emerald-300">Mac (L0):</b> ${escapeXml(info.macDesc)}</div>
+                <div class="text-cyan-100 truncate"><b class="text-cyan-300">Win (L8):</b> ${escapeXml(info.winDesc)}</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-1 shrink-0">
+              <button type="button" data-act="assign" class="btn-studio btn-studio-subtle text-[10.5px] py-0.5 px-2 text-cyan-300" title="Assign ${escapeXml(a.id)} to selected key">⚡ Assign</button>
+              ${a.customizable ? `<button type="button" data-act="custom" class="btn-studio btn-studio-subtle text-[10.5px] py-0.5 px-2 text-amber-300" title="Override shortcut or macro sequence">⚙ Customize</button>` : ""}
+            </div>
+          `;
+          row.querySelector('[data-act="assign"]').onclick = () =>
+            assignActionToSelectedKey(a.id, info.badge, a.defaultColor || "");
+          const custBtn = row.querySelector('[data-act="custom"]');
+          if (custBtn) custBtn.onclick = () => openBuiltinOverrideEditor(a.id);
+          builtinListEl.appendChild(row);
+        });
+      }
+    }
+
+    document.getElementById("btn-new-custom-macro")?.addEventListener("click", () => openCustomMacroEditor(null));
+    document.getElementById("btn-cancel-custom-macro")?.addEventListener("click", closeCustomMacroEditor);
+    document.getElementById("cm-kind")?.addEventListener("change", syncCustomMacroKindUI);
+    document.getElementById("btn-save-custom-macro")?.addEventListener("click", () => saveCustomMacroFromForm(false));
+    document.getElementById("btn-save-assign-custom-macro")?.addEventListener("click", () => saveCustomMacroFromForm(true));
+    document.getElementById("builtin-actions-search")?.addEventListener("input", (e) => {
+      builtinActionsFilter = e.target.value || "";
+      renderMacrosAndActionsTab();
+    });
+    document.getElementById("bo-kind")?.addEventListener("change", syncBuiltinOverrideKindUI);
+    document.getElementById("btn-cancel-builtin-override")?.addEventListener("click", closeBuiltinOverrideEditor);
+    document.getElementById("btn-save-builtin-override")?.addEventListener("click", saveBuiltinOverrideFromForm);
+    document.getElementById("btn-reset-builtin-override")?.addEventListener("click", resetBuiltinOverride);
 
     // Live Hardware Engrammer Tuning Tab (`engrammer.config` + `qukeys.holdTimeout`)
     function renderEngrammerTuningTab() {
@@ -4806,6 +6411,17 @@
       deviceSettings.engrammerConfig = eg;
 
       const baseMs = Math.max(100, Math.min(500, Number(eg.baseHoldMs) || 200));
+      const clampPct = (v, fb) => Math.max(50, Math.min(200, Math.round(Number(v) || fb)));
+      const scIdx = clampPct(eg.scaleIndex, 90);
+      const scMid = clampPct(eg.scaleMiddle, 105);
+      const scRng = clampPct(eg.scaleRing, 120);
+      const scPnk = clampPct(eg.scalePinky, 135);
+      eg.scaleIndex = scIdx;
+      eg.scaleMiddle = scMid;
+      eg.scaleRing = scRng;
+      eg.scalePinky = scPnk;
+      eg.perFingerTiming = !(scIdx === 100 && scMid === 100 && scRng === 100 && scPnk === 100);
+
       const hrmStreak = Math.max(0, Math.min(1000, Number(eg.hrmStreakMs ?? 150)));
       const sftStreak = Math.max(0, Math.min(1000, Number(eg.shiftStreakMs ?? 80)));
       const quickTap = Math.max(0, Math.min(1000, Number(eg.quickTapMs ?? 200)));
@@ -4816,7 +6432,6 @@
         if (el) el.checked = Boolean(v);
       };
       setChk("eg-bilateral-hrm", eg.bilateralHrm);
-      setChk("eg-per-finger", eg.perFingerTiming);
       setChk("eg-balanced-thumbs", eg.balancedThumbs);
       setChk("eg-osm-quick-rel", eg.oneshotQuickRel);
       setChk("eg-os-shortcuts", eg.osShortcuts);
@@ -4828,9 +6443,23 @@
       const summaryEl = document.getElementById("eg-finger-ms-summary");
       if (baseEl) baseEl.value = String(baseMs);
       if (baseLbl) baseLbl.textContent = `${baseMs} ms`;
+
+      const setFingerSlider = (inId, lblId, pct) => {
+        const el = document.getElementById(inId);
+        const lb = document.getElementById(lblId);
+        const ms = Math.round((baseMs * pct) / 100);
+        if (el) el.value = String(pct);
+        if (lb) lb.textContent = `${pct}% (${ms}ms)`;
+        return ms;
+      };
+      const msIdx = setFingerSlider("eg-scale-index", "lbl-eg-scale-index", scIdx);
+      const msMid = setFingerSlider("eg-scale-middle", "lbl-eg-scale-middle", scMid);
+      const msRng = setFingerSlider("eg-scale-ring", "lbl-eg-scale-ring", scRng);
+      const msPnk = setFingerSlider("eg-scale-pinky", "lbl-eg-scale-pinky", scPnk);
+
       if (summaryEl) {
         summaryEl.textContent = eg.perFingerTiming
-          ? `Idx ${Math.round(baseMs * 0.9)}ms • Mid ${Math.round(baseMs * 1.05)}ms • Ring ${Math.round(baseMs * 1.2)}ms • Pinky ${Math.round(baseMs * 1.35)}ms • Thumbs ${baseMs}ms`
+          ? `Idx ${msIdx}ms • Mid ${msMid}ms • Ring ${msRng}ms • Pinky ${msPnk}ms • Thumbs ${baseMs}ms`
           : `Uniform ${baseMs}ms hold timeout across all home-row fingers & thumbs`;
       }
 
@@ -4866,8 +6495,17 @@
       }
       const eg = deviceSettings.engrammerConfig;
       eg.bilateralHrm = Boolean(document.getElementById("eg-bilateral-hrm")?.checked);
-      eg.perFingerTiming = Boolean(document.getElementById("eg-per-finger")?.checked);
       eg.baseHoldMs = Number(document.getElementById("eg-base-hold-ms")?.value || 200);
+      eg.scaleIndex = Number(document.getElementById("eg-scale-index")?.value || 90);
+      eg.scaleMiddle = Number(document.getElementById("eg-scale-middle")?.value || 105);
+      eg.scaleRing = Number(document.getElementById("eg-scale-ring")?.value || 120);
+      eg.scalePinky = Number(document.getElementById("eg-scale-pinky")?.value || 135);
+      eg.perFingerTiming = !(
+        eg.scaleIndex === 100 &&
+        eg.scaleMiddle === 100 &&
+        eg.scaleRing === 100 &&
+        eg.scalePinky === 100
+      );
       eg.hrmStreakMs = Number(document.getElementById("eg-hrm-streak-ms")?.value ?? 150);
       eg.shiftStreakMs = Number(document.getElementById("eg-shift-streak-ms")?.value ?? 80);
       eg.balancedThumbs = Boolean(document.getElementById("eg-balanced-thumbs")?.checked);
@@ -4885,7 +6523,7 @@
 
     function resetEngrammerConfigDefaults() {
       deviceSettings.engrammerConfig = { ...DEFAULT_ENGRAMMER_CONFIG };
-      saveState(true, "Restored Sunaku Glove80 v52 HRM & thumb defaults!");
+      saveState(true, "Restored Sunaku Glove80 v52 HRM & per-finger defaults!");
       renderEngrammerTuningTab();
       updateCodePreview();
     }
@@ -4893,12 +6531,12 @@
     async function pushEngrammerConfigToDefy() {
       onEngrammerConfigInputChanged("");
       if (!serialPort) {
-        saveState(true, "Saved Engrammer HRM & thumb tuning to profile! (Connect WebSerial to push live)");
+        saveState(true, "Saved Engrammer HRM & per-finger tuning to profile! (Connect WebSerial to push live)");
         return;
       }
       return runExclusiveHardwareOp(async () => {
         try {
-          appendSerialLog("=== Pushing Engrammer HRM & Thumb Tuning to Dygma Defy ===");
+          appendSerialLog("=== Pushing Engrammer HRM & Per-Finger Tuning to Dygma Defy ===");
           const helpRaw = await sendFocusCommand("help", 3000);
           const supportsNativeEngrammer = /\bengrammer\.config\b/.test(helpRaw || "");
           const supportsNativeQuickTap = /\bqukeys\.quickTapTimeout\b/.test(helpRaw || "");
@@ -4913,30 +6551,68 @@
             await sendFocusCommand(`qukeys.quickTapTimeout ${Math.max(0, Math.min(1000, Number(eg.quickTapMs ?? 200)))}`);
           }
           if (supportsNativeEngrammer) {
-            await sendFocusCommand(`engrammer.config ${serializeEngrammerConfig(winIdx)}`);
+            const curEg = await sendFocusCommand("engrammer.config");
+            const isV3 = curEg.trim().split(/\s+/).filter(Boolean).length >= 13;
+            await sendFocusCommand(`engrammer.config ${serializeEngrammerConfig(winIdx, isV3)}`);
           } else {
-            appendSerialLog("[Tuning Notice] Connected firmware lacks 'engrammer.config' — applied base qukeys.holdTimeout; flash v2.4.0-engrammer.2 for bilateral HRMs & streak cooldown.");
+            appendSerialLog("[Tuning Notice] Connected firmware lacks 'engrammer.config' — applied base qukeys.holdTimeout; flash v2.4.0-engrammer.3 for per-finger scaling & bilateral HRMs.");
           }
           await sendFocusCommand(`superkeys.holdstart ${holdMs}`);
           await sendFocusCommand("superkeys.overlap 80");
           lastNeuronFlashCommitMs = Date.now();
-          triggerSaveToast("⚡ Applied Engrammer HRM & Thumb Tuning to Dygma Defy!", "⚡");
+          triggerSaveToast("⚡ Applied Engrammer Per-Finger & HRM Tuning to Dygma Defy!", "⚡");
         } catch (err) {
           appendSerialLog(`[Engrammer Tuning Push Error] ${err.message}`);
         }
       });
     }
 
-    ["eg-bilateral-hrm", "eg-per-finger", "eg-balanced-thumbs", "eg-osm-quick-rel", "eg-os-shortcuts", "eg-retro-shift", "eg-retro-thumb"].forEach((id) => {
+    ["eg-bilateral-hrm", "eg-balanced-thumbs", "eg-osm-quick-rel", "eg-os-shortcuts", "eg-retro-shift", "eg-retro-thumb"].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.onchange = () => onEngrammerConfigInputChanged("Updated Engrammer HRM & thumb tuning!");
     });
-    ["eg-base-hold-ms", "eg-hrm-streak-ms", "eg-shift-streak-ms", "eg-quick-tap-ms", "eg-osm-timeout-ms"].forEach((id) => {
+    [
+      "eg-base-hold-ms",
+      "eg-scale-index",
+      "eg-scale-middle",
+      "eg-scale-ring",
+      "eg-scale-pinky",
+      "eg-hrm-streak-ms",
+      "eg-shift-streak-ms",
+      "eg-quick-tap-ms",
+      "eg-osm-timeout-ms"
+    ].forEach((id) => {
       const el = document.getElementById(id);
       if (el) {
         el.oninput = () => onEngrammerConfigInputChanged("");
-        el.onchange = () => onEngrammerConfigInputChanged("Updated Engrammer timing!");
+        el.onchange = () => onEngrammerConfigInputChanged("Updated Engrammer per-finger timing!");
       }
+    });
+    document.getElementById("btn-eg-preset-glove80")?.addEventListener("click", () => {
+      if (!deviceSettings.engrammerConfig) deviceSettings.engrammerConfig = { ...DEFAULT_ENGRAMMER_CONFIG };
+      Object.assign(deviceSettings.engrammerConfig, {
+        scaleIndex: 90,
+        scaleMiddle: 105,
+        scaleRing: 120,
+        scalePinky: 135,
+        perFingerTiming: true
+      });
+      saveState(true, "Applied Sunaku Glove80 per-finger curve (90% / 105% / 120% / 135%)!");
+      renderEngrammerTuningTab();
+      updateCodePreview();
+    });
+    document.getElementById("btn-eg-preset-flat")?.addEventListener("click", () => {
+      if (!deviceSettings.engrammerConfig) deviceSettings.engrammerConfig = { ...DEFAULT_ENGRAMMER_CONFIG };
+      Object.assign(deviceSettings.engrammerConfig, {
+        scaleIndex: 100,
+        scaleMiddle: 100,
+        scaleRing: 100,
+        scalePinky: 100,
+        perFingerTiming: false
+      });
+      saveState(true, "Applied uniform 100% hold scaling across all fingers!");
+      renderEngrammerTuningTab();
+      updateCodePreview();
     });
     const btnResetEg = document.getElementById("btn-reset-engrammer-config");
     if (btnResetEg) btnResetEg.onclick = resetEngrammerConfigDefaults;
@@ -5075,6 +6751,7 @@
     function downloadCodeZipBundle() {
       const jsonContent = JSON.stringify(
         {
+          schemaVersion: SCHEMA_VERSION,
           keyboard: "Dygma Defy 70",
           layout: "Glorious Engrammer QWERTY",
           updatedAt: new Date().toISOString(),
@@ -5084,6 +6761,8 @@
           deviceSuperkeys,
           rawMacrosMap,
           combos,
+          customMacros,
+          actionOverrides,
           deviceSettings,
           layers,
           underglowLayers
@@ -5233,6 +6912,8 @@
                   layer: normalizeComboLayer(c.layer)
                 }));
             }
+            customMacros = Array.isArray(data.customMacros) ? data.customMacros : [];
+            actionOverrides = data.actionOverrides && typeof data.actionOverrides === "object" ? data.actionOverrides : {};
             deviceSettings = mergeDeviceSettingsWithDefaults(data.deviceSettings);
             const migrated = healAndMigrateLayoutState(data);
             ensureOffSwatchExists();
@@ -5247,6 +6928,8 @@
             renderLayerTabs();
             renderKeyboardStage();
             renderInspector();
+            renderPalette();
+            renderMacrosAndActionsTab();
             renderCombosList();
             renderWirelessAndDeviceTab();
             renderEngrammerTuningTab();
@@ -5314,6 +6997,8 @@
         deviceSuperkeys,
         rawMacrosMap,
         combos,
+        customMacros,
+        actionOverrides,
         deviceSettings
       };
       if (window.showSaveFilePicker) {
@@ -5372,6 +7057,8 @@
         deviceSuperkeys: JSON.parse(JSON.stringify(deviceSuperkeys || [])),
         rawMacrosMap: String(rawMacrosMap || ""),
         combos: JSON.parse(JSON.stringify(combos)),
+        customMacros: JSON.parse(JSON.stringify(customMacros || [])),
+        actionOverrides: JSON.parse(JSON.stringify(actionOverrides || {})),
         deviceSettings: JSON.parse(JSON.stringify(deviceSettings))
       });
       saveSnapshotsArray(snaps);
@@ -5399,6 +7086,10 @@
       if (Array.isArray(found.combos)) {
         combos = JSON.parse(JSON.stringify(found.combos));
       }
+      customMacros = Array.isArray(found.customMacros) ? JSON.parse(JSON.stringify(found.customMacros)) : [];
+      actionOverrides = found.actionOverrides && typeof found.actionOverrides === "object"
+        ? JSON.parse(JSON.stringify(found.actionOverrides))
+        : {};
       deviceSettings = mergeDeviceSettingsWithDefaults(found.deviceSettings);
       healAndMigrateLayoutState(found);
       ensureOffSwatchExists();
@@ -5408,6 +7099,8 @@
       renderLayerTabs();
       renderKeyboardStage();
       renderInspector();
+      renderPalette();
+      renderMacrosAndActionsTab();
       renderCombosList();
       renderWirelessAndDeviceTab();
       renderEngrammerTuningTab();
@@ -5668,6 +7361,14 @@
       "<>":100, App:101, Menu:101,
       F13:104, F14:105, F15:106, F16:107, F17:108, F18:109, F19:110, F20:111, F21:112, F22:113, F23:114, F24:115,
       LCtrl:224, LShift:225, LAlt:226, LGui:227, RCtrl:228, RShift:229, RAlt:230, RGui:231,
+      "Ctrl+Shift": 256 + 225,
+      "Ctrl+Alt": 256 + 226,
+      "Alt+Shift": 512 + 225,
+      "Gui+Shift": 4096 + 225,
+      "Gui+Alt": 4096 + 226,
+      "Ctrl+Gui": 256 + 227,
+      Meh: 256 + 512 + 225,
+      Hyper: 256 + 512 + 4096 + 225,
       // Shifted punctuation (Base HID + 2048 Shift bitmask)
       "!": 2048 + 30, "@": 2048 + 31, "#": 2048 + 32, "$": 2048 + 33, "%": 2048 + 34,
       "^": 2048 + 35, "&": 2048 + 36, "*": 2048 + 37, "(": 2048 + 38, ")": 2048 + 39,
@@ -5742,11 +7443,22 @@
       winLayerIdx = 8,
       cwLayerIdx = 9,
       supportsNativeCapsWord = false,
-      supportsNativeEngrammer = false
+      supportsNativeEngrammer = false,
+      supportsNativeOsKeys = false
     ) {
+      if (actionOverrides && actionOverrides[tapStr]) {
+        const ov = actionOverrides[tapStr];
+        if (ov.kind === "chord" && ov.chord) {
+          const ovCode = chordToFocusCode(ov.chord, supportsNativeEngrammer);
+          if (ovCode > 0) return ovCode;
+        }
+      }
       const osEl = document.getElementById("cfg-os");
       const isMac = !osEl || osEl.value === "M";
-      const pri = isMac ? 4096 : 256; // Gui (Cmd) on macOS, Ctrl on Win/Linux
+      // When native EngrammerDygma is active, ALWAYS store canonical macOS Gui (4096) shortcuts on L1..L7
+      // so EngrammerDygma dynamically translates Copy/Paste/Cut/Undo/Redo/SelAll/Find on L8 regardless of #cfg-os!
+      const useMac = supportsNativeEngrammer ? true : isMac;
+      const pri = useMac ? 4096 : 256; // Gui (Cmd) on macOS, Ctrl on Win/Linux
       const clampedWin = Math.max(0, Math.min(maxLayers - 1, winLayerIdx));
       const clampedCw = Math.max(0, Math.min(maxLayers - 1, cwLayerIdx));
       const map = {
@@ -5754,24 +7466,24 @@
         Cut: pri + 27,
         Paste: pri + 25,
         Undo: pri + 29,
-        Redo: isMac ? 4096 + 2048 + 29 : 256 + 28,
+        Redo: useMac ? 4096 + 2048 + 29 : 256 + 28,
         SelAll: pri + 4,
         SelLine: supportsNativeEngrammer ? 54374 : pri + 15,
-        ExtLine: supportsNativeEngrammer ? 54375 : (isMac ? 4096 + 2048 + 79 : 2048 + 77),
+        ExtLine: supportsNativeEngrammer ? 54375 : (useMac ? 4096 + 2048 + 79 : 2048 + 77),
         SelWord: supportsNativeEngrammer ? 54372 : pri + 7,
-        ExtWord: supportsNativeEngrammer ? 54373 : (isMac ? 512 : 256) + 2048 + 79,
+        ExtWord: supportsNativeEngrammer ? 54373 : (useMac ? 512 : 256) + 2048 + 79,
         SelNone: supportsNativeEngrammer ? 54376 : 79,
-        AppSw: supportsNativeEngrammer ? 54377 : (isMac ? 4096 : 512) + 43,
+        AppSw: supportsNativeEngrammer ? 54377 : (useMac ? 4096 : 512) + 43,
         TabSw: supportsNativeEngrammer ? 54378 : 256 + 43,
-        WinSw: supportsNativeEngrammer ? 54379 : (isMac ? 4096 + 53 : 4096 + 43),
+        WinSw: supportsNativeEngrammer ? 54379 : (useMac ? 4096 + 53 : 4096 + 43),
         Find: pri + 9,
-        FindNxt: isMac ? 4096 + 10 : 60,
-        FindPrv: isMac ? 4096 + 2048 + 10 : 2048 + 60,
-        Replace: isMac ? 4096 + 512 + 9 : 256 + 11,
-        GotoLn: isMac ? 4096 + 15 : 256 + 10,
+        FindNxt: useMac ? 4096 + 10 : 60,
+        FindPrv: useMac ? 4096 + 2048 + 10 : 2048 + 60,
+        Replace: useMac ? 4096 + 512 + 9 : 256 + 11,
+        GotoLn: useMac ? 4096 + 15 : 256 + 10,
         QuickOpn: pri + 19,
-        LockScr: supportsNativeEngrammer ? 54380 : (isMac ? 4096 + 256 + 20 : 4096 + 15),
-        "Opt+S+Rt": (isMac ? 512 : 256) + 2048 + 79,
+        LockScr: supportsNativeEngrammer ? 54380 : (useMac ? 4096 + 256 + 20 : 4096 + 15),
+        "Opt+S+Rt": (useMac ? 512 : 256) + 2048 + 79,
         CW_TOGG: supportsNativeCapsWord ? 54371 : 17408 + clampedCw,
         Power: 20865,
         "LED+": 23663,
@@ -5788,9 +7500,9 @@
         "KP_=": 46,
         "..": 55,
         "```": 53,
-        OS_MAC: 17492,
-        OS_WIN: 17492 + clampedWin,
-        OS_TOGG: 17408 + clampedWin,
+        OS_MAC: supportsNativeOsKeys ? 54382 : 17492,
+        OS_WIN: supportsNativeOsKeys ? 54383 : 17492 + clampedWin,
+        OS_TOGG: supportsNativeOsKeys ? 54381 : 17408 + clampedWin,
         Accel0: 0,
         Accel1: 0,
         Accel2: 0
@@ -5933,6 +7645,7 @@
       const supportsNativeCapsWord = Boolean(opts.supportsNativeCapsWord);
       const supportsNativeShiftMorph = Boolean(opts.supportsNativeShiftMorph);
       const supportsNativeEngrammer = Boolean(opts.supportsNativeEngrammer);
+      const supportsNativeOsKeys = Boolean(opts.supportsNativeOsKeys);
 
       if (b.type === "mo") return 17450 + clampLayer(b.hold);
       if (b.type === "to") {
@@ -5940,9 +7653,18 @@
         return 17492 + clampLayer(b.hold);
       }
       if (b.type === "osl") return 49161 + Math.max(0, Math.min(7, clampLayer(b.hold)));
-      if (b.type === "osm") return FOCUS_OSM_CODES[b.hold] || 49154;
+      if (b.type === "osm") return FOCUS_OSM_CODES[b.hold] || FOCUS_OSM_CODES[b.tap] || 49154;
 
       const tapStr = String(b.tap || "").trim();
+      if (b.type === "mod") {
+        const modName = REGULAR_MODIFIER_NAMES.has(tapStr)
+          ? tapStr
+          : MOD_OPTIONS.includes(b.hold)
+          ? b.hold
+          : "LShift";
+        if (FOCUS_HID_CODES[modName] !== undefined) return FOCUS_HID_CODES[modName];
+      }
+
       const rawMatch = /^#(\d+)$/.exec(tapStr);
       if (rawMatch) return parseInt(rawMatch[1], 10);
 
@@ -5968,7 +7690,33 @@
       }
       if (/^BT_[1-5]$/.test(tapStr)) return 54109; // Stock Bazecor uses BT_PAIR + number keys for host selection
 
-      // Hardware DynamicMacros for CapsWord word-breaking keys, deterministic OS_WIN stack [0, 8], "..", and "```"
+      // User Custom Macros & Built-In Action Overrides
+      if (b.type !== "mt" && b.type !== "lt" && b.type !== "dual" && b.type !== "morph") {
+        const cm = Array.isArray(customMacros) ? customMacros.find((m) => m && m.id === tapStr) : null;
+        if (cm) {
+          if (cm.kind === "chord" && cm.chord) {
+            const cc = chordToFocusCode(cm.chord, supportsNativeEngrammer);
+            if (cc > 0) return cc;
+          } else if (macroAlloc) {
+            const steps = compileTextToMacroSteps(cm.text || "");
+            const mIdx = macroAlloc.getOrCreate(steps);
+            if (mIdx >= 0) return 53852 + mIdx;
+          }
+        }
+        const ov = actionOverrides && actionOverrides[tapStr] ? actionOverrides[tapStr] : null;
+        if (ov) {
+          if (ov.kind === "chord" && ov.chord) {
+            const cc = chordToFocusCode(ov.chord, supportsNativeEngrammer);
+            if (cc > 0) return cc;
+          } else if (ov.kind === "text" && macroAlloc) {
+            const steps = compileTextToMacroSteps(ov.text || "");
+            const mIdx = macroAlloc.getOrCreate(steps);
+            if (mIdx >= 0) return 53852 + mIdx;
+          }
+        }
+      }
+
+      // Hardware DynamicMacros for CapsWord word-breaking keys, legacy OS_WIN stack [0, 8], "..", and "```"
       if (macroAlloc) {
         if (b.type === "macro" && b.hold === "ExitCW") {
           const kc = FOCUS_HID_CODES[tapStr];
@@ -5980,8 +7728,15 @@
             if (mIdx >= 0) return 53852 + mIdx;
           }
         }
-        if (tapStr === "OS_WIN" && b.type !== "mt" && b.type !== "lt" && b.type !== "dual" && b.type !== "morph") {
-          // TAP(MoveToLayer(0)) + TAP(LockLayer(winLayerIdx)) -> sets active_layers_ = [0, 8] so OS_TOGG always toggles cleanly!
+        if (
+          !supportsNativeOsKeys &&
+          tapStr === "OS_WIN" &&
+          b.type !== "mt" &&
+          b.type !== "lt" &&
+          b.type !== "dual" &&
+          b.type !== "morph"
+        ) {
+          // Legacy pre-.3 fallback: TAP(MoveToLayer(0)) + TAP(LockLayer(winLayerIdx)) -> sets active_layers_ = [0, 8]
           const mIdx = macroAlloc.getOrCreate([5, 68, 84, 5, 68, winLayerIdx]);
           if (mIdx >= 0) return 53852 + mIdx;
         }
@@ -6001,7 +7756,8 @@
         winLayerIdx,
         cwLayerIdx,
         supportsNativeCapsWord,
-        supportsNativeEngrammer
+        supportsNativeEngrammer,
+        supportsNativeOsKeys
       );
       if (aliasCode !== undefined && b.type !== "mt" && b.type !== "lt" && b.type !== "dual" && b.type !== "morph") {
         return aliasCode;
@@ -6081,7 +7837,8 @@
                   winLayerIdx,
                   cwLayerIdx,
                   supportsNativeCapsWord,
-                  supportsNativeEngrammer
+                  supportsNativeEngrammer,
+                  supportsNativeOsKeys
                 ) || 0;
           if (holdCode > 0) {
             const allocIdx = superkeyAlloc.getOrCreate(baseTap, holdCode, tapStr);
@@ -6135,6 +7892,9 @@
       if (c === 54378) return mac("TabSw", "SwitchTab", "#06b6d4");
       if (c === 54379) return mac("WinSw", "SwitchWin", "#06b6d4");
       if (c === 54380) return mac("LockScr", "LockOS", "#f59e0b");
+      if (c === 54381) return mac("OS_TOGG", "Mac/Win", "#10b981");
+      if (c === 54382) return mac("OS_MAC", "CAGS", "#10b981");
+      if (c === 54383) return mac("OS_WIN", "GACS", "#10b981");
       if (c === 54108) return mac("BatLvl", "LED%", "#10b981");
       if (c === 54109) return mac("BT_PAIR", "Pair/1-5", "#06b6d4");
       if (c === 54110) return mac("WL_TOGG", "BT/RF", "#06b6d4");
@@ -6198,6 +7958,18 @@
             const lbl = REVERSE_HID_CODES[shiftedCode] || focusSingleCodeToLabel(shiftedCode) || `#${shiftedCode}`;
             return mac(lbl, "ExitCW", "#334155");
           }
+          if (Array.isArray(customMacros)) {
+            const matchedCm = customMacros.find((cm) => {
+              if (!cm || cm.kind === "chord") return false;
+              const comp = compileTextToMacroSteps(cm.text || "");
+              return comp.length === s.length && comp.every((v, i) => v === s[i]);
+            });
+            if (matchedCm) {
+              const res = mac(matchedCm.id, matchedCm.badge || "Macro", matchedCm.color || "#14b8a6");
+              if (matchedCm.label) res.label = matchedCm.label;
+              return res;
+            }
+          }
         }
         return mac(`MACRO ${mIdx + 1}`, "");
       }
@@ -6236,7 +8008,39 @@
       if (REVERSE_HID_CODES[c]) {
         const name = REVERSE_HID_CODES[c];
         if (/^(Ms|Whl|Btn|Warp)/.test(name)) return mse(name, "MOUSE");
+        if (REGULAR_MODIFIER_NAMES.has(name)) {
+          return mod(name, name === "Meh" ? "C+A+S" : name === "Hyper" ? "C+A+G+S" : "");
+        }
         return kp(name);
+      }
+      // Match custom chord actions and canonical Engrammer OS-aware shortcuts on overlay layers
+      if (Array.isArray(customMacros)) {
+        const matchedChordCm = customMacros.find(
+          (cm) => cm && cm.kind === "chord" && cm.chord && chordToFocusCode(cm.chord, true) === c
+        );
+        if (matchedChordCm) {
+          const res = mac(matchedChordCm.id, matchedChordCm.badge || "Shortcut", matchedChordCm.color || "#14b8a6");
+          if (matchedChordCm.label) res.label = matchedChordCm.label;
+          return res;
+        }
+      }
+      const CANONICAL_SHORTCUT_MAP = {
+        [4096 + 6]: ["Copy", "Cmd+C"],
+        [4096 + 25]: ["Paste", "Cmd+V"],
+        [4096 + 27]: ["Cut", "Cmd+X"],
+        [4096 + 29]: ["Undo", "Cmd+Z"],
+        [4096 + 2048 + 29]: ["Redo", "Cmd+S+Z"],
+        [4096 + 4]: ["SelAll", "Cmd+A"],
+        [4096 + 9]: ["Find", "Cmd+F"],
+        [4096 + 10]: ["FindNxt", "Cmd+G"],
+        [4096 + 2048 + 10]: ["FindPrv", "Cmd+S+G"],
+        [4096 + 512 + 9]: ["Replace", "Opt+Cmd+F"],
+        [4096 + 15]: ["GotoLn", "Cmd+L"],
+        [4096 + 19]: ["QuickOpn", "Cmd+P"]
+      };
+      if (CANONICAL_SHORTCUT_MAP[c]) {
+        const [actId, actBadge] = CANONICAL_SHORTCUT_MAP[c];
+        return mac(actId, actBadge);
       }
       const modComboLabel = focusSingleCodeToLabel(c);
       if (modComboLabel) return kp(modComboLabel);
@@ -6337,8 +8141,9 @@
           if (!Array.isArray(lyr)) return;
           lyr.forEach((b, kIdx) => {
             if (lIdx === skipLayerIdx && kIdx === skipKeyIdx) return;
-            if (!b || (!b.color && (b.type === "trans" || b.type === "none"))) return;
-            const c = b.color ? b.color : getKeyAccentColor(KEY_POSITIONS[kIdx], b);
+            const effC = b ? (b.color || resolveInheritedKeyColor(lIdx, kIdx)) : "";
+            if (!b || (!effC && (b.type === "trans" || b.type === "none"))) return;
+            const c = effC || getKeyAccentColor(KEY_POSITIONS[kIdx], b, lIdx, kIdx);
             usage[nearestPaletteIndex(c)]++;
           });
         });
@@ -6418,7 +8223,8 @@
       cwLayerIdx = 9,
       supportsNativeCapsWord = false,
       macroAlloc = null,
-      supportsNativeEngrammer = false
+      supportsNativeEngrammer = false,
+      supportsNativeOsKeys = false
     ) {
       const s = String(actionStr || "").trim();
       if (!s) return 0;
@@ -6430,13 +8236,13 @@
         return supportsNativeCapsWord ? 54371 : 17408 + clampedCw;
       }
       if (/^AppSw\b/i.test(s)) {
-        return resolveEngrammerFocusAlias("AppSw", maxLayers, clampedWin, clampedCw, supportsNativeCapsWord, supportsNativeEngrammer);
+        return resolveEngrammerFocusAlias("AppSw", maxLayers, clampedWin, clampedCw, supportsNativeCapsWord, supportsNativeEngrammer, supportsNativeOsKeys);
       }
       if (/^TabSw\b/i.test(s)) {
-        return resolveEngrammerFocusAlias("TabSw", maxLayers, clampedWin, clampedCw, supportsNativeCapsWord, supportsNativeEngrammer);
+        return resolveEngrammerFocusAlias("TabSw", maxLayers, clampedWin, clampedCw, supportsNativeCapsWord, supportsNativeEngrammer, supportsNativeOsKeys);
       }
       if (/^WinSw\b/i.test(s)) {
-        return resolveEngrammerFocusAlias("WinSw", maxLayers, clampedWin, clampedCw, supportsNativeCapsWord, supportsNativeEngrammer);
+        return resolveEngrammerFocusAlias("WinSw", maxLayers, clampedWin, clampedCw, supportsNativeCapsWord, supportsNativeEngrammer, supportsNativeOsKeys);
       }
       if (/^Caps(?:Lock)?$/i.test(s)) return 57;
       if (/^Ctrl\s*\+\s*(?:Left)?Shift$/i.test(s)) return 256 + 225;
@@ -6445,9 +8251,10 @@
       if (/^(?:GUI|Cmd|Win)\s*\+\s*Tab$/i.test(s)) return 4096 + 43;
       if (/^Hyper\b/i.test(s)) return 256 + 512 + 4096 + 225;
       if (/^Meh\b/i.test(s)) return 256 + 512 + 225;
-      if (/^OS_TOGG\b/i.test(s)) return 17408 + clampedWin;
-      if (/^OS_MAC\b/i.test(s)) return 17492;
+      if (/^OS_TOGG\b/i.test(s)) return supportsNativeOsKeys ? 54381 : 17408 + clampedWin;
+      if (/^OS_MAC\b/i.test(s)) return supportsNativeOsKeys ? 54382 : 17492;
       if (/^OS_WIN\b/i.test(s)) {
+        if (supportsNativeOsKeys) return 54383;
         if (macroAlloc) {
           const mIdx = macroAlloc.getOrCreate([5, 68, 84, 5, 68, clampedWin]);
           if (mIdx >= 0) return 53852 + mIdx;
@@ -6464,12 +8271,15 @@
       if (oslM) return 49161 + Math.min(7, clampLyr(oslM[1]));
 
       const headToken = s.split(/\s*[—\-]\s*/)[0].trim();
+      const isKnownMacro =
+        (Array.isArray(customMacros) && customMacros.some((cm) => cm && cm.id === headToken)) ||
+        BUILTIN_ACTIONS_CATALOG.some((a) => a.id === headToken);
       return bindingToFocusCode(
-        kp(headToken),
+        isKnownMacro ? mac(headToken) : kp(headToken),
         maxLayers,
         null,
         macroAlloc,
-        { winLayerIdx: clampedWin, cwLayerIdx: clampedCw, supportsNativeCapsWord, supportsNativeEngrammer }
+        { winLayerIdx: clampedWin, cwLayerIdx: clampedCw, supportsNativeCapsWord, supportsNativeEngrammer, supportsNativeOsKeys }
       );
     }
 
@@ -6480,7 +8290,8 @@
       cwLayerIdx = 9,
       supportsNativeCapsWord = false,
       macroAlloc = null,
-      supportsNativeEngrammer = false
+      supportsNativeEngrammer = false,
+      supportsNativeOsKeys = false
     ) {
       const MAX_HW_COMBOS = 32;
       const validCombos = [];
@@ -6502,7 +8313,8 @@
           cwLayerIdx,
           supportsNativeCapsWord,
           macroAlloc,
-          supportsNativeEngrammer
+          supportsNativeEngrammer,
+          supportsNativeOsKeys
         );
         if (!actCode || actCode <= 0) return;
         const isCw = /CW_TOGG|Caps\s*-?\s*Word/i.test(String(c.action || ""));
@@ -6607,6 +8419,12 @@
           actionLabel = "TabSw — Tab Switcher";
         } else if (actCode === 54379) {
           actionLabel = "WinSw — Window Switcher";
+        } else if (actCode === 54381 || (decodeOpts.hasWinBaseLayer && actCode === 17408 + decodeOpts.winLayerIdx)) {
+          actionLabel = "OS_TOGG — Mac/Win Base";
+        } else if (actCode === 54382) {
+          actionLabel = "OS_MAC";
+        } else if (actCode === 54383) {
+          actionLabel = "OS_WIN";
         } else if (actCode === 57) {
           actionLabel = "CapsLock";
         } else if (actCode === 256 + 225) {
@@ -6621,8 +8439,6 @@
           actionLabel = "Hyper (Ctrl+Alt+Gui+Shift)";
         } else if (actCode === 256 + 512 + 225) {
           actionLabel = "Meh (Ctrl+Alt+Shift)";
-        } else if (decodeOpts.hasWinBaseLayer && actCode === 17408 + decodeOpts.winLayerIdx) {
-          actionLabel = "OS_TOGG — Mac/Win Base";
         } else {
           const b = focusCodeToBinding(actCode, deviceSuperkeys, macrosList, decodeOpts);
           actionLabel = b && b.tap ? b.tap : `#${actCode}`;
@@ -6673,7 +8489,7 @@
       return out;
     }
 
-    function serializeEngrammerConfig(winLayerIdx = 8) {
+    function serializeEngrammerConfig(winLayerIdx = 8, useV3Format = true) {
       const eg = {
         ...DEFAULT_ENGRAMMER_CONFIG,
         ...((deviceSettings && deviceSettings.engrammerConfig) || {})
@@ -6682,12 +8498,35 @@
         const n = Number(v);
         return Number.isFinite(n) ? Math.max(lo, Math.min(hi, Math.round(n))) : fb;
       };
+      const scIdx = clamp(eg.scaleIndex, 50, 200, 90);
+      const scMid = clamp(eg.scaleMiddle, 50, 200, 105);
+      const scRng = clamp(eg.scaleRing, 50, 200, 120);
+      const scPnk = clamp(eg.scalePinky, 50, 200, 135);
       const retroMask = (eg.retroShift ? 1 : 0) | (eg.retroThumb ? 2 : 0);
+      if (!useV3Format) {
+        const anyScaled = !(scIdx === 100 && scMid === 100 && scRng === 100 && scPnk === 100);
+        return [
+          eg.bilateralHrm ? 1 : 0,
+          clamp(eg.hrmStreakMs, 0, 1000, 150),
+          clamp(eg.shiftStreakMs, 0, 1000, 80),
+          anyScaled ? 1 : 0,
+          eg.balancedThumbs ? 1 : 0,
+          retroMask,
+          clamp(eg.quickTapMs, 0, 1000, 200),
+          clamp(eg.oneshotTimeoutMs, 100, 5000, 500),
+          eg.oneshotQuickRel ? 1 : 0,
+          eg.osShortcuts ? 1 : 0,
+          clamp(winLayerIdx, 0, 15, 8)
+        ].join(" ");
+      }
       return [
         eg.bilateralHrm ? 1 : 0,
         clamp(eg.hrmStreakMs, 0, 1000, 150),
         clamp(eg.shiftStreakMs, 0, 1000, 80),
-        eg.perFingerTiming ? 1 : 0,
+        scIdx,
+        scMid,
+        scRng,
+        scPnk,
         eg.balancedThumbs ? 1 : 0,
         retroMask,
         clamp(eg.quickTapMs, 0, 1000, 200),
@@ -6711,11 +8550,37 @@
         next.baseHoldMs = ht;
       }
       const nums = String(raw || "").trim().split(/\s+/).map(Number).filter(Number.isFinite);
-      if (nums.length >= 10) {
+      if (nums.length >= 13) {
+        next.bilateralHrm = nums[0] !== 0;
+        next.hrmStreakMs = Math.max(0, Math.min(1000, Math.round(nums[1])));
+        next.shiftStreakMs = Math.max(0, Math.min(1000, Math.round(nums[2])));
+        next.scaleIndex = Math.max(50, Math.min(200, Math.round(nums[3] || 90)));
+        next.scaleMiddle = Math.max(50, Math.min(200, Math.round(nums[4] || 105)));
+        next.scaleRing = Math.max(50, Math.min(200, Math.round(nums[5] || 120)));
+        next.scalePinky = Math.max(50, Math.min(200, Math.round(nums[6] || 135)));
+        next.perFingerTiming = !(
+          next.scaleIndex === 100 &&
+          next.scaleMiddle === 100 &&
+          next.scaleRing === 100 &&
+          next.scalePinky === 100
+        );
+        next.balancedThumbs = nums[7] !== 0;
+        const retro = Math.round(nums[8]) & 0x03;
+        next.retroShift = (retro & 1) !== 0;
+        next.retroThumb = (retro & 2) !== 0;
+        next.quickTapMs = Math.max(0, Math.min(1000, Math.round(nums[9])));
+        next.oneshotTimeoutMs = Math.max(100, Math.min(5000, Math.round(nums[10])));
+        next.oneshotQuickRel = nums[11] !== 0;
+        next.osShortcuts = nums[12] !== 0;
+      } else if (nums.length >= 10) {
         next.bilateralHrm = nums[0] !== 0;
         next.hrmStreakMs = Math.max(0, Math.min(1000, Math.round(nums[1])));
         next.shiftStreakMs = Math.max(0, Math.min(1000, Math.round(nums[2])));
         next.perFingerTiming = nums[3] !== 0;
+        next.scaleIndex = next.perFingerTiming ? 90 : 100;
+        next.scaleMiddle = next.perFingerTiming ? 105 : 100;
+        next.scaleRing = next.perFingerTiming ? 120 : 100;
+        next.scalePinky = next.perFingerTiming ? 135 : 100;
         next.balancedThumbs = nums[4] !== 0;
         const retro = Math.round(nums[5]) & 0x03;
         next.retroShift = (retro & 1) !== 0;
@@ -6736,7 +8601,8 @@
       existingMacrosRaw = rawMacrosMap,
       supportsNativeCapsWord = false,
       supportsNativeShiftMorph = false,
-      supportsNativeEngrammer = false
+      supportsNativeEngrammer = false,
+      supportsNativeOsKeys = false
     ) {
       const maxLayers = Math.max(1, Math.floor(targetTokenCount / 80));
       const keepExplicitSuperkeys = hasExplicitSuperkeyMacroInLayers(maxLayers);
@@ -6835,7 +8701,8 @@
             id: cwLayerIdx,
             short: `L${cwLayerIdx}: CapsWord`,
             name: `Layer ${cwLayerIdx}: Hardware Caps-Word`,
-            heldKey: null
+            heldKey: null,
+            inheritKeyColorsFrom: null
           };
         }
       }
@@ -6845,7 +8712,8 @@
         cwLayerIdx,
         supportsNativeCapsWord,
         supportsNativeShiftMorph,
-        supportsNativeEngrammer
+        supportsNativeEngrammer,
+        supportsNativeOsKeys
       };
       const tokens = [];
       for (let lIdx = 0; lIdx < maxLayers; lIdx++) {
@@ -6883,7 +8751,8 @@
         cwLayerIdx,
         supportsNativeCapsWord,
         macroAlloc,
-        supportsNativeEngrammer
+        supportsNativeEngrammer,
+        supportsNativeOsKeys
       );
 
       return {
@@ -6933,15 +8802,18 @@
           lyr.forEach((binding, kIdx) => {
             const ledIdx = getLedIndexFromAddr(KEY_POSITIONS[kIdx].addr);
             if (ledIdx >= 0 && ledIdx < ledsPerLayer) {
-              if (!binding.color && (binding.type === "trans" || binding.type === "none")) {
+              const inheritedColor = resolveInheritedKeyColor(lIdx, kIdx);
+              const effectiveColor = binding.color || inheritedColor;
+              if (!effectiveColor && (binding.type === "trans" || binding.type === "none")) {
                 layerLeds[ledIdx] = offIdx;
               } else {
-                const c = binding.color ? binding.color : getKeyAccentColor(KEY_POSITIONS[kIdx], binding);
+                const c = effectiveColor || getKeyAccentColor(KEY_POSITIONS[kIdx], binding, lIdx, kIdx);
                 layerLeds[ledIdx] = nearestPaletteIndex(c);
               }
             }
           });
         }
+        // Outer underglow (70..175) & Neuron status LEDs (176..177) remain strictly independent per layer!
         const ug = underglowLayers[lIdx] || {};
         const ugMax = Math.min(176, ledsPerLayer);
         for (let sId = 70; sId < ugMax; sId++) {
@@ -7356,15 +9228,23 @@
           const supportsNativeShiftMorph = /\bshiftmorph\.enabled\b/.test(helpRaw || "");
           const supportsNativeQuickTap = /\bqukeys\.quickTapTimeout\b/.test(helpRaw || "");
           const supportsNativeEngrammer = /\bengrammer\.config\b/.test(helpRaw || "");
+          let supportsEngrammerV3 = false;
+          if (supportsNativeEngrammer) {
+            const curEg = await sendFocusCommand("engrammer.config");
+            supportsEngrammerV3 = curEg.trim().split(/\s+/).filter(Boolean).length >= 13;
+          }
 
           const combosBanner = document.getElementById("combos-fw-banner");
           if (combosBanner) {
-            if (supportsNativeCombos && supportsNativeShiftMorph && supportsNativeEngrammer) {
+            if (supportsNativeCombos && supportsNativeShiftMorph && supportsEngrammerV3) {
               combosBanner.className = "studio-subcard p-2.5 text-[11px] leading-relaxed text-[var(--app-muted-foreground)]";
-              combosBanner.innerHTML = `<span class="text-emerald-300 font-semibold">Engrammer Custom FW v2.4.0-engrammer.2 Active:</span> Hardware <code>Combos</code>, <code>Bilateral HRMs</code>, <code>Streak Cooldown</code>, <code>Caps-Word</code>, <code>Shift-Morph</code>, <code>App/Tab/Win Switchers</code> &amp; <code>OS Shortcut Remap</code> online.`;
+              combosBanner.innerHTML = `<span class="text-emerald-300 font-semibold">Engrammer Custom FW v2.4.0-engrammer.3 Active:</span> Hardware <code>Combos</code>, <code>Native OS_TOGG</code>, <code>OSM Hold=Mod</code>, <code>Per-Finger Hold %</code>, <code>Bilateral HRMs</code>, <code>Caps-Word</code>, <code>Shift-Morph</code> &amp; <code>Release-Safe OS Remap</code> online.`;
+            } else if (supportsNativeCombos && supportsNativeShiftMorph && supportsNativeEngrammer) {
+              combosBanner.className = "studio-subcard p-2.5 text-[11px] leading-relaxed text-[var(--app-muted-foreground)]";
+              combosBanner.innerHTML = `<span class="text-amber-300 font-semibold">Engrammer Custom FW v2.4.0-engrammer.2 Detected:</span> Upgrade to <a href="./Defy_Wireless_Engrammer_v2.4.0_Custom_FW.zip" download="Defy_Wireless_Engrammer_v2.4.0_Custom_FW.zip" class="text-cyan-300 underline font-semibold">v2.4.0-engrammer.3 (.zip)</a> for deterministic <code>OS_TOGG</code>, <code>OSM Hold = Regular Mod</code>, release-safe Paste/OS shortcuts &amp; per-finger hold % scaling.`;
             } else if (supportsNativeCombos && supportsNativeShiftMorph) {
               combosBanner.className = "studio-subcard p-2.5 text-[11px] leading-relaxed text-[var(--app-muted-foreground)]";
-              combosBanner.innerHTML = `<span class="text-amber-300 font-semibold">Engrammer Custom FW v2.4.0-engrammer.1 Detected:</span> Upgrade to <a href="./Defy_Wireless_Engrammer_v2.4.0_Custom_FW.zip" download="Defy_Wireless_Engrammer_v2.4.0_Custom_FW.zip" class="text-cyan-300 underline font-semibold">v2.4.0-engrammer.2 (.zip)</a> to unlock Bilateral HRMs, Streak Cooldown, Selection Primitives &amp; App/Tab/Win Switchers.`;
+              combosBanner.innerHTML = `<span class="text-amber-300 font-semibold">Engrammer Custom FW v2.4.0-engrammer.1 Detected:</span> Upgrade to <a href="./Defy_Wireless_Engrammer_v2.4.0_Custom_FW.zip" download="Defy_Wireless_Engrammer_v2.4.0_Custom_FW.zip" class="text-cyan-300 underline font-semibold">v2.4.0-engrammer.3 (.zip)</a> to unlock Native OS_TOGG, Bilateral HRMs, Per-Finger Hold %, OSM Hold=Mod &amp; App/Tab/Win Switchers.`;
             } else if (supportsNativeCombos) {
               combosBanner.className = "studio-subcard p-2.5 text-[11px] leading-relaxed text-[var(--app-muted-foreground)]";
               combosBanner.innerHTML = `<span class="text-emerald-300 font-semibold">Hardware Combos Supported:</span> Chords sync live via <code>combos.map</code> across L0, L8 (Win) &amp; L9 (Typing).`;
@@ -7398,14 +9278,15 @@
             existingMacrosRaw || rawMacrosMap,
             supportsNativeCapsWord,
             supportsNativeShiftMorph,
-            supportsNativeEngrammer
+            supportsNativeEngrammer,
+            supportsEngrammerV3
           );
           deviceSuperkeys = built.superkeysList;
           deviceMacros = built.macrosList;
           rawMacrosMap = built.macrosPayload;
 
           appendSerialLog(
-            `[Safety Check] Neuron EEPROM: ${maxDeviceLayers} layers (${kmTokenCount} keycodes, ${cmTokenCount} LEDs, ${built.superkeysList.length} superkeys, ${built.macrosList.length} macros, CapsWord=${supportsNativeCapsWord ? "native-54371" : `L${built.cwLayerIdx}-layer`}, ShiftMorph=${supportsNativeShiftMorph ? "native" : "superkey"}, Engrammer=${supportsNativeEngrammer ? "v2.4.0-engrammer.2" : "fallback"}).`
+            `[Safety Check] Neuron EEPROM: ${maxDeviceLayers} layers (${kmTokenCount} keycodes, ${cmTokenCount} LEDs, ${built.superkeysList.length} superkeys, ${built.macrosList.length} macros, CapsWord=${supportsNativeCapsWord ? "native-54371" : `L${built.cwLayerIdx}-layer`}, ShiftMorph=${supportsNativeShiftMorph ? "native" : "superkey"}, Engrammer=${supportsEngrammerV3 ? "v2.4.0-engrammer.3" : supportsNativeEngrammer ? "v2.4.0-engrammer.2" : "fallback"}).`
           );
           if (layers.length > maxDeviceLayers) {
             appendSerialLog(`[Note] Stock Neuron EEPROM stores ${maxDeviceLayers} layers (L0..L${maxDeviceLayers - 1}); layers L${maxDeviceLayers}+ require custom firmware.`);
@@ -7472,7 +9353,7 @@
             await sendFocusCommand(`qukeys.quickTapTimeout ${Math.max(0, Math.min(1000, Number(eg.quickTapMs ?? 200)))}`);
           }
           if (supportsNativeEngrammer) {
-            await sendFocusCommand(`engrammer.config ${serializeEngrammerConfig(built.winLayerIdx)}`);
+            await sendFocusCommand(`engrammer.config ${serializeEngrammerConfig(built.winLayerIdx, supportsEngrammerV3)}`);
           }
           await sendFocusCommand(`superkeys.holdstart ${holdMs}`);
           await sendFocusCommand("superkeys.overlap 80");
@@ -7506,11 +9387,14 @@
       const cleanCustom = String(customName || "").trim();
       const hasCustomTitle = cleanCustom && !/^L\d+$/i.test(cleanCustom);
       if (hasCustomTitle) {
+        const autoInherit =
+          idx > 0 && (isWinBaseLayerMeta({ name: cleanCustom }) || /typing|gaming/i.test(cleanCustom)) ? 0 : null;
         return {
           id: idx,
           short: `L${idx}: ${cleanCustom} (#${bzNum})`,
           name: `Layer ${idx}: ${cleanCustom} (Bazecor #${bzNum})`,
-          heldKey: null
+          heldKey: null,
+          inheritKeyColorsFrom: autoInherit
         };
       }
       const activeTaps = new Set(
@@ -7523,7 +9407,8 @@
           id: idx,
           short: `L${idx} (#${bzNum})`,
           name: `Layer ${idx} (Bazecor #${bzNum} — Empty)`,
-          heldKey: null
+          heldKey: null,
+          inheritKeyColorsFrom: null
         };
       }
       if (activeTaps.has("S-A") && activeTaps.has("S-B") && activeTaps.has("_")) {
@@ -7531,7 +9416,8 @@
           id: idx,
           short: `L${idx}: CapsWord`,
           name: `Layer ${idx}: Hardware Caps-Word (Bazecor #${bzNum})`,
-          heldKey: null
+          heldKey: null,
+          inheritKeyColorsFrom: null
         };
       }
       if (
@@ -7543,7 +9429,8 @@
           id: idx,
           short: `L${idx}: Base Win`,
           name: `Layer ${idx}: Base QWERTY (Windows/Linux — GACS, Bazecor #${bzNum})`,
-          heldKey: null
+          heldKey: null,
+          inheritKeyColorsFrom: 0
         };
       }
       if (
@@ -7557,7 +9444,8 @@
           id: idx,
           short: `L${idx}: Typing`,
           name: `Layer ${idx}: Plain QWERTY / Gaming (No Home-Row Mods, Bazecor #${bzNum})`,
-          heldKey: null
+          heldKey: null,
+          inheritKeyColorsFrom: 0
         };
       }
       if (
@@ -7569,7 +9457,8 @@
           id: 0,
           short: "L0: Base Mac",
           name: "Layer 0: Base QWERTY (macOS — CAGS, Bazecor #1)",
-          heldKey: null
+          heldKey: null,
+          inheritKeyColorsFrom: null
         };
       }
       if (idx === 0 || (activeTaps.has("Q") && activeTaps.has("W")) || (activeTaps.has("A") && activeTaps.has("S"))) {
@@ -7577,7 +9466,8 @@
           id: idx,
           short: `L${idx}: Base (#${bzNum})`,
           name: `Layer ${idx}: Base Layer (Bazecor #${bzNum})`,
-          heldKey: null
+          heldKey: null,
+          inheritKeyColorsFrom: null
         };
       }
       if ((activeTaps.has("NumLk") || activeTaps.has("KP_1")) && (activeTaps.has("Up") || activeTaps.has("Home"))) {
@@ -7585,7 +9475,8 @@
           id: idx,
           short: `L${idx}: Nav/Num (#${bzNum})`,
           name: `Layer ${idx}: Navigation & Numpad (Bazecor #${bzNum})`,
-          heldKey: null
+          heldKey: null,
+          inheritKeyColorsFrom: null
         };
       }
       if (activeTaps.has("F1") && activeTaps.has("F12")) {
@@ -7593,14 +9484,16 @@
           id: idx,
           short: `L${idx}: F-Keys (#${bzNum})`,
           name: `Layer ${idx}: F-Keys & Media (Bazecor #${bzNum})`,
-          heldKey: null
+          heldKey: null,
+          inheritKeyColorsFrom: null
         };
       }
       return {
         id: idx,
         short: `L${idx} (#${bzNum})`,
         name: `Layer ${idx} (Bazecor #${bzNum})`,
-        heldKey: null
+        heldKey: null,
+        inheritKeyColorsFrom: null
       };
     }
 
@@ -7618,10 +9511,46 @@
       const nums = String(kmRaw || "").trim().split(/\s+/).map(Number).filter(Number.isFinite);
       if (nums.length < 80) return 0;
 
+      const prevLayers = Array.isArray(layers) ? layers : [];
+      const prevMeta = Array.isArray(LAYERS_META) ? [...LAYERS_META] : [];
+
       // 0. Parse superkeys.map & macros.map BEFORE decoding keymap.custom so 2-action superkeys (53980+) & DynamicMacros (53852+) decode accurately!
       deviceSuperkeys = parseFocusSuperkeysRaw(superRaw, storedSuperMeta);
       deviceMacros = parseFocusMacrosRaw(macrosRaw);
       rawMacrosMap = serializeFocusMacros(deviceMacros);
+
+      // Import any pulled non-system DynamicMacros (53852+) into customMacros so they decode by name & remain editable!
+      if (!Array.isArray(customMacros)) customMacros = [];
+      deviceMacros.forEach((m, idx) => {
+        if (!m || !Array.isArray(m.steps) || m.steps.length === 0) return;
+        const sig = m.steps.join(",");
+        if (m.steps[0] === 5 && m.steps[1] === 68) return; // System layer macro (OS_WIN / ExitCW)
+        if (sig === "8,55,8,55" || sig === "8,53,8,53,8,53") return; // Built-in .. / ```
+        const inCustom = customMacros.some(
+          (cm) => cm && (cm.kind || "text") === "text" && compileTextToMacroSteps(cm.text || "").join(",") === sig
+        );
+        const inOverrides = Object.values(actionOverrides || {}).some(
+          (ov) => ov && ov.kind === "text" && compileTextToMacroSteps(ov.text || "").join(",") === sig
+        );
+        if (!inCustom && !inOverrides) {
+          const decomp = decompileMacroStepsToText(m.steps);
+          if (decomp) {
+            let newId = `Macro_${idx + 1}`;
+            let suffix = 2;
+            while (customMacros.some((cm) => cm && cm.id === newId)) {
+              newId = `Macro_${idx + 1}_${suffix++}`;
+            }
+            customMacros.push({
+              id: newId,
+              kind: "text",
+              label: "",
+              badge: decomp.slice(0, 10),
+              color: "#38bdf8",
+              text: decomp
+            });
+          }
+        }
+      });
 
       const numLayers = Math.min(12, Math.floor(nums.length / 80));
 
@@ -7680,6 +9609,11 @@
             if (cur.tap === "(") lyr70[k] = morph("(", "<", cur.color);
             else if (cur.tap === ")") lyr70[k] = morph(")", ">", cur.color);
           }
+          const finalB = lyr70[k];
+          const prevB = prevLayers[l] && prevLayers[l][k];
+          if (prevB && prevB.label && finalB && prevB.type === finalB.type && prevB.tap === finalB.tap) {
+            finalB.label = prevB.label;
+          }
         }
         newLayers.push(lyr70);
       }
@@ -7734,7 +9668,25 @@
       LAYERS_META.length = 0;
       for (let l = 0; l < numLayers; l++) {
         const metaItem = Array.isArray(neuronLayersMeta) ? neuronLayersMeta.find((m) => m && Number(m.id) === l) || neuronLayersMeta[l] : null;
-        LAYERS_META.push(inferPulledLayerMeta(newLayers[l], l, metaItem && metaItem.name ? metaItem.name : ""));
+        const inferred = inferPulledLayerMeta(newLayers[l], l, metaItem && metaItem.name ? metaItem.name : "");
+        if (prevMeta.length === numLayers && prevMeta[l] && prevMeta[l].inheritKeyColorsFrom !== undefined) {
+          inferred.inheritKeyColorsFrom = prevMeta[l].inheritKeyColorsFrom;
+        }
+        LAYERS_META.push(inferred);
+      }
+      // Keep inherited key colors dynamic rather than freezing identical swatches onto child layers
+      for (let l = 0; l < numLayers; l++) {
+        const srcL = LAYERS_META[l] ? LAYERS_META[l].inheritKeyColorsFrom : null;
+        if (srcL !== null && srcL !== undefined && Number(srcL) !== l && layers[Number(srcL)]) {
+          const sIdx = Number(srcL);
+          for (let kIdx = 0; kIdx < layers[l].length; kIdx++) {
+            const curHex = String(layers[l][kIdx].color || "").toLowerCase();
+            const srcHex = String(resolveInheritedKeyColor(sIdx, kIdx) || layers[sIdx][kIdx].color || "").toLowerCase();
+            if (curHex && srcHex && curHex === srcHex) {
+              layers[l][kIdx].color = "";
+            }
+          }
+        }
       }
       if (currentLayer >= numLayers) currentLayer = 0;
       const pulledCombos = parseFocusCombosRaw(combosRaw, deviceMacros, decodeOpts);
@@ -7748,6 +9700,8 @@
       renderLayerTabs();
       renderKeyboardStage();
       renderInspector();
+      renderPalette();
+      renderMacrosAndActionsTab();
       saveState(true, `Loaded ${numLayers} layers, ${deviceSuperkeys.length} superkeys, RGBW palette & LED colormap!`);
       return numLayers;
     }
@@ -7760,6 +9714,7 @@
           id: "snap_pre_pull_auto",
           name: "Auto-Backup (Before Keyboard Read)",
           savedAt: new Date().toLocaleString(),
+          schemaVersion: SCHEMA_VERSION,
           layers: JSON.parse(JSON.stringify(layers)),
           layersMeta: JSON.parse(JSON.stringify(LAYERS_META)),
           underglowLayers: JSON.parse(JSON.stringify(underglowLayers)),
@@ -7768,6 +9723,8 @@
           deviceSuperkeys: JSON.parse(JSON.stringify(deviceSuperkeys || [])),
           rawMacrosMap: String(rawMacrosMap || ""),
           combos: JSON.parse(JSON.stringify(combos)),
+          customMacros: JSON.parse(JSON.stringify(customMacros || [])),
+          actionOverrides: JSON.parse(JSON.stringify(actionOverrides || {})),
           deviceSettings: JSON.parse(JSON.stringify(deviceSettings))
         });
         saveSnapshotsArray(snaps);
@@ -8102,6 +10059,7 @@
 
     // Boot Studio
     loadState();
+    populateChordKeySelects();
     renderSnapshotsUI();
     renderRgbPaletteBar();
     renderLayerTabs();
@@ -8109,6 +10067,7 @@
     renderInspector();
     renderPalette();
     renderCombosList();
+    renderMacrosAndActionsTab();
     renderWirelessAndDeviceTab();
     renderEngrammerTuningTab();
     updateCodePreview();

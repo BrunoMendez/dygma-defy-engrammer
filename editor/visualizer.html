@@ -1268,19 +1268,20 @@
     // 2. LAYER METADATA & ACTIVE THUMB HOLD ORIGINS (10 HARDWARE LAYERS L0..L9)
     // =========================================================================
     const LAYERS_META = [
-      { id: 0, short: "L0: Base Mac", name: "Layer 0: Base QWERTY (macOS — CAGS Home-Row Mods)",                     heldKey: null },
-      { id: 1, short: "L1: Symbol",   name: "Layer 1: Programming Symbol Layer",                                     heldKey: "RTU0" },
-      { id: 2, short: "L2: Number",   name: "Layer 2: Number & Hex Numpad Layer",                                    heldKey: "LTU1" },
-      { id: 3, short: "L3: Cursor",   name: "Layer 3: Cursor Navigation & Selection Layer",                          heldKey: "LTU0" },
-      { id: 4, short: "L4: Mouse",    name: "Layer 4: Mouse & Natural Scroll Layer",                                 heldKey: "RTU1" },
-      { id: 5, short: "L5: Function", name: "Layer 5: Function (F1–F15) & Media Layer",                              heldKey: "LTU3" },
-      { id: 6, short: "L6: Sys/RGB",  name: "Layer 6: System, Modifiers, RGB, Wireless & Battery Layer",             heldKey: "RTU3" },
-      { id: 7, short: "L7: Lower/OS", name: "Layer 7: Lower Numpad, Layer Locks, Typing Mode & OS Switch",           heldKey: "LTU2" },
-      { id: 8, short: "L8: Base Win", name: "Layer 8: Base QWERTY (Windows/Linux — GACS Home-Row Mods)",             heldKey: null },
-      { id: 9, short: "L9: Typing",   name: "Layer 9: Plain Typing / Gaming (HRM-Free QWERTY — Thumbs & Layers On)", heldKey: null }
+      { id: 0, short: "L0: Base Mac", name: "Layer 0: Base QWERTY (macOS — CAGS Home-Row Mods)",                     heldKey: null,   inheritKeyColorsFrom: null },
+      { id: 1, short: "L1: Symbol",   name: "Layer 1: Programming Symbol Layer",                                     heldKey: "RTU0", inheritKeyColorsFrom: null },
+      { id: 2, short: "L2: Number",   name: "Layer 2: Number & Hex Numpad Layer",                                    heldKey: "LTU1", inheritKeyColorsFrom: null },
+      { id: 3, short: "L3: Cursor",   name: "Layer 3: Cursor Navigation & Selection Layer",                          heldKey: "LTU0", inheritKeyColorsFrom: null },
+      { id: 4, short: "L4: Mouse",    name: "Layer 4: Mouse & Natural Scroll Layer",                                 heldKey: "RTU1", inheritKeyColorsFrom: null },
+      { id: 5, short: "L5: Function", name: "Layer 5: Function (F1–F15) & Media Layer",                              heldKey: "LTU3", inheritKeyColorsFrom: null },
+      { id: 6, short: "L6: Sys/RGB",  name: "Layer 6: System, Modifiers, RGB, Wireless & Battery Layer",             heldKey: "RTU3", inheritKeyColorsFrom: null },
+      { id: 7, short: "L7: Lower/OS", name: "Layer 7: Lower Numpad, Layer Locks, Typing Mode & OS Switch",           heldKey: "LTU2", inheritKeyColorsFrom: null },
+      { id: 8, short: "L8: Base Win", name: "Layer 8: Base QWERTY (Windows/Linux — Sparse GACS Home-Row Mods)",      heldKey: null,   inheritKeyColorsFrom: 0 },
+      { id: 9, short: "L9: Typing",   name: "Layer 9: Plain Typing / Gaming (HRM-Free QWERTY — Thumbs & Layers On)", heldKey: null,   inheritKeyColorsFrom: 0 }
     ];
 
     const kp    = (tap, c)       => ({ type: "kp",    tap, hold: "",   color: c || "" });
+    const mod   = (tap, sub, c)  => ({ type: "mod",   tap, hold: sub || "", color: c || "#38bdf8" });
     const mt    = (tap, mod, c)  => ({ type: "mt",    tap, hold: mod,  color: c || "" });
     const lt    = (tap, lyr, c)  => ({ type: "lt",    tap, hold: String(lyr), color: c || "#06b6d4" });
     const mo    = (lyr, c)       => ({ type: "mo",    tap: `MO(${lyr})`, hold: String(lyr), color: c || "" });
@@ -1290,7 +1291,7 @@
     const osm   = (mod, c)       => ({ type: "osm",   tap: "OSM", hold: mod, color: c || "#22c55e" });
     const dual  = (tap, hold, c) => ({ type: "dual",  tap, hold, color: c || "#f59e0b" });
     const morph = (tap, shf, c)  => ({ type: "morph", tap, hold: shf, color: c || "#f59e0b" });
-    const mac   = (name, sub, c) => ({ type: "macro", tap: name, hold: sub || "MACRO", color: c || "" });
+    const mac   = (name, sub, c) => ({ type: "macro", tap: name, hold: sub === undefined ? "MACRO" : sub, color: c || "" });
     const mse   = (name, sub, c) => ({ type: "mouse", tap: name, hold: sub || "MOUSE", color: c || "" });
     const trns  = ()             => ({ type: "trans", tap: "___", hold: "", color: "" });
 
@@ -1304,17 +1305,20 @@
 
     function convertMacBindingToWin(b) {
       if (!b) return trns();
-      const copy = { ...b };
-      if (copy.type === "mt" || copy.type === "osm") {
-        const nextHold = swapMacWinModName(copy.hold);
-        if (nextHold !== copy.hold && copy.type === "mt" && !copy.color) {
-          copy.color = "#38bdf8";
-        }
-        copy.hold = nextHold;
-      } else if (copy.type === "kp") {
-        copy.tap = swapMacWinModName(copy.tap);
+      if (b.type === "mt") {
+        return { ...b, hold: swapMacWinModName(b.hold), color: "" };
       }
-      return copy;
+      if (b.type === "osm") {
+        const nextHold = swapMacWinModName(b.hold);
+        if (nextHold !== b.hold) return { ...b, hold: nextHold, color: "" };
+        return trns();
+      }
+      if (b.type === "kp" || b.type === "mod") {
+        const nextTap = swapMacWinModName(b.tap);
+        if (nextTap !== b.tap) return { ...b, type: "mod", tap: nextTap, color: "" };
+        return trns();
+      }
+      return trns();
     }
 
     function deriveWindowsLayerFromMacBase(baseMacLayer) {
@@ -1327,9 +1331,10 @@
       return baseMacLayer.map((b, kIdx) => {
         if (!b || b.type === "trans" || b.type === "none") return trns();
         if (kIdx === 13) return tg(9, "#14b8a6");
-        if (b.type === "mt") return kp(b.tap, "#14b8a6");
-        if (b.type === "kp" && !/^(?:L|R)(?:Ctrl|Alt|Gui|Shift)$/.test(String(b.tap || ""))) {
-          return kp(b.tap, b.color || "");
+        if (b.type === "mt") {
+          const out = kp(b.tap, "");
+          if (b.label) out.label = b.label;
+          return out;
         }
         return trns();
       });
@@ -1612,7 +1617,17 @@
       }
       if (Array.isArray(parsed.layersMeta) && parsed.layersMeta.length === layers.length) {
         LAYERS_META.length = 0;
-        parsed.layersMeta.forEach(m => LAYERS_META.push(m));
+        parsed.layersMeta.forEach((m, idx) => {
+          LAYERS_META.push({
+            ...m,
+            inheritKeyColorsFrom:
+              m && m.inheritKeyColorsFrom !== undefined
+                ? m.inheritKeyColorsFrom
+                : idx === 8 || idx === 9
+                ? 0
+                : null
+          });
+        });
       }
       if (Array.isArray(parsed.underglowLayers)) {
         underglowLayers = parsed.underglowLayers;
@@ -1782,6 +1797,39 @@
         .replace(/"/g, "&quot;");
     }
 
+    function getDefaultItemAccentColor(pos, item, lIdx) {
+      if (!item || item.type === "trans" || item.type === "none") return "";
+      if (item.color) return item.color;
+      if (lIdx === 1) {
+        const sc = getSymbolSemanticCat(pos.id, item);
+        if (sc && CAT_COLORS[sc]) return CAT_COLORS[sc];
+      }
+      if (item.type === "mt" || item.type === "mod") return "#38bdf8";
+      if (item.type === "lt" || item.type === "mo" || item.type === "to" || item.type === "osl") return "#06b6d4";
+      if (item.type === "osm") return "#22c55e";
+      if (item.type === "dual" || item.type === "morph") return "#f59e0b";
+      if (item.type === "macro") return "#38bdf8";
+      return "";
+    }
+
+    function resolveVisualizerInheritedKeyColor(layerIdx, keyIdx, visited = new Set()) {
+      if (!Number.isInteger(layerIdx) || visited.has(layerIdx)) return "";
+      visited.add(layerIdx);
+      const meta = LAYERS_META[layerIdx];
+      const srcIdx = meta && meta.inheritKeyColorsFrom !== undefined ? meta.inheritKeyColorsFrom : null;
+      if (srcIdx === null || !Number.isInteger(srcIdx) || srcIdx < 0 || srcIdx >= layers.length || srcIdx === layerIdx) {
+        return "";
+      }
+      const srcLayer = layers[srcIdx];
+      if (!Array.isArray(srcLayer)) return "";
+      const pos = KEY_POSITIONS[keyIdx];
+      const srcItem = srcLayer[keyIdx];
+      if (srcItem && srcItem.color) return srcItem.color;
+      const nested = resolveVisualizerInheritedKeyColor(srcIdx, keyIdx, visited);
+      if (nested) return nested;
+      return getDefaultItemAccentColor(pos, srcItem, srcIdx);
+    }
+
     // Core SVG Renderer for any Dygma Defy Layer Diagram
     function renderDefyDiagram(svgEl, options) {
       if (!svgEl) return;
@@ -1817,9 +1865,9 @@
         </defs>
       `;
 
-      // 1. Subtle Halves Chassis & Outer Underglow Ring
+      // 1. Subtle Halves Chassis & Outer Underglow Ring (Strictly independent per-layer — never inherited!)
       const ugMap = underglowLayers[layerIdx] || {};
-      const defaultGlow = layerIdx === 1 ? "#06b6d4" : (layerIdx === 3 ? "#38bdf8" : (layerIdx === 2 ? "#ef4444" : "#2dd4bf"));
+      const defaultGlow = layerIdx === 1 ? "#06b6d4" : (layerIdx === 3 || layerIdx === 8 ? "#38bdf8" : (layerIdx === 2 ? "#ef4444" : "#2dd4bf"));
       html += `<g class="underglow-layer" opacity="0.65">`;
       DEFY_UNDERGLOW_STRIPS.forEach(st => {
         const c = ugMap[st.id] || defaultGlow;
@@ -1835,26 +1883,23 @@
         const isStep = steps.length > 0;
         const hotspot = hotspotMap[pos.id];
         const symCat = useSymbolSemantics ? getSymbolSemanticCat(pos.id, item) : null;
+        const inheritedKeyColor = !item.color ? resolveVisualizerInheritedKeyColor(layerIdx, idx) : "";
 
-        // Determine Key Color: ALWAYS respect user's custom `item.color` from Studio first,
+        // Determine Key Color: ALWAYS respect user's custom `item.color` or inherited key color first,
         // unless the user actively clicked a semantic category filter pill on the Symbol Layer!
-        let accentColor = item.color || "";
+        let accentColor = item.color || inheritedKeyColor || "";
         if (useSymbolSemantics && semanticFilter !== "all" && symCat) {
           accentColor = CAT_COLORS[symCat];
         } else if (!accentColor && useSymbolSemantics && symCat) {
           accentColor = CAT_COLORS[symCat];
         } else if (!accentColor) {
-          if (item.type === "mt") accentColor = "#38bdf8";
-          else if (item.type === "lt" || item.type === "mo" || item.type === "to" || item.type === "osl") accentColor = "#06b6d4";
-          else if (item.type === "osm") accentColor = "#22c55e";
-          else if (item.type === "dual" || item.type === "morph") accentColor = "#f59e0b";
-          else if (item.type === "macro") accentColor = "#38bdf8";
+          accentColor = getDefaultItemAccentColor(pos, item, layerIdx);
         }
 
-        // Dimming when semanticFilter or sequence is active
+        // Dimming when semanticFilter or sequence is active (keep inherited key glow visible on sparse layers!)
         let opacity = 1.0;
         if (item.type === "trans" && !isHeld && !isStep) {
-          opacity = 0.28;
+          opacity = inheritedKeyColor || item.color ? 0.72 : 0.28;
         }
         if (useSymbolSemantics && semanticFilter !== "all") {
           opacity = (symCat === semanticFilter || isHeld) ? 1.0 : 0.22;
@@ -1890,37 +1935,49 @@
         const extraClass = hotspot ? "layer-hotspot" : (isStep ? "seq-active-key" : "");
         const dataAttrs = `data-key-id="${pos.id}" ` + (hotspot ? `data-target-layer="${hotspot.targetLayer}" data-section="${hotspot.sectionId}"` : "");
 
-        // Labels
+        // Labels (respect user's custom `item.label` override on any key!)
         let topBadge = "";
         let mainLabel = item.tap || "";
         let subLabel = item.hold || "";
 
         if (item.type === "trans") {
-          mainLabel = "";
+          mainLabel = item.label || "";
           subLabel = "";
+        } else if (item.type === "none") {
+          mainLabel = item.label || "";
+          subLabel = "";
+        } else if (item.type === "mod") {
+          topBadge = "MOD";
+          mainLabel = item.label || item.tap || "LShift";
+          subLabel = item.hold || "Hold Mod";
         } else if (item.type === "mt") {
           topBadge = "MT";
+          if (item.label) mainLabel = item.label;
         } else if (item.type === "lt") {
           topBadge = `L${item.hold}`;
+          if (item.label) mainLabel = item.label;
           const lyrName = (LAYERS_META[Number(item.hold)] || {}).short || `L${item.hold}`;
           subLabel = lyrName.replace(/^L\d+:\s*/, "");
         } else if (item.type === "mo") {
-          mainLabel = `MO(${item.hold})`;
+          mainLabel = item.label || `MO(${item.hold})`;
           subLabel = "Hold Layer";
         } else if (item.type === "to") {
           const isTg = /^TG\(/i.test(String(item.tap || ""));
-          mainLabel = isTg ? `TG(${item.hold})` : `TO(${item.hold})`;
+          mainLabel = item.label || (isTg ? `TG(${item.hold})` : `TO(${item.hold})`);
           subLabel = isTg ? "Toggle Layer" : "Lock Layer";
         } else if (item.type === "osl") {
-          mainLabel = `OSL(${item.hold})`;
+          mainLabel = item.label || `OSL(${item.hold})`;
           subLabel = "1-Shot Layer";
         } else if (item.type === "osm") {
-          topBadge = "1-SHOT";
-          mainLabel = item.hold;
-          subLabel = "Sticky";
+          topBadge = "1S • HOLD";
+          mainLabel = item.label || item.hold || "LShift";
+          subLabel = "Tap 1S / Hold";
         } else if (item.type === "morph" || item.type === "dual") {
           topBadge = item.type === "morph" ? "SHIFT" : "DUAL";
+          if (item.label) mainLabel = item.label;
           subLabel = `⇧ → ${item.hold}`;
+        } else if (item.label) {
+          mainLabel = item.label;
         }
 
         if (isHeld && layerIdx !== 0) {
