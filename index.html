@@ -351,8 +351,8 @@
             <label class="block text-[11px] font-semibold uppercase tracking-wider text-[var(--app-muted-foreground)] mb-1">Behavior Type</label>
             <select id="edit-type" class="w-full text-xs rounded-md px-2.5 py-1.5 bg-[var(--app-background)] border border-[var(--app-border)] text-[var(--app-foreground)]">
               <option value="kp">Key Press (KP / Shifted)</option>
-              <option value="morph">Shift-Morph / Hold (Tap vs Hold / .ino Shift+Tap)</option>
-              <option value="dual">Parang Tap / Hold ('(' Tap • '&lt;' Hold)</option>
+              <option value="morph">Tap / Hold Symbol (Hold 175ms on Defy v2.3 • Shift+Tap via Kanata)</option>
+              <option value="dual">Parang Tap / Hold ('(' Tap • '&lt;' Hold 175ms)</option>
               <option value="mt">Home-Row Mod-Tap (Qukey MT)</option>
               <option value="lt">Thumb Layer-Tap (Qukey LT)</option>
               <option value="mo">Momentary Layer (MO / ShiftTo)</option>
@@ -433,7 +433,7 @@
             </div>
           </div>
           <div id="combos-fw-banner" class="text-[10.5px] leading-snug px-2.5 py-1.5 rounded border border-amber-500/35 bg-amber-500/10 text-amber-200">
-            ⚡ Live WebSerial sync writes <code>combos.map</code> (L0 + L8 Win + L9 CapsWord) on Bazecor 2026+ Neuron firmware (<code>v1.10+</code>). Stock <code>Defy v2.3.0</code> lacks hardware <code>CombosDygma</code> — update Neuron firmware in Bazecor or flash custom <code>EngrammerDefy.ino</code>.
+            ⚠️ <b>Wireless Defy Firmware Note:</b> Official <code>Defy v2.3.0</code> lacks Dygma's <code>CombosDygma</code> plugin (<code>combos.map</code> was merged Oct 28, 2026 for upcoming <code>v2.4</code>). Until <code>v2.4</code> ships in Bazecor, assign <code>CW_TOGG</code> directly to a key on <code>L0</code> (or run <b>Kanata</b> on your OS for wireless chords today).
           </div>
 
           <!-- INLINE COMBO / CHORD EDITOR -->
@@ -740,7 +740,7 @@
             </label>
           </div>
           <p class="text-[10.5px] leading-snug text-[var(--app-muted-foreground)] px-1">
-            💡 <b>Delete / Backspace Repeat:</b> Custom <code>EngrammerDefy.ino</code> supports Glove80 single-key <b>double-tap + hold (200ms)</b> on all thumb Layer-Tap keys. On stock Neuron <code>v2.3.0</code> (which lacks Qukey quick-tap repeat), hold <code>Del (L2)</code> or <code>Bksp (L3)</code> and hold the adjacent thumb key (or <code>L04</code>/<code>L14</code>) for native OS auto-repeat.
+            💡 <b>Delete / Backspace Repeat on Wireless Defy (<code>v2.3.0</code>):</b> Stock Dygma firmware lacks ZMK <code>quick-tap-ms</code> repeat on Layer-Tap keys. For instant OS auto-repeat today, assign plain <code>Del</code> / <code>Bksp</code> to spare thumb keys (or hold <code>Del (L2)</code> / <code>Bksp (L3)</code> + adjacent thumb), or run <b>Kanata</b> on your OS for true 200ms double-tap+hold repeat.
           </p>
         </div>
 
@@ -899,12 +899,12 @@
 
         <!-- PANE 2: ORYX / RP2040 UF2 BOOTLOADER FIRMWARE FLASHER -->
         <div id="hw-pane-uf2" class="hidden space-y-4">
-          <div class="p-3.5 rounded-xl bg-violet-500/10 border border-violet-500/30 space-y-1.5">
-            <div class="font-bold text-violet-300 text-xs">
-              🚀 Full Custom Kaleidoscope Firmware Flasher (RP2040 `.uf2` Bootloader)
+          <div class="p-3.5 rounded-xl bg-rose-500/15 border border-rose-500/40 space-y-1.5">
+            <div class="font-bold text-rose-300 text-xs">
+              🛑 WIRED RP2040 NEURONS ONLY — DO NOT FLASH .UF2 ON WIRELESS DEFY (nRF52833)!
             </div>
-            <p class="text-[11px] text-[var(--app-muted-foreground)] leading-relaxed">
-              Use this mode when flashing the full custom C++ firmware (`EngrammerDefy.ino` + `config.h`) with Sunaku's Shift-Morph (`(`→`<`, `)`→`>`), Caps-Word state machine, and 13 Moonlander thumb chords onto the Dygma Defy RP2040 Neuron.
+            <p class="text-[11px] text-rose-100/90 leading-relaxed">
+              The <b>Dygma Defy Wireless</b> uses a Nordic <code>nRF52833</code> Wireless Neuron (PID <code>0x0012</code>) and <b>cannot</b> run RP2040 <code>.uf2</code> / Arduino <code>.ino</code> binaries. On Wireless Defy, always use <b>Tab 1 (Bazecor Real-Time WebSerial Sync)</b> and only update firmware inside official <b>Bazecor</b>.
             </p>
           </div>
 
@@ -1598,7 +1598,7 @@
     // 5. STATE MANAGEMENT (LAYERS, UNDERGLOW, PALETTE, CLIPBOARD, SWAP/COPY)
     // =========================================================================
     const STORAGE_KEY = "dygma_defy_engrammer_v5";
-    const SCHEMA_VERSION = 3;
+    const SCHEMA_VERSION = 4;
 
     // Bazecor's 16-Swatch Default RGB Palette (matching user screenshot)
     const DEFAULT_RGB_PALETTE = [
@@ -1804,10 +1804,10 @@
         // Save automatic pre-migration snapshot so user data is always recoverable
         const rawSnaps = localStorage.getItem("dygma_defy_engrammer_snapshots_v1");
         const snaps = rawSnaps ? JSON.parse(rawSnaps) : [];
-        if (Array.isArray(snaps) && !snaps.some((s) => s && s.id === "snap_pre_v3_migration")) {
+        if (Array.isArray(snaps) && !snaps.some((s) => s && s.id === "snap_pre_v4_migration")) {
           snaps.unshift({
-            id: "snap_pre_v3_migration",
-            name: "Auto-Backup (Before v3 Combos, CapsWord, Morph & RGB Fix)",
+            id: "snap_pre_v4_migration",
+            name: "Auto-Backup (Before v4 Wireless Defy Superkey Hold, CapsWord, Underglow & LED Fix)",
             savedAt: new Date().toLocaleString(),
             layers: JSON.parse(JSON.stringify(layers)),
             layersMeta: JSON.parse(JSON.stringify(LAYERS_META)),
@@ -1825,13 +1825,21 @@
 
       const defaults = getInitialLayers();
 
-      // 1. Heal L0: restore CW_TOGG if round-tripped from 57 ("Caps"), remap LT(10) -> LT(7), strip fake wireless keys
+      // 1. Heal L0: ensure CW_TOGG exists if user only had plain Caps (#57), remap LT(10) -> LT(7)
       if (Array.isArray(layers[0]) && layers[0].length === 70) {
-        if (
-          layers[0][0] && layers[0][0].tap === "Caps" &&
-          layers[0][14] && layers[0][14].type === "kp" && layers[0][14].tap === "Caps"
-        ) {
-          layers[0][14] = mac("CW_TOGG", "CapsWord", "#a855f7");
+        const hasCwOnL0 = layers[0].some((b) => b && b.tap === "CW_TOGG");
+        if (!hasCwOnL0) {
+          const preferredCapsSlots = [14, 28, 0, 13];
+          let targetCapsIdx = preferredCapsSlots.find(
+            (idx) => layers[0][idx] && layers[0][idx].type === "kp" && layers[0][idx].tap === "Caps"
+          );
+          if (targetCapsIdx === undefined) {
+            const anyIdx = layers[0].findIndex((b) => b && b.type === "kp" && b.tap === "Caps");
+            if (anyIdx >= 0) targetCapsIdx = anyIdx;
+          }
+          if (targetCapsIdx !== undefined) {
+            layers[0][targetCapsIdx] = mac("CW_TOGG", "CapsWord", "#a855f7");
+          }
         }
         layers[0].forEach((b, kIdx) => {
           if (!b) return;
@@ -1846,24 +1854,41 @@
         });
       }
 
-      // 2. Clean fake BT_1..5 / WL_TOGG & broken OS_WIN(TO(9))/OS_TOGG(TG(9)) across L0..L7
-      for (let l = 0; l < Math.min(8, layers.length); l++) {
+      // 2. Clean fake BT_1..5 / WL_TOGG, legacy OS_WIN/OS_TOGG, & QMK RGB_* aliases across ALL layers
+      for (let l = 0; l < layers.length; l++) {
         if (!Array.isArray(layers[l])) continue;
+        let placedLedNext = layers[l].some((b) => b && b.tap === "LED Next");
+        let placedLedPrev = layers[l].some((b) => b && b.tap === "LED Prev");
+        let placedLedTogg = layers[l].some((b) => b && b.tap === "LED Togg");
+        let placedBriUp = layers[l].some((b) => b && b.tap === "BriUp");
+        let placedBriDn = layers[l].some((b) => b && b.tap === "BriDn");
+
         layers[l].forEach((b, idx) => {
           if (!b) return;
-          if (/^BT_[1-5]$/.test(String(b.tap || ""))) {
+          const t = String(b.tap || "");
+          if (l < 8 && /^BT_[1-5]$/.test(t)) {
             layers[l][idx] = l === 6 ? trns() : mac("BT_PAIR", "Pair/1-5", "#06b6d4");
-          } else if (b.tap === "WL_TOGG") {
+          } else if (l < 8 && t === "WL_TOGG") {
             layers[l][idx] = mac("EngySt", "Energy", "#10b981");
-          } else if (b.type === "to" && (b.tap === "TG(9)" || b.tap === "TG(11)")) {
+          } else if (l < 8 && b.type === "to" && (t === "TG(9)" || t === "TG(11)")) {
             layers[l][idx] = mac("OS_TOGG", "Mac/Win", "#10b981");
-          } else if (b.type === "to" && (b.tap === "TO(9)" || b.tap === "TO(11)")) {
+          } else if (l < 8 && b.type === "to" && (t === "TO(9)" || t === "TO(11)")) {
             layers[l][idx] = mac("OS_WIN", "GACS", "#10b981");
+          } else if (t === "RGB_TOG") {
+            layers[l][idx] = !placedLedTogg ? ((placedLedTogg = true), kp("LED Togg")) : trns();
+          } else if (t === "RGB_VAI") {
+            layers[l][idx] = !placedBriUp ? ((placedBriUp = true), kp("BriUp")) : trns();
+          } else if (t === "RGB_VAD") {
+            layers[l][idx] = !placedBriDn ? ((placedBriDn = true), kp("BriDn")) : trns();
+          } else if (t === "RGB_MOD" || t === "RGB_SPI" || t === "RGB_HUI" || t === "RGB_SAI") {
+            layers[l][idx] = !placedLedNext ? ((placedLedNext = true), kp("LED Next")) : trns();
+          } else if (t === "RGB_SPD" || t === "RGB_HUD" || t === "RGB_SAD") {
+            layers[l][idx] = !placedLedPrev ? ((placedLedPrev = true), kp("LED Prev")) : trns();
           }
         });
       }
 
-      // Heal L6 wireless row & deduplicate redundant QMK RGB_SPI/RGB_SAI/RGB_HUI keys into distinct Dygma hardware keys
+      // Heal L6 wireless row & deduplicate redundant LED Next / LED Prev clusters on L6
       if (Array.isArray(layers[6]) && layers[6].length === 70) {
         if ([8, 9, 10, 11, 12].every((i) => layers[6][i] && layers[6][i].tap === "BT_PAIR")) {
           [8, 9, 10, 11, 12].forEach((i) => {
@@ -1873,12 +1898,10 @@
         if (layers[6][0] && layers[6][1] && layers[6][1].tap === "TO(0)") {
           layers[6][1] = mac("OS_MAC", "CAGS", "#10b981");
         }
-        // Replace legacy QMK RGB_* aliases that all mapped to 17152/17153 with distinct Defy hardware keys
-        const hasRedundantRgbRow =
-          layers[6].some((b) => b && (b.tap === "RGB_HUI" || b.tap === "RGB_SAI" || b.tap === "RGB_SPI")) ||
-          (layers[6][15] && layers[6][16] && layers[6][17] &&
-           layers[6][15].tap === "LED Next" && layers[6][16].tap === "LED Next" && layers[6][17].tap === "LED Next");
-        if (hasRedundantRgbRow) {
+        if (
+          layers[6][15] && layers[6][16] && layers[6][17] &&
+          layers[6][15].tap === "LED Next" && layers[6][16].tap === "LED Next" && layers[6][17].tap === "LED Next"
+        ) {
           const rgbSlots = [15, 16, 17, 18, 19, 22, 23, 24, 25, 26, 29, 30, 31, 32, 33, 36, 37, 38, 39, 40, 47, 48];
           rgbSlots.forEach((sIdx) => {
             const curTap = layers[6][sIdx] ? layers[6][sIdx].tap : "";
@@ -1887,6 +1910,20 @@
             }
           });
         }
+      }
+
+      // Upgrade any cached 2-action non-modifier Superkeys so Superkey.cpp check_if_sk_qukey() sets is_qukey=false
+      if (Array.isArray(deviceSuperkeys)) {
+        deviceSuperkeys.forEach((sk) => {
+          if (!sk || !Array.isArray(sk.actions)) return;
+          const [a0, a1, a2, a3, a4] = sk.actions.map((v) => Number(v) || 0);
+          const restEmpty = (a2 === 0 || a2 === 1) && (a3 === 0 || a3 === 1) && (a4 === 0 || a4 === 1);
+          const isPureModOrLayer =
+            (a1 >= 224 && a1 <= 231) || (a1 >= 17450 && a1 <= 17465) || (a1 >= 17492 && a1 <= 17507);
+          if (a0 > 1 && a1 > 1 && restEmpty && !isPureModOrLayer) {
+            sk.actions[2] = a1;
+          }
+        });
       }
 
       // 3. Merge Lower + Magic/OS into L7 so L0..L7 fits native Qukey LT range
@@ -1924,12 +1961,18 @@
         layers[9][15] && layers[9][15].tap === "Q" &&
         layers[9][29] && layers[9][29].type === "kp" && layers[9][29].tap === "A";
 
-      if (layers.length >= 12 || l8LooksLegacyGaming || !layers[8]) {
+      if (layers.length >= 12 || l8LooksLegacyGaming || !layers[8] || isWinBaseLayerMeta(LAYERS_META[8])) {
         layers[8] = deriveWindowsLayerFromMacBase(layers[0]);
         LAYERS_META[8] = { ...DEFAULT_LAYERS_META[8] };
         if (!underglowLayers[8]) underglowLayers[8] = createDefaultUnderglowMap("#38bdf8");
       }
-      if (layers.length >= 12 || l9LooksLegacyPlain || !layers[9] || isLayerAllEmptyOrTrans(layers[9])) {
+      if (
+        layers.length >= 12 ||
+        l9LooksLegacyPlain ||
+        !layers[9] ||
+        isCapsWordLayerMeta(LAYERS_META[9]) ||
+        isLayerAllEmptyOrTrans(layers[9])
+      ) {
         layers[9] = generateCapsWordLayerFromBase(layers[0]);
         LAYERS_META[9] = { ...DEFAULT_LAYERS_META[9] };
         if (!underglowLayers[9]) underglowLayers[9] = createDefaultUnderglowMap("#a855f7");
@@ -2332,24 +2375,7 @@
       const isSecondaryLayer = layerIndex > 0 && !isWinBaseLayerMeta(LAYERS_META[layerIndex]);
       const highlightLayerActive = Boolean(deviceSettings.highlightLayerChange) && isSecondaryLayer;
 
-      // 1. Render 106 Authentic Bazecor Outer Underglow Segments (with 18px wide invisible hit-stroke for easy painting)
-      if (showUnderglow && typeof DEFY_UNDERGLOW_STRIPS !== "undefined") {
-        html += `<g class="underglow-layer">`;
-        DEFY_UNDERGLOW_STRIPS.forEach((s) => {
-          const c = ugMap[s.id] || "#2dd4bf";
-          const isOff = c.toLowerCase() === "#0f172a" || c.toLowerCase() === "#000000" || ugBrScale <= 0.01;
-          const glowOp = (0.6 * ugBrScale).toFixed(2);
-          const fillOp = Math.max(0.18, ugBrScale).toFixed(2);
-          html += `<g class="svg-ug-segment cursor-pointer" data-ug-id="${s.id}" transform="translate(${s.x}, ${s.y})">`;
-          html += `<path class="ug-hit-path" d="${s.d}" fill="transparent" stroke="transparent" stroke-width="18" stroke-linecap="round" stroke-linejoin="round" pointer-events="all" />`;
-          html += `<path class="ug-glow-path" d="${s.d}" fill="${isOff ? "none" : c}" fill-opacity="${isOff ? "0" : glowOp}" filter="url(#ug-glow-${layerIndex})" pointer-events="none" />`;
-          html += `<path class="ug-core-path" d="${s.d}" fill="${isOff ? "#0f172a" : c}" fill-opacity="${isOff ? "1" : fillOp}" stroke="rgba(255,255,255,0.28)" stroke-width="1" pointer-events="none" />`;
-          html += `</g>`;
-        });
-        html += `</g>`;
-      }
-
-      // 2. Render 70 Keys
+      // 1. Render 70 Keys first so outer/inner perimeter underglow strips sit cleanly on top without key-glow overlap
       KEY_POSITIONS.forEach((pos, idx) => {
         const binding = activeBindings[idx];
         const isHeldOrigin = LAYERS_META[layerIndex] && LAYERS_META[layerIndex].heldKey === pos.id;
@@ -2477,6 +2503,25 @@
         }
       });
 
+      // 2. Render 106 Authentic Bazecor Outer & Inner Underglow Segments ON TOP of key glow filters for effortless painting
+      const canvasUgScale = Math.max(0.92, ugBrScale);
+      if (showUnderglow && typeof DEFY_UNDERGLOW_STRIPS !== "undefined") {
+        html += `<g class="underglow-layer">`;
+        DEFY_UNDERGLOW_STRIPS.forEach((s) => {
+          const c = ugMap[s.id] || "#2dd4bf";
+          const isOff = isOffColor(c);
+          const glowOp = (0.65 * canvasUgScale).toFixed(2);
+          const fillOp = canvasUgScale.toFixed(2);
+          const strokeColor = paintMode ? "rgba(251,191,36,0.55)" : "rgba(255,255,255,0.28)";
+          html += `<g class="svg-ug-segment cursor-pointer" data-ug-id="${s.id}" transform="translate(${s.x}, ${s.y})">`;
+          html += `<path class="ug-hit-path" d="${s.d}" fill="transparent" stroke="transparent" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" pointer-events="all" />`;
+          html += `<path class="ug-glow-path" d="${s.d}" fill="${isOff ? "none" : c}" fill-opacity="${isOff ? "0" : glowOp}" filter="url(#ug-glow-${layerIndex})" pointer-events="none" />`;
+          html += `<path class="ug-core-path" d="${s.d}" fill="${isOff ? "#0f172a" : c}" fill-opacity="${isOff ? "1" : fillOp}" stroke="${strokeColor}" stroke-width="${paintMode ? "1.3" : "1"}" pointer-events="none" />`;
+          html += `</g>`;
+        });
+        html += `</g>`;
+      }
+
       svg.innerHTML = html;
 
       if (isInteractive) {
@@ -2487,16 +2532,16 @@
             if (!underglowLayers[currentLayer]) underglowLayers[currentLayer] = createDefaultUnderglowMap();
             const hex = rgbPalette[selectedSwatchIdx];
             underglowLayers[currentLayer][id] = hex;
-            const off = isOffColor(hex) || ugBrScale <= 0.01;
+            const off = isOffColor(hex);
             const core = ug.querySelector(".ug-core-path");
             const glow = ug.querySelector(".ug-glow-path");
             if (core) {
               core.setAttribute("fill", off ? "#0f172a" : hex);
-              core.setAttribute("fill-opacity", off ? "1" : Math.max(0.18, ugBrScale).toFixed(2));
+              core.setAttribute("fill-opacity", off ? "1" : canvasUgScale.toFixed(2));
             }
             if (glow) {
               glow.setAttribute("fill", off ? "none" : hex);
-              glow.setAttribute("fill-opacity", off ? "0" : (0.6 * ugBrScale).toFixed(2));
+              glow.setAttribute("fill-opacity", off ? "0" : (0.65 * canvasUgScale).toFixed(2));
             }
             didPaintDuringDrag = true;
           };
@@ -2677,7 +2722,7 @@
         wrapSec.classList.remove("hidden");
         sel.classList.add("hidden");
         customShiftInput.classList.remove("hidden");
-        lblSec.textContent = "Hold Symbol (Stock) / Shift+Tap (.ino)";
+        lblSec.textContent = "Hold Symbol (175ms on Defy v2.3 • Shift+Tap via Kanata)";
         customShiftInput.value = currentHold || "<";
       } else if (type === "mt" || type === "osm") {
         wrapSec.classList.remove("hidden");
@@ -3655,12 +3700,21 @@
       e.target.className = paintMode
         ? "px-2.5 py-1 rounded-md border border-amber-400 bg-amber-500 text-black font-bold transition"
         : "px-2.5 py-1 rounded-md border border-[var(--app-border)] bg-[var(--app-background)] hover:border-amber-400 transition font-medium";
-      if (paintMode && !showUnderglow) {
-        showUnderglow = true;
-        const ugToggle = document.getElementById("toggle-underglow");
-        if (ugToggle) ugToggle.checked = true;
-        renderKeyboardStage();
+      if (paintMode) {
+        if (isOffColor(rgbPalette[selectedSwatchIdx])) {
+          const litIdx = rgbPalette.findIndex((c) => !isOffColor(c));
+          if (litIdx >= 0) {
+            selectedSwatchIdx = litIdx;
+            renderRgbPaletteBar();
+          }
+        }
+        if (!showUnderglow) {
+          showUnderglow = true;
+          const ugToggle = document.getElementById("toggle-underglow");
+          if (ugToggle) ugToggle.checked = true;
+        }
       }
+      renderKeyboardStage();
     };
 
     document.getElementById("apply-keys-color-scope").onchange = (e) => {
@@ -5001,7 +5055,10 @@
         const sk = Array.isArray(superkeysList) ? superkeysList[sIdx] : null;
         if (sk && Array.isArray(sk.actions)) {
           const [a0, a1, a2, a3, a4] = sk.actions.map((v) => Number(v) || 0);
-          const restEmpty = (a2 === 0 || a2 === 1) && (a3 === 0 || a3 === 1) && (a4 === 0 || a4 === 1);
+          const restEmpty =
+            (a2 === 0 || a2 === 1 || a2 === a1) &&
+            (a3 === 0 || a3 === 1) &&
+            (a4 === 0 || a4 === 1);
           const tapLabel = a0 > 1 ? focusSingleCodeToLabel(a0) : null;
           if (restEmpty && tapLabel && a1 > 1) {
             if (a1 >= 224 && a1 <= 231) {
@@ -5329,26 +5386,42 @@
         }
       };
 
+      const isPureModOrLayerHold = (hc) =>
+        (hc >= 224 && hc <= 231) || (hc >= 17450 && hc <= 17465) || (hc >= 17492 && hc <= 17507);
+
       const isTwoActionMatch = (sk, tapCode, holdCode) => {
         if (!sk || !Array.isArray(sk.actions)) return false;
         const [a0, a1, a2, a3, a4] = sk.actions.map((v) => Number(v) || 0);
-        const restEmpty = (a2 === 0 || a2 === 1) && (a3 === 0 || a3 === 1) && (a4 === 0 || a4 === 1);
+        const restEmpty =
+          (a2 === 0 || a2 === 1 || a2 === holdCode) &&
+          (a3 === 0 || a3 === 1) &&
+          (a4 === 0 || a4 === 1);
         return restEmpty && a0 === tapCode && a1 === holdCode;
       };
 
       const superkeyAlloc = {
         findExisting(tapCode, holdCode) {
-          return baseList.findIndex((sk) => isTwoActionMatch(sk, tapCode, holdCode));
+          const found = baseList.findIndex((sk) => isTwoActionMatch(sk, tapCode, holdCode));
+          if (found >= 0 && !isPureModOrLayerHold(holdCode)) {
+            // Superkey.cpp check_if_sk_qukey() sets is_qukey=true if actions[2..4] == 1, skipping hold()!
+            // Setting actions[2] = holdCode (Tap_Hold) forces is_qukey=false so Hold (< / >) fires cleanly!
+            baseList[found].actions[2] = holdCode;
+          }
+          return found;
         },
         getOrCreate(tapCode, holdCode, label = "") {
+          const tapHoldSlot = isPureModOrLayerHold(holdCode) ? 0 : holdCode;
           const found = baseList.findIndex((sk) => isTwoActionMatch(sk, tapCode, holdCode));
-          if (found >= 0) return found;
+          if (found >= 0) {
+            baseList[found].actions[2] = tapHoldSlot;
+            return found;
+          }
           if (baseList.length >= 64) return -1;
           const idx = baseList.length;
           baseList.push({
             id: idx,
             name: String(label || ""),
-            actions: [tapCode, holdCode, 0, 0, 0]
+            actions: [tapCode, holdCode, tapHoldSlot, 0, 0]
           });
           return idx;
         }
@@ -5760,7 +5833,7 @@
             combosBanner.innerHTML = `✅ Connected Neuron firmware supports hardware <code>combos.map</code> — chords sync live to L0 + L8 (Win) + L9 (CapsWord)!`;
           } else {
             combosBanner.className = "text-[10.5px] leading-snug px-2.5 py-1.5 rounded border border-rose-500/40 bg-rose-500/10 text-rose-200";
-            combosBanner.innerHTML = `⚠️ Connected Neuron firmware (<code>Defy v2.3.0</code>) does not include Dygma's <code>CombosDygma</code> plugin (<code>combos.map</code> absent from Focus <code>help</code>). Update Neuron firmware via Bazecor (<code>v1.10+</code> / 2026+) or flash custom <code>EngrammerDefy.ino</code> to enable hardware chords.`;
+            combosBanner.innerHTML = `⚠️ Connected Wireless Neuron (<code>Defy v2.3.0</code>) lacks <code>CombosDygma</code> (<code>combos.map</code> was merged Oct 28, 2026 for upcoming <code>v2.4</code>). Use a dedicated <code>CW_TOGG</code> key on <code>L0</code> (or run <b>Kanata</b> on your OS for wireless chords today).`;
           }
         }
 
@@ -5818,10 +5891,23 @@
           await sendFocusCommand(`combos.map ${built.combosPayload}`, 4500);
           appendSerialLog(`[Combos] Synced ${built.combosCount} hardware combo entries across L0/L${built.winLayerIdx}/L${built.cwLayerIdx}.`);
         } else if (Array.isArray(combos) && combos.length > 0) {
-          appendSerialLog("[Combos Notice] Connected Neuron firmware (v2.3.0) lacks Focus 'combos.map'. Update Defy firmware in Bazecor (v1.10+/2026+) or flash EngrammerDefy.ino for hardware chords.");
+          appendSerialLog("[Combos Notice] Connected Wireless Neuron (Defy v2.3.0) lacks Focus 'combos.map' (merged Oct 28, 2026 for upcoming v2.4). Use a dedicated CW_TOGG key on L0 or Kanata on your OS for chords.");
         }
         await sendFocusCommand(`colormap.map ${serializeFocusColormap(cmTokenCount, maxDeviceLayers, existingCmNums)}`, 5000);
         await sendFocusCommand(`palette ${serializeFocusPalette()}`, 3000);
+        // Ensure static per-key & underglow Colormap mode (led.mode 0) is active on the Neuron!
+        await sendFocusCommand("led.mode 0");
+
+        const hasAnyLitUnderglow =
+          Array.isArray(underglowLayers) &&
+          underglowLayers.slice(0, maxDeviceLayers).some(
+            (ug) => ug && Object.values(ug).some((hex) => hex && !isOffColor(hex))
+          );
+        if (hasAnyLitUnderglow && Number(deviceSettings.ledBrightnessUgWireless ?? 25) <= 0) {
+          deviceSettings.ledBrightnessUgWireless = 45;
+          renderWirelessAndDeviceTab();
+          appendSerialLog("[Underglow] Bumped Wireless Underglow Brightness from 0% -> 45% so painted underglow strips light up.");
+        }
 
         const holdMs = getQukeysThresholdMs();
         await sendFocusCommand(`qukeys.holdTimeout ${holdMs}`);
@@ -6121,6 +6207,23 @@
         const combosRaw = supportsNativeCombos ? await sendFocusCommand("combos.map", 3500) : "";
         const palRaw = await sendFocusCommand("palette", 3000);
         const cmRaw = await sendFocusCommand("colormap.map", 4500);
+        const brKeyW = parseInt((await sendFocusCommand("led.brightness")).trim(), 10);
+        const brUgW = parseInt((await sendFocusCommand("led.brightnessUG")).trim(), 10);
+        const brKeyWl = parseInt((await sendFocusCommand("led.brightness.wireless")).trim(), 10);
+        const brUgWl = parseInt((await sendFocusCommand("led.brightnessUG.wireless")).trim(), 10);
+        if (Number.isFinite(brKeyW) && brKeyW >= 0 && brKeyW <= 255) {
+          deviceSettings.ledBrightnessKeyWired = Math.round((brKeyW / 255) * 100);
+        }
+        if (Number.isFinite(brUgW) && brUgW >= 0 && brUgW <= 255) {
+          deviceSettings.ledBrightnessUgWired = Math.round((brUgW / 255) * 100);
+        }
+        if (Number.isFinite(brKeyWl) && brKeyWl >= 0 && brKeyWl <= 255) {
+          deviceSettings.ledBrightnessKeyWireless = Math.round((brKeyWl / 255) * 100);
+        }
+        if (Number.isFinite(brUgWl) && brUgWl >= 0 && brUgWl <= 255) {
+          deviceSettings.ledBrightnessUgWireless = Math.round((brUgWl / 255) * 100);
+        }
+        renderWirelessAndDeviceTab();
         const pulledCount = applyPulledFocusData(kmRaw, palRaw, cmRaw, superRaw, macrosRaw, [], [], combosRaw);
         if (!pulledCount) {
           appendSerialLog("[Pull Warning] Neuron returned fewer than 80 keymap tokens.");
