@@ -263,6 +263,13 @@
             <option value="off">Turn Off Underglow (Black)</option>
           </select>
         </div>
+
+        <button id="btn-preview-layer-hw" type="button" class="px-2.5 py-1 rounded-md border border-[var(--app-border)] bg-[var(--app-background)] hover:border-cyan-400 transition font-medium" title="Temporarily activate the selected layer on your connected Dygma Defy so you can preview secondary layer LEDs hands-free while painting">
+          👁️ Preview Layer: OFF
+        </button>
+        <button id="btn-sync-rgb-live" type="button" class="px-2.5 py-1 rounded-md font-bold bg-emerald-500 text-slate-950 hover:bg-emerald-400 transition shadow-sm" title="Push the 16-swatch RGBW palette &amp; all layer colormaps directly to your Dygma Defy over WebSerial">
+          ⚡ Sync RGB
+        </button>
       </div>
     </div>
 
@@ -1798,6 +1805,29 @@
       }
     }
 
+    // Mirror L0 (Base Mac) key/underglow RGB edits to Base Win (L8) so Windows-mode keyboards display L0 color updates
+    function syncBaseWinColorsFromMac(keyIndices = null, syncUnderglow = false) {
+      if (!Array.isArray(layers) || !Array.isArray(layers[0])) return;
+      const winIdx = LAYERS_META.findIndex((m, i) => i > 0 && isWinBaseLayerMeta(m));
+      if (winIdx <= 0 || !Array.isArray(layers[winIdx])) return;
+      if (keyIndices === "all") {
+        for (let k = 0; k < Math.min(layers[0].length, layers[winIdx].length); k++) {
+          if (layers[0][k] && layers[winIdx][k]) {
+            layers[winIdx][k].color = layers[0][k].color;
+          }
+        }
+      } else if (Array.isArray(keyIndices)) {
+        keyIndices.forEach((kIdx) => {
+          if (kIdx >= 0 && layers[0][kIdx] && layers[winIdx][kIdx]) {
+            layers[winIdx][kIdx].color = layers[0][kIdx].color;
+          }
+        });
+      }
+      if (syncUnderglow && underglowLayers[0]) {
+        underglowLayers[winIdx] = { ...underglowLayers[0] };
+      }
+    }
+
     function syncLayersHeldKeysFromBase() {
       if (!Array.isArray(layers) || !layers[0]) return;
       LAYERS_META.forEach((m, idx) => {
@@ -2252,10 +2282,14 @@
         btn.textContent = m.short;
         btn.onclick = () => {
           currentLayer = idx;
+          inspectorColorSlot = null;
           updateVisualizerLinkHref();
           renderLayerTabs();
           renderKeyboardStage();
           renderInspector();
+          if (typeof syncHardwareLayerPreview === "function") {
+            syncHardwareLayerPreview();
+          }
         };
         nav.appendChild(btn);
       });
@@ -2693,7 +2727,13 @@
       didPaintDuringDrag = false;
       draggedKeyIdx = null;
       if (shouldFlushPaint) {
+        if (currentLayer === 0) {
+          syncBaseWinColorsFromMac("all", true);
+        }
         saveState();
+        if (typeof scheduleRgbAutoSync === "function") {
+          scheduleRgbAutoSync();
+        }
         renderKeyboardStage();
         renderInspector();
       }
@@ -2786,9 +2826,18 @@
       }
     }
 
+    let inspectorColorSlot = null;
+    let inspectorColorSelectionSig = "";
+    let rgbSaveDebounceTimer = null;
+
     function renderInspector() {
       const pos = KEY_POSITIONS[selectedKeyIndex];
       const binding = layers[currentLayer][selectedKeyIndex];
+      const nextSig = `${currentLayer}:${selectedKeyIndex}`;
+      if (inspectorColorSelectionSig !== nextSig) {
+        inspectorColorSelectionSig = nextSig;
+        inspectorColorSlot = null;
+      }
 
       document.getElementById("insp-key-id").textContent = pos.id;
       document.getElementById("insp-key-title").textContent = pos.name;
@@ -3819,14 +3868,45 @@
     document.getElementById("edit-hold").onchange = applyCurrentInspectorEdit;
     document.getElementById("edit-shifted-custom").oninput = applyCurrentInspectorEdit;
 
+    function scheduleRgbSaveAndSync() {
+      if (rgbSaveDebounceTimer) clearTimeout(rgbSaveDebounceTimer);
+      rgbSaveDebounceTimer = setTimeout(() => {
+        saveState(false);
+        if (typeof scheduleRgbAutoSync === "function") {
+          scheduleRgbAutoSync();
+        }
+      }, 180);
+    }
+
     document.getElementById("edit-key-color").oninput = (e) => {
-      layers[currentLayer][selectedKeyIndex].color = e.target.value;
-      saveState();
+      const alloc = ensureColorInPalette(e.target.value, inspectorColorSlot, currentLayer, selectedKeyIndex);
+      if (alloc.allocatedNew) {
+        inspectorColorSlot = alloc.idx;
+      }
+      layers[currentLayer][selectedKeyIndex].color = alloc.hex;
+      if (currentLayer === 0) {
+        syncBaseWinColorsFromMac([selectedKeyIndex], false);
+      }
       renderKeyboardStage();
+      scheduleRgbSaveAndSync();
+    };
+    document.getElementById("edit-key-color").onchange = () => {
+      inspectorColorSlot = null;
+      saveState();
+      if (typeof scheduleRgbAutoSync === "function") {
+        scheduleRgbAutoSync();
+      }
     };
     document.getElementById("btn-clear-key-color").onclick = () => {
+      inspectorColorSlot = null;
       layers[currentLayer][selectedKeyIndex].color = "";
+      if (currentLayer === 0) {
+        syncBaseWinColorsFromMac([selectedKeyIndex], false);
+      }
       saveState();
+      if (typeof scheduleRgbAutoSync === "function") {
+        scheduleRgbAutoSync();
+      }
       renderKeyboardStage();
       renderInspector();
     };
@@ -3845,10 +3925,39 @@
 
     // RGB Palette & Underglow Studio Bar Controls
     document.getElementById("rgb-custom-picker").oninput = (e) => {
-      rgbPalette[selectedSwatchIdx] = e.target.value;
+      const prevHex = normalizeHexColor(rgbPalette[selectedSwatchIdx]);
+      const nextHex = normalizeHexColor(e.target.value);
+      rgbPalette[selectedSwatchIdx] = nextHex;
       if (Array.isArray(rgbwPaletteRaw)) rgbwPaletteRaw[selectedSwatchIdx] = null;
+      if (!isOffColor(prevHex) && prevHex !== nextHex) {
+        layers.forEach((lyr) => {
+          if (!Array.isArray(lyr)) return;
+          lyr.forEach((b) => {
+            if (b && b.color && normalizeHexColor(b.color) === prevHex) {
+              b.color = nextHex;
+            }
+          });
+        });
+        underglowLayers.forEach((ug) => {
+          if (!ug) return;
+          Object.keys(ug).forEach((sId) => {
+            if (ug[sId] && normalizeHexColor(ug[sId]) === prevHex) {
+              ug[sId] = nextHex;
+            }
+          });
+        });
+      }
+      ensureOffSwatchExists();
       renderRgbPaletteBar();
+      renderKeyboardStage();
+      renderInspector();
+      scheduleRgbSaveAndSync();
+    };
+    document.getElementById("rgb-custom-picker").onchange = () => {
       saveState();
+      if (typeof scheduleRgbAutoSync === "function") {
+        scheduleRgbAutoSync();
+      }
     };
 
     document.getElementById("btn-paint-mode").onclick = (e) => {
@@ -3894,7 +4003,13 @@
         layers[currentLayer].forEach((k) => (k.color = ""));
       }
       e.target.value = "";
+      if (currentLayer === 0) {
+        syncBaseWinColorsFromMac("all", false);
+      }
       saveState();
+      if (typeof scheduleRgbAutoSync === "function") {
+        scheduleRgbAutoSync();
+      }
       renderKeyboardStage();
       renderInspector();
     };
@@ -3916,7 +4031,13 @@
         });
       }
       e.target.value = "";
+      if (currentLayer === 0) {
+        syncBaseWinColorsFromMac(null, true);
+      }
       saveState();
+      if (typeof scheduleRgbAutoSync === "function") {
+        scheduleRgbAutoSync();
+      }
       renderKeyboardStage();
     };
 
@@ -5289,6 +5410,99 @@
       return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
     }
 
+    function normalizeHexColor(hex) {
+      const raw = String(hex || "").trim().toLowerCase();
+      if (/^#[0-9a-f]{6}$/.test(raw)) return raw;
+      if (/^#[0-9a-f]{3}$/.test(raw)) {
+        return "#" + raw[1] + raw[1] + raw[2] + raw[2] + raw[3] + raw[3];
+      }
+      return "#0f172a";
+    }
+
+    function ensureOffSwatchExists() {
+      if (!Array.isArray(rgbPalette) || rgbPalette.length < 16) return 15;
+      const existingOff = rgbPalette.findIndex((p) => isOffColor(p));
+      if (existingOff >= 0) return existingOff;
+      rgbPalette[15] = "#0f172a";
+      if (Array.isArray(rgbwPaletteRaw)) rgbwPaletteRaw[15] = [0, 0, 0, 0];
+      return 15;
+    }
+
+    function ensureColorInPalette(hex, dedicatedSlot = null, skipLayerIdx = -1, skipKeyIdx = -1) {
+      const norm = normalizeHexColor(hex);
+      if (isOffColor(norm)) {
+        const offIdx = ensureOffSwatchExists();
+        selectedSwatchIdx = offIdx;
+        renderRgbPaletteBar();
+        return { hex: "#0f172a", idx: offIdx, allocatedNew: false };
+      }
+      if (dedicatedSlot !== null && dedicatedSlot >= 0 && dedicatedSlot < 15) {
+        rgbPalette[dedicatedSlot] = norm;
+        if (Array.isArray(rgbwPaletteRaw)) rgbwPaletteRaw[dedicatedSlot] = null;
+        ensureOffSwatchExists();
+        selectedSwatchIdx = dedicatedSlot;
+        renderRgbPaletteBar();
+        return { hex: norm, idx: dedicatedSlot, allocatedNew: true };
+      }
+      const [r1, g1, b1] = hexToDisplayRgb(norm);
+      for (let i = 0; i < 16; i++) {
+        const pHex = rgbPalette[i];
+        if (isOffColor(pHex)) continue;
+        const [r2, g2, b2] = hexToDisplayRgb(pHex);
+        const dist = (r1 - r2) ** 2 + (g1 - g2) ** 2 + (b1 - b2) ** 2;
+        if (dist <= 16) {
+          selectedSwatchIdx = i;
+          renderRgbPaletteBar();
+          return { hex: normalizeHexColor(pHex), idx: i, allocatedNew: false };
+        }
+      }
+      ensureOffSwatchExists();
+      // Prefer any duplicate or extra off/black slot in 0..14 (common after reading Bazecor palettes)
+      const seenHex = new Set();
+      let targetSlot = -1;
+      for (let i = 0; i < 15; i++) {
+        const pNorm = normalizeHexColor(rgbPalette[i]);
+        if (isOffColor(pNorm) || seenHex.has(pNorm)) {
+          targetSlot = i;
+          break;
+        }
+        seenHex.add(pNorm);
+      }
+      if (targetSlot < 0) {
+        const usage = new Array(16).fill(0);
+        layers.forEach((lyr, lIdx) => {
+          if (!Array.isArray(lyr)) return;
+          lyr.forEach((b, kIdx) => {
+            if (lIdx === skipLayerIdx && kIdx === skipKeyIdx) return;
+            if (!b || (!b.color && (b.type === "trans" || b.type === "none"))) return;
+            const c = b.color ? b.color : getKeyAccentColor(KEY_POSITIONS[kIdx], b);
+            usage[nearestPaletteIndex(c)]++;
+          });
+        });
+        underglowLayers.forEach((ug) => {
+          if (!ug) return;
+          Object.values(ug).forEach((uHex) => {
+            usage[nearestPaletteIndex(uHex || "#0f172a")]++;
+          });
+        });
+        let minCount = Infinity;
+        for (let i = 0; i < 15; i++) {
+          if (usage[i] < minCount) {
+            minCount = usage[i];
+            targetSlot = i;
+          }
+        }
+      }
+      if (targetSlot < 0 || targetSlot >= 15) {
+        targetSlot = selectedSwatchIdx >= 0 && selectedSwatchIdx < 15 ? selectedSwatchIdx : 14;
+      }
+      rgbPalette[targetSlot] = norm;
+      if (Array.isArray(rgbwPaletteRaw)) rgbwPaletteRaw[targetSlot] = null;
+      selectedSwatchIdx = targetSlot;
+      renderRgbPaletteBar();
+      return { hex: norm, idx: targetSlot, allocatedNew: true };
+    }
+
     function nearestPaletteIndex(hex) {
       if (!hex) return 4;
       if (isOffColor(hex)) {
@@ -5740,6 +5954,7 @@
     }
 
     function serializeFocusColormap(targetTokenCount = 1780, maxLayers = 10, existingCmNums = null) {
+      ensureOffSwatchExists();
       const ledsPerLayer = Math.max(70, Math.floor(targetTokenCount / maxLayers));
       const offIdx = nearestPaletteIndex("#0f172a");
       const leds = [];
@@ -5755,8 +5970,12 @@
           lyr.forEach((binding, kIdx) => {
             const ledIdx = getLedIndexFromAddr(KEY_POSITIONS[kIdx].addr);
             if (ledIdx >= 0 && ledIdx < ledsPerLayer) {
-              const c = binding.color ? binding.color : getKeyAccentColor(KEY_POSITIONS[kIdx], binding);
-              layerLeds[ledIdx] = nearestPaletteIndex(c);
+              if (!binding.color && (binding.type === "trans" || binding.type === "none")) {
+                layerLeds[ledIdx] = offIdx;
+              } else {
+                const c = binding.color ? binding.color : getKeyAccentColor(KEY_POSITIONS[kIdx], binding);
+                layerLeds[ledIdx] = nearestPaletteIndex(c);
+              }
             }
           });
         }
@@ -5781,6 +6000,13 @@
     let serialResponseWaiter = null;
     let serialMutex = Promise.resolve();
     let autoSyncTimer = null;
+    let rgbAutoSyncTimer = null;
+    let previewLayerOnBoard = false;
+    let previewedHwLayer = null;
+
+    function sleepMs(ms) {
+      return new Promise((r) => setTimeout(r, ms));
+    }
 
     function appendSerialLog(line) {
       const el = document.getElementById("serial-console-log");
@@ -5807,6 +6033,11 @@
         btnConn.classList.remove("hidden");
         btnDisc.classList.add("hidden");
       }
+      const syncRgbBtn = document.getElementById("btn-sync-rgb-live");
+      if (syncRgbBtn) {
+        syncRgbBtn.textContent = connected ? "⚡ Sync RGB (Live)" : "🔌 Connect & Sync RGB";
+      }
+      renderPreviewLayerButtonUI();
       renderWirelessAndDeviceTab();
     }
 
@@ -5896,6 +6127,12 @@
     }
 
     async function disconnectDygmaSerial() {
+      if (serialPort && previewedHwLayer !== null && previewedHwLayer > 0) {
+        try {
+          await sendFocusCommand(`layer.deactivate ${previewedHwLayer}`, 800);
+        } catch (e) {}
+      }
+      previewedHwLayer = null;
       const portToClose = serialPort;
       serialPort = null;
       if (serialReader) {
@@ -6130,10 +6367,18 @@
         } else if (Array.isArray(combos) && combos.length > 0) {
           appendSerialLog("[Combos Notice] Connected Wireless Neuron (Defy v2.3.0) lacks Focus 'combos.map'. Flash Defy_Wireless_Engrammer_v2.4.0_Custom_FW via Bazecor to enable hardware combos!");
         }
-        await sendFocusCommand(`colormap.map ${serializeFocusColormap(cmTokenCount, maxDeviceLayers, existingCmNums)}`, 5000);
+        // Write 16-swatch RGBW palette BEFORE colormap.map + brief RF pipe drain pause so both wireless halves
+        // already hold the updated swatches when LAYER_KEYMAP_COLORS / LAYER_UNDERGLOW_COLORS + MODE_LED arrive!
+        ensureOffSwatchExists();
         await sendFocusCommand(`palette ${serializeFocusPalette()}`, 3000);
+        await sleepMs(65);
+        await sendFocusCommand(`colormap.map ${serializeFocusColormap(cmTokenCount, maxDeviceLayers, existingCmNums)}`, 5000);
+        await sleepMs(90);
         // Ensure static per-key & underglow Colormap mode (led.mode 0) is active on the Neuron!
         await sendFocusCommand("led.mode 0");
+        if (previewLayerOnBoard) {
+          await syncHardwareLayerPreview();
+        }
 
         const hasAnyLitUnderglow =
           Array.isArray(underglowLayers) &&
@@ -6489,6 +6734,89 @@
       }
     }
 
+    function renderPreviewLayerButtonUI() {
+      const btn = document.getElementById("btn-preview-layer-hw");
+      if (!btn) return;
+      btn.textContent = previewLayerOnBoard
+        ? `👁️ Previewing L${currentLayer}`
+        : "👁️ Preview Layer: OFF";
+      btn.className = previewLayerOnBoard
+        ? "px-2.5 py-1 rounded-md border border-cyan-400 bg-cyan-500 text-slate-950 font-bold transition shadow-sm"
+        : "px-2.5 py-1 rounded-md border border-[var(--app-border)] bg-[var(--app-background)] hover:border-cyan-400 transition font-medium";
+    }
+
+    async function syncHardwareLayerPreview() {
+      renderPreviewLayerButtonUI();
+      if (!serialPort) return;
+      try {
+        if (!previewLayerOnBoard || currentLayer === 0) {
+          if (previewedHwLayer !== null && previewedHwLayer > 0) {
+            const prev = previewedHwLayer;
+            previewedHwLayer = null;
+            await sendFocusCommand(`layer.deactivate ${prev}`, 1200);
+          }
+          return;
+        }
+        if (previewedHwLayer !== null && previewedHwLayer > 0 && previewedHwLayer !== currentLayer) {
+          await sendFocusCommand(`layer.deactivate ${previewedHwLayer}`, 1200);
+        }
+        if (previewedHwLayer !== currentLayer) {
+          previewedHwLayer = currentLayer;
+          await sendFocusCommand(`layer.activate ${currentLayer}`, 1200);
+        }
+      } catch (e) {}
+    }
+
+    async function pushRgbOnlyToDefy(showToast = false) {
+      if (!serialPort) {
+        await connectDygmaSerial();
+        if (!serialPort) return;
+      }
+      try {
+        ensureOffSwatchExists();
+        const existingCmRaw = await sendFocusCommand("colormap.map", 4500);
+        const existingCmNums = existingCmRaw.trim().split(/\s+/).map(Number).filter(Number.isFinite);
+        const cmTokenCount = existingCmNums.length >= 178 ? existingCmNums.length : 1780;
+        const maxDeviceLayers = Math.max(1, Math.round(cmTokenCount / 178));
+
+        await sendFocusCommand(`palette ${serializeFocusPalette()}`, 3000);
+        await sleepMs(65);
+        await sendFocusCommand(`colormap.map ${serializeFocusColormap(cmTokenCount, maxDeviceLayers, existingCmNums)}`, 5000);
+        await sleepMs(90);
+        await sendFocusCommand("led.mode 0");
+
+        const hasAnyLitUnderglow =
+          Array.isArray(underglowLayers) &&
+          underglowLayers.slice(0, maxDeviceLayers).some(
+            (ug) => ug && Object.values(ug).some((hex) => hex && !isOffColor(hex))
+          );
+        if (hasAnyLitUnderglow && Number(deviceSettings.ledBrightnessUgWireless ?? 25) <= 0) {
+          deviceSettings.ledBrightnessUgWireless = 45;
+          await sendFocusCommand("led.brightnessUG.wireless 115");
+          renderWirelessAndDeviceTab();
+        }
+        if (previewLayerOnBoard) {
+          await syncHardwareLayerPreview();
+        }
+        appendSerialLog(`[RGB Sync] Synced 16-swatch RGBW palette & ${maxDeviceLayers} layer colormaps (${cmTokenCount} LEDs).`);
+        if (showToast) {
+          triggerSaveToast(`⚡ Synced RGB Palette & Layer Colors to Dygma Defy!`, "🎨");
+        }
+      } catch (err) {
+        appendSerialLog(`[RGB Sync Error] ${err.message}`);
+      }
+    }
+
+    function scheduleRgbAutoSync() {
+      if (!serialPort) return;
+      const chk = document.getElementById("chk-auto-sync");
+      if (chk && chk.checked) return; // Full auto-sync already queued via saveState()
+      if (rgbAutoSyncTimer) clearTimeout(rgbAutoSyncTimer);
+      rgbAutoSyncTimer = setTimeout(() => {
+        pushRgbOnlyToDefy(false);
+      }, 260);
+    }
+
     function scheduleAutoSync() {
       const chk = document.getElementById("chk-auto-sync");
       if (!chk || !chk.checked || !serialPort) return;
@@ -6613,6 +6941,23 @@
     document.getElementById("btn-push-live").onclick = pushToDygmaDefy;
     document.getElementById("btn-pull-live").onclick = pullFromDygmaDefy;
     document.getElementById("btn-query-version").onclick = queryNeuronStatus;
+    document.getElementById("btn-sync-rgb-live").onclick = () => pushRgbOnlyToDefy(true);
+    document.getElementById("btn-preview-layer-hw").onclick = async () => {
+      if (!serialPort && !previewLayerOnBoard) {
+        await connectDygmaSerial();
+        if (!serialPort) return;
+      }
+      previewLayerOnBoard = !previewLayerOnBoard;
+      await syncHardwareLayerPreview();
+      if (previewLayerOnBoard && currentLayer === 0) {
+        triggerSaveToast("👁️ Layer Preview ON — click L1–L9 tabs to light them up hands-free on your Defy!", "👁️");
+      }
+    };
+    window.addEventListener("beforeunload", () => {
+      if (serialPort && previewedHwLayer !== null && previewedHwLayer > 0) {
+        sendFocusCommand(`layer.deactivate ${previewedHwLayer}`, 300).catch(() => {});
+      }
+    });
     document.getElementById("btn-clear-serial-log").onclick = () => {
       document.getElementById("serial-console-log").textContent = "[Console Cleared]";
     };
