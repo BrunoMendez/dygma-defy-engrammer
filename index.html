@@ -459,7 +459,11 @@
                 <select id="combo-key-3" class="w-full text-xs font-mono rounded px-2 py-1 bg-[var(--app-background)] border border-[var(--app-border)] text-[var(--app-foreground)]"></select>
               </div>
             </div>
-            <div class="grid grid-cols-2 gap-2">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+              <div>
+                <label class="block text-[10px] font-mono uppercase text-[var(--app-muted-foreground)] mb-1">Active Layer</label>
+                <select id="combo-layer" class="w-full text-xs font-mono rounded px-2 py-1 bg-[var(--app-background)] border border-[var(--app-border)] text-[var(--app-foreground)]"></select>
+              </div>
               <div>
                 <label class="block text-[10px] font-mono uppercase text-[var(--app-muted-foreground)] mb-1">Chord Label</label>
                 <input id="combo-edit-label" type="text" placeholder="e.g. Left Bksp + Left Del" class="w-full text-xs rounded px-2 py-1 bg-[var(--app-background)] border border-[var(--app-border)] text-[var(--app-foreground)]" />
@@ -1528,18 +1532,18 @@
     // 4. MOONLANDER COMBOS DEFINITIONS
     // =========================================================================
     const DEFAULT_COMBOS = [
-      { id: "combo0",  keys: ["RTU3", "RTU2"], label: "Right Enter + Right Insert", action: "Ctrl + LeftShift" },
-      { id: "combo1",  keys: ["L35",  "L30"],  label: "B + Left OSM(Shift)",        action: "OS_TOGG — Mac/Win Base" },
-      { id: "combo2",  keys: ["L24",  "L33"],  label: "F + C",                      action: "TO(0) — Return to Base" },
-      { id: "combo4",  keys: ["LTU0", "LTU1"], label: "Left Bksp + Left Del",       action: "CW_TOGG (Caps-Word)" },
-      { id: "combo5",  keys: ["RTU2", "RTU1"], label: "Right Ins + Right Tab",      action: "CapsLock" },
-      { id: "combo6",  keys: ["RTU0", "RTU1"], label: "Right Space + Right Tab",    action: "CW_TOGG (Caps-Word)" },
-      { id: "combo7",  keys: ["LTU1", "LTU2"], label: "Left Del + Left Ins",        action: "CapsLock" },
-      { id: "combo8",  keys: ["LTU3", "LTU0"], label: "Left Esc + Left Bksp",       action: "Alt + Tab" },
-      { id: "combo9",  keys: ["LTU3", "LTU1"], label: "Left Esc + Left Del",        action: "Ctrl + Tab" },
-      { id: "combo10", keys: ["LTU3", "LTU2"], label: "Left Esc + Left Ins",        action: "GUI + Tab" },
-      { id: "combo11", keys: ["RTU3", "RTU0"], label: "Right Enter + Right Space",  action: "Hyper (Ctrl+Alt+Gui+Shift)" },
-      { id: "combo12", keys: ["RTU3", "RTU1"], label: "Right Enter + Right Tab",    action: "Meh (Ctrl+Alt+Shift)" }
+      { id: "combo0",  keys: ["RTU3", "RTU2"], label: "Right Enter + Right Insert", action: "Ctrl + LeftShift",           layer: "base" },
+      { id: "combo1",  keys: ["L35",  "L30"],  label: "B + Left OSM(Shift)",        action: "OS_TOGG — Mac/Win Base",     layer: "base" },
+      { id: "combo2",  keys: ["L24",  "L33"],  label: "F + C",                      action: "TO(0) — Return to Base",     layer: "base" },
+      { id: "combo4",  keys: ["LTU0", "LTU1"], label: "Left Bksp + Left Del",       action: "CW_TOGG (Caps-Word)",        layer: "base" },
+      { id: "combo5",  keys: ["RTU2", "RTU1"], label: "Right Ins + Right Tab",      action: "CapsLock",                   layer: "base" },
+      { id: "combo6",  keys: ["RTU0", "RTU1"], label: "Right Space + Right Tab",    action: "CW_TOGG (Caps-Word)",        layer: "base" },
+      { id: "combo7",  keys: ["LTU1", "LTU2"], label: "Left Del + Left Ins",        action: "CapsLock",                   layer: "base" },
+      { id: "combo8",  keys: ["LTU3", "LTU0"], label: "Left Esc + Left Bksp",       action: "Alt + Tab",                  layer: "base" },
+      { id: "combo9",  keys: ["LTU3", "LTU1"], label: "Left Esc + Left Del",        action: "Ctrl + Tab",                 layer: "base" },
+      { id: "combo10", keys: ["LTU3", "LTU2"], label: "Left Esc + Left Ins",        action: "GUI + Tab",                  layer: "base" },
+      { id: "combo11", keys: ["RTU3", "RTU0"], label: "Right Enter + Right Space",  action: "Hyper (Ctrl+Alt+Gui+Shift)", layer: "base" },
+      { id: "combo12", keys: ["RTU3", "RTU1"], label: "Right Enter + Right Tab",    action: "Meh (Ctrl+Alt+Shift)",       layer: "base" }
     ];
     let combos = JSON.parse(JSON.stringify(DEFAULT_COMBOS));
     let editingComboIndex = null;
@@ -1751,6 +1755,8 @@
       let updated = 0;
       combos.forEach((c) => {
         if (!c || !Array.isArray(c.keys)) return;
+        const normLayer = normalizeComboLayer(c.layer);
+        if (normLayer !== "base" && normLayer !== 0) return;
         const nextKeys = c.keys.map((kId) => defaultThumbRoleMap[kId] || kId);
         const dedup = [...new Set(nextKeys)];
         if (dedup.length >= 2 && dedup.join(",") !== c.keys.join(",")) {
@@ -2060,7 +2066,17 @@
               currentLayer = parsed.lastActiveLayer;
             }
             if (Array.isArray(parsed.combos)) {
-              combos = parsed.combos;
+              combos = parsed.combos.map((c) => ({
+                ...c,
+                layer:
+                  c && c.layer !== undefined && c.layer !== null && c.layer !== ""
+                    ? c.layer === "all" || c.layer === "base"
+                      ? c.layer
+                      : Number.isFinite(Number(c.layer))
+                      ? Math.floor(Number(c.layer))
+                      : "base"
+                    : "base"
+              }));
             }
             if (parsed.deviceSettings && typeof parsed.deviceSettings === "object") {
               deviceSettings = {
@@ -3015,11 +3031,92 @@
       });
     }
 
-    function populateComboKeySelects() {
+    function normalizeComboLayer(val) {
+      if (val === "all") return "all";
+      if (val === undefined || val === null || val === "" || val === "base") return "base";
+      const n = Number(val);
+      if (Number.isFinite(n) && n >= 0) return Math.floor(n);
+      return "base";
+    }
+
+    function getComboReferenceLayerIndex(layerTarget) {
+      const norm = normalizeComboLayer(layerTarget);
+      if (typeof norm === "number" && norm >= 0 && norm < layers.length) return norm;
+      return 0;
+    }
+
+    function formatComboLayerBadge(layerTarget) {
+      const norm = normalizeComboLayer(layerTarget);
+      if (norm === "all") {
+        return {
+          text: `All Layers`,
+          cls: "bg-amber-500/15 text-amber-300 border-amber-500/35"
+        };
+      }
+      if (norm === "base") {
+        const winIdx = LAYERS_META.findIndex((m, idx) => idx > 0 && isWinBaseLayerMeta(m));
+        return {
+          text: winIdx > 0 ? `Base (L0+L${winIdx})` : "Base (L0)",
+          cls: "bg-emerald-500/15 text-emerald-300 border-emerald-500/35"
+        };
+      }
+      const meta = LAYERS_META[norm];
+      return {
+        text: meta && meta.short ? meta.short : `L${norm}`,
+        cls: "bg-violet-500/20 text-violet-300 border-violet-500/40"
+      };
+    }
+
+    function estimateTotalComboHwSlots() {
+      const maxL = Math.max(1, Math.min(10, layers.length || 10));
+      const winIdx = LAYERS_META.findIndex((m, idx) => idx > 0 && idx < maxL && isWinBaseLayerMeta(m));
+      let total = 0;
+      (Array.isArray(combos) ? combos : []).forEach((c) => {
+        if (!c || !Array.isArray(c.keys) || c.keys.length < 2) return;
+        const norm = normalizeComboLayer(c.layer);
+        if (norm === "all") total += maxL;
+        else if (norm === "base") total += winIdx > 0 ? 2 : 1;
+        else if (typeof norm === "number" && norm < maxL) total += 1;
+      });
+      return total;
+    }
+
+    function populateComboLayerSelect(selectedTarget = "base") {
+      const sel = document.getElementById("combo-layer");
+      if (!sel) return;
+      const norm = normalizeComboLayer(selectedTarget);
+      const winIdx = LAYERS_META.findIndex((m, idx) => idx > 0 && isWinBaseLayerMeta(m));
+      sel.innerHTML = "";
+
+      const optBase = document.createElement("option");
+      optBase.value = "base";
+      optBase.textContent = winIdx > 0 ? `Base (L0 Mac + L${winIdx} Win)` : "Base (L0)";
+      sel.appendChild(optBase);
+
+      layers.forEach((_, idx) => {
+        const meta = LAYERS_META[idx];
+        const opt = document.createElement("option");
+        opt.value = String(idx);
+        opt.textContent = meta && meta.short ? `${meta.short} (Layer ${idx} only)` : `L${idx} (Layer ${idx} only)`;
+        sel.appendChild(opt);
+      });
+
+      const optAll = document.createElement("option");
+      optAll.value = "all";
+      optAll.textContent = `All Layers (L0–L${Math.max(0, layers.length - 1)})`;
+      sel.appendChild(optAll);
+
+      sel.value = String(norm);
+      if (sel.value !== String(norm)) sel.value = "base";
+    }
+
+    function populateComboKeySelects(layerTarget = null) {
       const sel1 = document.getElementById("combo-key-1");
       const sel2 = document.getElementById("combo-key-2");
       const sel3 = document.getElementById("combo-key-3");
+      const lyrSel = document.getElementById("combo-layer");
       if (!sel1 || !sel2 || !sel3) return;
+      const refLyr = getComboReferenceLayerIndex(layerTarget !== null ? layerTarget : lyrSel ? lyrSel.value : "base");
       const prev1 = sel1.value;
       const prev2 = sel2.value;
       const prev3 = sel3.value;
@@ -3027,8 +3124,13 @@
       sel2.innerHTML = "";
       sel3.innerHTML = `<option value="">(None)</option>`;
       KEY_POSITIONS.forEach((pos, idx) => {
+        const lyrBind = layers[refLyr] && layers[refLyr][idx] ? layers[refLyr][idx] : null;
         const baseTap = layers[0] && layers[0][idx] ? layers[0][idx].tap : "";
-        const label = `${pos.id} — ${baseTap || pos.name}`;
+        const effTap =
+          lyrBind && lyrBind.tap && lyrBind.tap !== "___" && lyrBind.tap !== "XXX"
+            ? lyrBind.tap
+            : baseTap;
+        const label = `${pos.id} — ${effTap || pos.name}`;
         [sel1, sel2, sel3].forEach((sel) => {
           const opt = document.createElement("option");
           opt.value = pos.id;
@@ -3052,12 +3154,15 @@
       return arr;
     }
 
-    function buildAutoComboLabel(keys) {
+    function buildAutoComboLabel(keys, layerTarget = "base") {
+      const refLyr = getComboReferenceLayerIndex(layerTarget);
       return keys
         .map((kId) => {
           const idx = KEY_POSITIONS.findIndex((p) => p.id === kId);
           if (idx < 0) return kId;
-          const tap = layers[0] && layers[0][idx] ? layers[0][idx].tap : "";
+          const lyrTap = layers[refLyr] && layers[refLyr][idx] ? layers[refLyr][idx].tap : "";
+          const baseTap = layers[0] && layers[0][idx] ? layers[0][idx].tap : "";
+          const tap = lyrTap && lyrTap !== "___" && lyrTap !== "XXX" ? lyrTap : baseTap;
           const side = idx < 7 || (idx >= 14 && idx < 21) || (idx >= 28 && idx < 35) || (idx >= 42 && idx < 48) || (idx >= 54 && idx < 59) || (idx >= 64 && idx < 67) ? "L" : "R";
           return tap && tap !== "___" && tap !== "XXX" ? `${side} ${tap}` : KEY_POSITIONS[idx].name;
         })
@@ -3066,9 +3171,11 @@
 
     function syncComboEditorPreview() {
       const keys = getComboEditorKeys();
+      const lyrEl = document.getElementById("combo-layer");
+      const layerTarget = lyrEl ? normalizeComboLayer(lyrEl.value) : "base";
       highlightedComboKeys = keys;
       const labelEl = document.getElementById("combo-edit-label");
-      const autoLbl = buildAutoComboLabel(keys);
+      const autoLbl = buildAutoComboLabel(keys, layerTarget);
       if (!labelEl.value.trim() || labelEl.value === lastAutoComboLabel) {
         labelEl.value = autoLbl;
         lastAutoComboLabel = autoLbl;
@@ -3077,7 +3184,6 @@
     }
 
     function openComboEditor(idx = null) {
-      populateComboKeySelects();
       editingComboIndex = idx;
       nextComboKeySlot = 0;
       const card = document.getElementById("combo-editor-card");
@@ -3085,21 +3191,35 @@
       const sel1 = document.getElementById("combo-key-1");
       const sel2 = document.getElementById("combo-key-2");
       const sel3 = document.getElementById("combo-key-3");
+      const lyrSel = document.getElementById("combo-layer");
       const labelEl = document.getElementById("combo-edit-label");
       const actionEl = document.getElementById("combo-edit-action");
       const hintEl = document.getElementById("combo-pick-hint");
 
+      const winIdx = LAYERS_META.findIndex((m, i) => i > 0 && isWinBaseLayerMeta(m));
+      const defaultTargetLayer =
+        currentLayer > 0 && currentLayer !== winIdx ? currentLayer : "base";
+
       if (idx !== null && combos[idx]) {
         const c = combos[idx];
+        const cLayer = normalizeComboLayer(c.layer);
+        populateComboLayerSelect(cLayer);
+        populateComboKeySelects(cLayer);
         title.textContent = `Edit Combo #${idx + 1} [${c.keys.join(" + ")}]`;
         sel1.value = c.keys[0] || KEY_POSITIONS[0].id;
         sel2.value = c.keys[1] || KEY_POSITIONS[1].id;
         sel3.value = c.keys[2] || "";
         labelEl.value = c.label || "";
         actionEl.value = c.action || "";
-        lastAutoComboLabel = buildAutoComboLabel(c.keys);
+        lastAutoComboLabel = buildAutoComboLabel(c.keys, cLayer);
         highlightedComboKeys = [...c.keys];
+        if (typeof cLayer === "number" && cLayer >= 0 && cLayer < layers.length && currentLayer !== cLayer) {
+          currentLayer = cLayer;
+          renderLayerTabs();
+        }
       } else {
+        populateComboLayerSelect(defaultTargetLayer);
+        populateComboKeySelects(defaultTargetLayer);
         title.textContent = "Add New Combo / Chord";
         const defaultK1 = KEY_POSITIONS[selectedKeyIndex] ? KEY_POSITIONS[selectedKeyIndex].id : "LTU1";
         const defaultK2 = defaultK1 === "LTU1" ? "LTU2" : "LTU1";
@@ -3107,7 +3227,7 @@
         sel2.value = defaultK2;
         sel3.value = "";
         const initialKeys = [defaultK1, defaultK2];
-        lastAutoComboLabel = buildAutoComboLabel(initialKeys);
+        lastAutoComboLabel = buildAutoComboLabel(initialKeys, lyrSel ? lyrSel.value : defaultTargetLayer);
         labelEl.value = lastAutoComboLabel;
         actionEl.value = "";
         highlightedComboKeys = initialKeys;
@@ -3141,16 +3261,19 @@
         triggerSaveToast("Select at least 2 distinct keys for a combo!", "⚠️");
         return;
       }
-      const label = document.getElementById("combo-edit-label").value.trim() || buildAutoComboLabel(keys);
+      const lyrEl = document.getElementById("combo-layer");
+      const layer = normalizeComboLayer(lyrEl ? lyrEl.value : "base");
+      const label = document.getElementById("combo-edit-label").value.trim() || buildAutoComboLabel(keys, layer);
       const action = document.getElementById("combo-edit-action").value.trim() || "CW_TOGG (Caps-Word)";
-      const newEntry = { keys, label, action };
+      const newEntry = { keys, label, action, layer };
+      const badge = formatComboLayerBadge(layer);
 
       if (editingComboIndex !== null && combos[editingComboIndex]) {
         combos[editingComboIndex] = newEntry;
-        saveState(true, `Updated combo [${keys.join(" + ")}] → ${action}`);
+        saveState(true, `Updated combo [${keys.join(" + ")}] on ${badge.text} → ${action}`);
       } else {
         combos.push(newEntry);
-        saveState(true, `Added combo [${keys.join(" + ")}] → ${action}`);
+        saveState(true, `Added combo [${keys.join(" + ")}] on ${badge.text} → ${action}`);
       }
       closeComboEditor();
       updateCodePreview();
@@ -3175,8 +3298,9 @@
     function renderCombosList() {
       const list = document.getElementById("combos-list");
       const tabBtn = document.getElementById("tab-btn-combos");
+      const hwSlots = estimateTotalComboHwSlots();
       if (tabBtn) {
-        tabBtn.textContent = `Combos & Chords (${combos.length})`;
+        tabBtn.textContent = `Combos & Chords (${combos.length} • ${Math.min(32, hwSlots)}/32 HW)`;
       }
       if (!list) return;
       list.innerHTML = "";
@@ -3184,8 +3308,15 @@
         list.innerHTML = `<div class="p-3 rounded border border-dashed border-[var(--app-border)] text-center text-xs text-[var(--app-muted-foreground)]">No combos configured. Click <b>+ Add Combo</b> above to create a chord.</div>`;
         return;
       }
+      if (hwSlots > 32) {
+        const warn = document.createElement("div");
+        warn.className = "text-[10.5px] px-2.5 py-1.5 rounded border border-amber-500/40 bg-amber-500/10 text-amber-200";
+        warn.innerHTML = `⚠️ Configured combos expand to <b>${hwSlots}</b> layer-entries; Dygma hardware stores up to <b>32</b> entries in <code>combos.map</code> (first 32 sync).`;
+        list.appendChild(warn);
+      }
       combos.forEach((c, idx) => {
         const isEditing = editingComboIndex === idx;
+        const badge = formatComboLayerBadge(c.layer);
         const row = document.createElement("div");
         row.className = `flex items-center justify-between gap-2 px-2.5 py-1.5 rounded border text-xs cursor-pointer transition ${
           isEditing
@@ -3193,9 +3324,10 @@
             : "border-[var(--app-border)] bg-[var(--app-background)] hover:border-cyan-400"
         }`;
         row.innerHTML = `
-          <div class="min-w-0 flex-1">
-            <span class="font-mono text-[10px] text-cyan-400 mr-1.5">[${escapeXml(c.keys.join(" + "))}]</span>
-            <span class="font-medium">${escapeXml(c.label)}</span>
+          <div class="min-w-0 flex-1 flex flex-wrap items-center gap-1.5">
+            <span class="font-mono text-[10px] px-1.5 py-0.5 rounded border ${badge.cls}">${escapeXml(badge.text)}</span>
+            <span class="font-mono text-[10px] text-cyan-400">[${escapeXml(c.keys.join(" + "))}]</span>
+            <span class="font-medium truncate">${escapeXml(c.label)}</span>
           </div>
           <div class="flex items-center gap-1.5 shrink-0">
             <span class="font-mono text-[11px] px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300">${escapeXml(c.action)}</span>
@@ -3663,6 +3795,16 @@
     ["combo-key-1", "combo-key-2", "combo-key-3"].forEach((id) => {
       document.getElementById(id).onchange = syncComboEditorPreview;
     });
+    document.getElementById("combo-layer").onchange = (e) => {
+      const target = normalizeComboLayer(e.target.value);
+      populateComboKeySelects(target);
+      if (typeof target === "number" && target >= 0 && target < layers.length && currentLayer !== target) {
+        currentLayer = target;
+        renderLayerTabs();
+        renderInspector();
+      }
+      syncComboEditorPreview();
+    };
     document.getElementById("combo-edit-action").addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
         e.preventDefault();
@@ -4141,7 +4283,8 @@
                 .map((c) => ({
                   keys: c.keys.map((k) => String(k).trim()).filter(Boolean),
                   label: String(c.label || ""),
-                  action: String(c.action || "")
+                  action: String(c.action || ""),
+                  layer: normalizeComboLayer(c.layer)
                 }));
             }
             if (data.deviceSettings && typeof data.deviceSettings === "object") {
@@ -5274,12 +5417,17 @@
         );
         if (!actCode || actCode <= 0) return;
         const isCw = /CW_TOGG|Caps\s*-?\s*Word/i.test(String(c.action || ""));
-        validCombos.push({ posNums, actCode, isCw });
+        const layerTarget = normalizeComboLayer(c.layer);
+        validCombos.push({ posNums, actCode, isCw, layerTarget });
       });
 
       const entries = [];
+      const claimedPosLayer = new Set();
       const pushEntry = (posNums, layerNum, actCode) => {
         if (entries.length >= MAX_HW_COMBOS || layerNum < 0 || layerNum >= maxLayers) return;
+        const sortedSig = [...posNums].slice(0, 6).sort((a, b) => a - b).join(",") + `@L${layerNum}`;
+        if (claimedPosLayer.has(sortedSig)) return;
+        claimedPosLayer.add(sortedSig);
         const padded = [255, 255, 255, 255, 255, 255];
         posNums.slice(0, 6).forEach((p, idx) => {
           padded[idx] = p;
@@ -5287,16 +5435,38 @@
         entries.push([...padded, layerNum, 1, actCode]);
       };
 
-      // Priority 1: L0 (Base Mac) for all chords
-      validCombos.forEach((vc) => pushEntry(vc.posNums, 0, vc.actCode));
-      // Priority 2: L8 (Base Win) so chords work identically in Windows/Linux GACS mode
+      // Priority 1: Explicit single-layer combos (L0..L9) always get their exact layer slot first
+      validCombos
+        .filter((vc) => typeof vc.layerTarget === "number")
+        .forEach((vc) => pushEntry(vc.posNums, vc.layerTarget, vc.actCode));
+
+      // Priority 2: Base combos on L0 (Base Mac)
+      validCombos
+        .filter((vc) => vc.layerTarget === "base")
+        .forEach((vc) => pushEntry(vc.posNums, 0, vc.actCode));
+
+      // Priority 3: Base combos on L8 (Base Win) so chords work identically in Windows/Linux GACS mode
       if (winLayerIdx > 0 && winLayerIdx < maxLayers) {
-        validCombos.forEach((vc) => pushEntry(vc.posNums, winLayerIdx, vc.actCode));
+        validCombos
+          .filter((vc) => vc.layerTarget === "base")
+          .forEach((vc) => pushEntry(vc.posNums, winLayerIdx, vc.actCode));
       }
-      // Priority 3: L9 (CapsWord) for CW_TOGG chords so pressing the chord again toggles Caps-Word off
+
+      // Priority 4: Legacy L9 (CapsWord) for CW_TOGG base chords when native capsword.enabled is absent
       if (!supportsNativeCapsWord && cwLayerIdx > 0 && cwLayerIdx < maxLayers && cwLayerIdx !== winLayerIdx) {
-        validCombos.filter((vc) => vc.isCw).forEach((vc) => pushEntry(vc.posNums, cwLayerIdx, vc.actCode));
+        validCombos
+          .filter((vc) => vc.layerTarget === "base" && vc.isCw)
+          .forEach((vc) => pushEntry(vc.posNums, cwLayerIdx, vc.actCode));
       }
+
+      // Priority 5: "All Layers" combos across remaining layers
+      validCombos
+        .filter((vc) => vc.layerTarget === "all")
+        .forEach((vc) => {
+          for (let l = 0; l < maxLayers; l++) {
+            pushEntry(vc.posNums, l, vc.actCode);
+          }
+        });
 
       const count = entries.length;
       const flat = [count];
@@ -5316,12 +5486,12 @@
       const nums = cleaned.split(/\s+/).map(Number).filter(Number.isFinite);
       if (nums.length < 10) return [];
       const count = Math.max(0, Math.min(32, nums[0] || 0));
-      const seen = new Set();
-      const out = [];
+      const grouped = new Map();
       for (let i = 0; i < count; i++) {
         const base = 1 + i * 9;
         if (base + 8 >= nums.length) break;
         const posArr = nums.slice(base, base + 6).filter((p) => p >= 0 && p < 80);
+        const layerNum = Math.max(0, Math.floor(nums[base + 6] || 0));
         const flags = nums[base + 7];
         const actCode = nums[base + 8];
         if ((flags & 1) === 0 || posArr.length < 2 || actCode <= 0) continue;
@@ -5358,14 +5528,47 @@
         }
 
         const sig = `${keys.join("+")}::${actionLabel}`;
-        if (seen.has(sig)) continue;
-        seen.add(sig);
-        out.push({
-          keys,
-          label: typeof buildAutoComboLabel === "function" ? buildAutoComboLabel(keys) : keys.join(" + "),
-          action: actionLabel
-        });
+        if (!grouped.has(sig)) {
+          grouped.set(sig, { keys, actionLabel, layersSet: new Set() });
+        }
+        grouped.get(sig).layersSet.add(layerNum);
       }
+
+      const out = [];
+      const maxPullLayers = Math.max(1, Number(decodeOpts.numLayers) || layers.length || 10);
+      grouped.forEach(({ keys, actionLabel, layersSet }) => {
+        if (layersSet.size >= Math.max(4, maxPullLayers)) {
+          out.push({
+            keys,
+            label: typeof buildAutoComboLabel === "function" ? buildAutoComboLabel(keys, "all") : keys.join(" + "),
+            action: actionLabel,
+            layer: "all"
+          });
+          return;
+        }
+        const remaining = new Set(layersSet);
+        if (decodeOpts.hasWinBaseLayer && remaining.has(0) && remaining.has(decodeOpts.winLayerIdx)) {
+          remaining.delete(0);
+          remaining.delete(decodeOpts.winLayerIdx);
+          if (decodeOpts.hasCapsWordLayer && /CW_TOGG|Caps\s*-?\s*Word/i.test(actionLabel)) {
+            remaining.delete(decodeOpts.cwLayerIdx);
+          }
+          out.push({
+            keys,
+            label: typeof buildAutoComboLabel === "function" ? buildAutoComboLabel(keys, "base") : keys.join(" + "),
+            action: actionLabel,
+            layer: "base"
+          });
+        }
+        [...remaining].sort((a, b) => a - b).forEach((lyrNum) => {
+          out.push({
+            keys,
+            label: typeof buildAutoComboLabel === "function" ? buildAutoComboLabel(keys, lyrNum) : keys.join(" + "),
+            action: actionLabel,
+            layer: lyrNum
+          });
+        });
+      });
       return out;
     }
 
@@ -6105,6 +6308,7 @@
       }
 
       const decodeOpts = {
+        numLayers,
         winLayerIdx: detectedWinIdx,
         cwLayerIdx: detectedCwIdx,
         hasWinBaseLayer: detectedWinIdx > 0,
