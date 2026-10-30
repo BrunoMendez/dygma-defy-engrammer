@@ -14,6 +14,7 @@
 #define SPACE_FORGIVENESS     // Allow lingering taps on Space (retro-tap / hold-tap forgiveness)
 #define THUMB_FORGIVENESS     // Allow lingering taps on thumb keys
 #define SHIFT_FORGIVENESS     // Forgiving roll into Shift mod-taps
+#define QUICK_TAP_REPEAT      // Glove80 Glorious Engrammer quick-tap-ms (<200ms): double-tap + hold repeats Del/Bksp/Thumb tap key
 #define NATURAL_SCROLLING     // Invert mouse scroll wheel directions to match macOS natural scrolling
 
 // Dygma Defy Wireless, Bluetooth & Bazecor Device Settings
@@ -62,6 +63,7 @@
 #endif
 
 // Forgiveness & Chord Timing Constants
+constexpr uint16_t QUICK_TAP_REPEAT_MS            = 200; // Glove80 ZMK quick-tap-ms = <200> double-tap-then-hold repeat window
 constexpr uint16_t SPACE_RETRO_TAP_WINDOW_MS      = 320; // Lingering Space hold without chord emits Space
 constexpr uint16_t THUMB_RETRO_TAP_WINDOW_MS      = 260; // Lingering Thumb hold without chord emits Tap key
 constexpr uint16_t SHIFT_FORGIVENESS_WINDOW_MS    = 135; // Fast roll window into index-finger Shift (F / J)

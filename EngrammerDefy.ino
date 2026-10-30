@@ -187,6 +187,26 @@ class ForgivenessAndDualFuncPlugin : public kaleidoscope::Plugin {
 
     uint16_t now = Runtime.millisAtCycleStart();
 
+#ifdef QUICK_TAP_REPEAT
+    // -------------------------------------------------------------------------
+    // 0. GLOVE80 GLORIOUS ENGRAMMER QUICK-TAP-THEN-HOLD REPEAT (quick-tap-ms = 200)
+    //    Tapping a thumb Layer-Tap key (Del, Bksp, Space, Tab, Enter, Esc, Ins)
+    //    and pressing+holding it again within QUICK_TAP_REPEAT_MS (200ms)
+    //    bypasses Qukeys layer shift and holds the tap HID key down continuously
+    //    so the OS auto-repeats Delete / Backspace / Space until released.
+    // -------------------------------------------------------------------------
+    if (quick_tap_active_addr_.isValid() && event.addr == quick_tap_active_addr_) {
+      if (keyToggledOff(event.state)) {
+        Runtime.hid().keyboard().releaseKey(quick_tap_active_key_);
+        quick_tap_last_addr_       = event.addr;
+        quick_tap_last_release_ms_ = now;
+        quick_tap_active_addr_     = KeyAddr::none();
+        quick_tap_active_key_      = Key_NoKey;
+      }
+      return EventHandlerResult::EVENT_CONSUMED;
+    }
+#endif
+
     // -------------------------------------------------------------------------
     // A. Sunaku Glorious Engrammer Shift-Morph ("parang_left" / "parang_right")
     //    + Dual-Function Hold fallback:
@@ -264,14 +284,27 @@ class ForgivenessAndDualFuncPlugin : public kaleidoscope::Plugin {
     }
 #endif
 
-#if defined(SPACE_FORGIVENESS) || defined(THUMB_FORGIVENESS)
+#if defined(QUICK_TAP_REPEAT) || defined(SPACE_FORGIVENESS) || defined(THUMB_FORGIVENESS)
     // -------------------------------------------------------------------------
-    // C. SPACE_FORGIVENESS & THUMB_FORGIVENESS: Retro-tap on lingering thumb holds
+    // C. QUICK_TAP_REPEAT + SPACE_FORGIVENESS & THUMB_FORGIVENESS
     // -------------------------------------------------------------------------
     if (isCoreThumbKey(event.addr)) {
       if (keyToggledOn(event.state)) {
+        Key tap_key = Layer.lookupOnActiveLayer(event.addr);
+#ifdef QUICK_TAP_REPEAT
+        if (event.addr == quick_tap_last_addr_ &&
+            (uint16_t)(now - quick_tap_last_release_ms_) <= QUICK_TAP_REPEAT_MS &&
+            !tap_key.isLayerShift() && tap_key != Key_NoKey && tap_key != Key_Transparent) {
+          quick_tap_active_addr_ = event.addr;
+          quick_tap_active_key_  = tap_key;
+          last_thumb_addr_       = KeyAddr::none();
+          Runtime.hid().keyboard().pressKey(tap_key, true);
+          return EventHandlerResult::EVENT_CONSUMED;
+        }
+#endif
         last_thumb_addr_     = event.addr;
         last_thumb_press_ms_ = now;
+        last_thumb_tap_key_  = tap_key;
         chorded_since_thumb_ = false;
       } else if (keyToggledOff(event.state) && event.addr == last_thumb_addr_) {
         uint16_t held_ms        = now - last_thumb_press_ms_;
@@ -279,21 +312,47 @@ class ForgivenessAndDualFuncPlugin : public kaleidoscope::Plugin {
         uint16_t max_window     = is_space_thumb ? SPACE_RETRO_TAP_WINDOW_MS
                                                  : THUMB_RETRO_TAP_WINDOW_MS;
 
-        if (!chorded_since_thumb_ &&
-            held_ms > QUKEYS_HOLD_TIMEOUT_MS &&
-            held_ms <= max_window) {
-          Key tap_key = Layer.lookupOnActiveLayer(event.addr);
-          if (!tap_key.isLayerShift() && tap_key != Key_NoKey) {
-            tapKey(event.addr, tap_key);
+        if (!chorded_since_thumb_) {
+#ifdef QUICK_TAP_REPEAT
+          if (held_ms <= QUKEYS_HOLD_TIMEOUT_MS) {
+            quick_tap_last_addr_       = event.addr;
+            quick_tap_last_release_ms_ = now;
           }
+#endif
+#if defined(SPACE_FORGIVENESS) || defined(THUMB_FORGIVENESS)
+          if (held_ms > QUKEYS_HOLD_TIMEOUT_MS && held_ms <= max_window &&
+              !last_thumb_tap_key_.isLayerShift() && last_thumb_tap_key_ != Key_NoKey) {
+            pending_retro_tap_addr_ = event.addr;
+            pending_retro_tap_key_  = last_thumb_tap_key_;
+          }
+#endif
+        } else {
+          quick_tap_last_addr_ = KeyAddr::none();
         }
         last_thumb_addr_ = KeyAddr::none();
       }
     } else if (keyToggledOn(event.state)) {
       chorded_since_thumb_ = true;
+      quick_tap_last_addr_ = KeyAddr::none();
     }
 #endif
 
+    return EventHandlerResult::OK;
+  }
+
+  EventHandlerResult beforeReportingState() {
+#ifdef QUICK_TAP_REPEAT
+    if (quick_tap_active_addr_.isValid() && quick_tap_active_key_ != Key_NoKey) {
+      Runtime.hid().keyboard().pressKey(quick_tap_active_key_, false);
+    }
+#endif
+    if (pending_retro_tap_key_ != Key_NoKey) {
+      Key k        = pending_retro_tap_key_;
+      KeyAddr addr = pending_retro_tap_addr_;
+      pending_retro_tap_key_  = Key_NoKey;
+      pending_retro_tap_addr_ = KeyAddr::none();
+      tapKey(addr, k);
+    }
     return EventHandlerResult::OK;
   }
 
@@ -343,7 +402,16 @@ class ForgivenessAndDualFuncPlugin : public kaleidoscope::Plugin {
 
   KeyAddr  last_thumb_addr_{KeyAddr::none()};
   uint16_t last_thumb_press_ms_{0};
+  Key      last_thumb_tap_key_{Key_NoKey};
   bool     chorded_since_thumb_{false};
+
+  KeyAddr  quick_tap_last_addr_{KeyAddr::none()};
+  uint16_t quick_tap_last_release_ms_{0};
+  KeyAddr  quick_tap_active_addr_{KeyAddr::none()};
+  Key      quick_tap_active_key_{Key_NoKey};
+
+  KeyAddr  pending_retro_tap_addr_{KeyAddr::none()};
+  Key      pending_retro_tap_key_{Key_NoKey};
 };
 
 } // namespace plugin
@@ -449,8 +517,8 @@ KEYMAPS(
     Key_E,              M(M_SELECT_ALL),M(M_SELECT_LINE),  M(M_SELECT_WORD),  M(M_FIND), Key_F,                                          Key_J,          Key_Keypad1,    Key_Keypad2, Key_Keypad3,  Key_KeypadDivide, Key_KeypadMultiply,
     // Thumb Lower Arc + Inner Upper
     KC_UNDS,            M(M_UNDO),      M(M_REDO),         M(M_FIND_PREV),    M(M_FIND_NEXT),                         Key_Comma,         KC_LPRN,        ___,            KC_RPRN,   KC_AT,
-    // Thumb Upper Arc Piano Keys
-                        ___,            ___,               ___,                                                                          Key_Equals,     Key_KeypadDot,  Key_Keypad0
+    // Thumb Upper Arc Piano Keys (Adjacent Bksp/Del auto-repeat while Del thumb is held)
+                        Key_Backspace,  ___,               Key_Delete,                                                                   Key_Equals,     Key_KeypadDot,  Key_Keypad0
   ),
 
   // ---------------------------------------------------------------------------
@@ -470,8 +538,8 @@ KEYMAPS(
     M(M_GOTO_LINE),     M(M_SELECT_ALL),M(M_SELECT_LINE),  M(M_SELECT_WORD),  M(M_FIND), M(M_PASTE),                                     M(M_PASTE),     Key_Home,       Key_PageUp,Key_PageDown,   Key_End,       M(M_GOTO_LINE),
     // Thumb Lower Arc + Inner Upper
     M(M_QUICK_OPEN),    M(M_UNDO),      M(M_REDO),         M(M_FIND_PREV),    M(M_FIND_NEXT),                         LALT(LSHIFT(Key_RightArrow)), M(M_FIND), M(M_FIND_PREV), M(M_FIND_NEXT), M(M_FIND_REPLACE),
-    // Thumb Upper Arc Piano Keys
-                        ___,            ___,               ___,                                                                          M(M_SELECT_ALL),M(M_SELECT_LINE),M(M_SELECT_WORD)
+    // Thumb Upper Arc Piano Keys (Adjacent Del/Bksp auto-repeat while Bksp thumb is held)
+                        ___,            Key_Delete,        Key_Backspace,                                                                M(M_SELECT_ALL),M(M_SELECT_LINE),M(M_SELECT_WORD)
   ),
 
   // ---------------------------------------------------------------------------
@@ -525,10 +593,10 @@ KEYMAPS(
   [LAYER_SYS_RGB] = KEYMAP_DEFY_70(
     // Row 0
     M(M_OS_TOGGLE),     M(M_OS_MAC),    M(M_OS_WIN),       M(M_BAT_LEVEL),    M(M_BT_PAIR), M(M_RF_MODE), M(M_WL_TOGGLE), ___,           M(M_BT_SEL_1),  M(M_BT_SEL_2),  M(M_BT_SEL_3), M(M_BT_SEL_4), M(M_BT_SEL_5), M(M_OS_TOGGLE),
-    // Row 1
-    ___,                Key_LEDEffectNext, Key_LEDEffectNext, Key_LEDEffectNext, Key_LEDEffectNext, Key_LEDEffectNext, ___, ___,         Key_LEDEffectNext, Key_LEDEffectNext, Key_LEDEffectNext, Key_LEDEffectNext, Key_LEDEffectNext, ___,
+    // Row 1 (Defy hardware LED Effect Next / Prev / Toggle + Display Brightness; no duplicate QMK HSV keys)
+    ___,                Key_LEDEffectNext, Key_LEDEffectPrevious, Key_LEDToggle, Consumer_DisplayBrightnessIncrement, Consumer_DisplayBrightnessDecrement, ___, ___, Key_LEDToggle, Consumer_DisplayBrightnessIncrement, Consumer_DisplayBrightnessDecrement, Key_LEDEffectPrevious, Key_LEDEffectNext, ___,
     // Row 2
-    ___,                Key_LEDEffectPrevious, Key_LEDEffectPrevious, Key_LEDEffectPrevious, Key_LEDEffectPrevious, Key_LEDEffectNext, ___, ___, Key_LEDEffectNext, Key_LEDEffectPrevious, Key_LEDEffectPrevious, Key_LEDEffectPrevious, Key_LEDEffectPrevious, ___,
+    ___,                ___,            ___,               ___,               ___,        ___,       ___,             ___,               ___,            ___,            ___,       ___,            ___,           ___,
     // Row 3
     ___,                ___,            Key_PcApplication, Key_PrintScreen,   Key_Pause,  Key_LEDToggle,                                 Key_LEDToggle,  Key_ScrollLock, Key_KeypadNumLock, Key_CapsLock, M(M_LOCK_SCREEN), Consumer_Sleep,
     // Thumb Lower Arc + Inner Upper
@@ -546,9 +614,9 @@ KEYMAPS(
     // Row 0
     M(M_TO_BASE),       M(M_OS_MAC),    M(M_OS_WIN),       M(M_OS_TOGGLE),    ___,        ___,       ___,             ___,               ___,            ___,            ___,       ___,            ___,           ___,
     // Row 1
-    ___,                Key_LEDEffectNext, Key_LEDEffectNext, Key_LEDEffectNext, Key_LEDEffectNext, Key_LEDToggle, ___, ___,             ___,            ___,            ___,       ___,            ___,           ___,
+    ___,                Key_LEDEffectNext, Key_LEDEffectPrevious, Key_LEDToggle, Consumer_DisplayBrightnessIncrement, Consumer_DisplayBrightnessDecrement, ___, ___, ___, ___, ___, ___, ___, ___,
     // Row 2
-    M(M_OS_TOGGLE),     Key_LEDEffectPrevious, Key_LEDEffectPrevious, Key_LEDEffectPrevious, Key_LEDEffectPrevious, Key_LEDEffectNext, ___, ___, ___,    ___,            ___,       ___,            ___,           M(M_OS_TOGGLE),
+    M(M_OS_TOGGLE),     ___,            ___,               ___,               ___,        ___,       ___,             ___,               ___,            ___,            ___,       ___,            ___,           M(M_OS_TOGGLE),
     // Row 3
     ___,                ___,            ___,               ___,               ___,        ___,                                           ___,            ___,            ___,       ___,            ___,           ___,
     // Thumb Lower Arc + Inner Upper
@@ -850,8 +918,8 @@ USE_MAGIC_COMBOS(
 KALEIDOSCOPE_INIT_PLUGINS(
   EEPROMSettings,
   OSManager,
-  Qukeys,
   Forgiveness,
+  Qukeys,
   CapsWord,
   MagicCombo,
   OneShot,

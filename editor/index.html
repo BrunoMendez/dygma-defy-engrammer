@@ -90,6 +90,11 @@
       transform-box: fill-box;
       transform-origin: center;
     }
+    .svg-ug-segment:hover .ug-core-path {
+      stroke: #fbbf24;
+      stroke-width: 1.8px;
+      filter: brightness(1.3);
+    }
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.35); border-radius: 3px; }
   </style>
@@ -334,14 +339,20 @@
           </div>
         </div>
 
-        <!-- BEHAVIOR EDITOR FORM (SUPPORTS SHIFT-MORPH TAP / SHIFT+TAP & PER-KEY COLOR) -->
+        <!-- CONTEXTUAL CAPS-LOCK <-> CAPS-WORD HELPER BANNER -->
+        <div id="insp-capsword-helper" class="hidden items-center justify-between gap-2 px-3 py-2 rounded-lg border border-purple-500/40 bg-purple-500/10 text-xs">
+          <span id="insp-capsword-msg" class="text-purple-200"></span>
+          <button id="btn-convert-capsword" type="button" class="shrink-0 font-semibold px-2.5 py-1 rounded bg-purple-500/25 text-purple-200 border border-purple-400/50 hover:bg-purple-500/40 transition"></button>
+        </div>
+
+        <!-- BEHAVIOR EDITOR FORM (SUPPORTS SHIFT-MORPH TAP / HOLD & PER-KEY COLOR) -->
         <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
           <div>
             <label class="block text-[11px] font-semibold uppercase tracking-wider text-[var(--app-muted-foreground)] mb-1">Behavior Type</label>
             <select id="edit-type" class="w-full text-xs rounded-md px-2.5 py-1.5 bg-[var(--app-background)] border border-[var(--app-border)] text-[var(--app-foreground)]">
               <option value="kp">Key Press (KP / Shifted)</option>
-              <option value="morph">Shift-Morph (Tap / Shift+Tap)</option>
-              <option value="dual">Shift-Morph + Hold (Parang)</option>
+              <option value="morph">Shift-Morph / Hold (Tap vs Hold / .ino Shift+Tap)</option>
+              <option value="dual">Parang Tap / Hold ('(' Tap • '&lt;' Hold)</option>
               <option value="mt">Home-Row Mod-Tap (Qukey MT)</option>
               <option value="lt">Thumb Layer-Tap (Qukey LT)</option>
               <option value="mo">Momentary Layer (MO / ShiftTo)</option>
@@ -408,13 +419,21 @@
 
         <!-- TAB 1: COMBOS LIST (HOVER TO HIGHLIGHT + ADD / EDIT / DELETE ON KEYBOARD) -->
         <div id="tab-pane-combos" class="flex flex-col gap-2">
-          <div class="flex items-center justify-between gap-2">
+          <div class="flex flex-wrap items-center justify-between gap-2">
             <p class="text-[11px] text-[var(--app-muted-foreground)]">
-              Hover any chord to highlight its keys on the keyboard, or add / edit / delete chords:
+              Hover any chord to highlight its keys on the keyboard, or sync thumb chords to your L0 layout:
             </p>
-            <button id="btn-add-combo" type="button" class="text-xs font-semibold px-2.5 py-1 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30 transition">
-              + Add Combo
-            </button>
+            <div class="flex items-center gap-1.5">
+              <button id="btn-sync-combos-l0" type="button" class="text-[11px] font-semibold px-2 py-1 rounded border border-cyan-500/40 bg-cyan-500/15 text-cyan-300 hover:bg-cyan-500/25 transition" title="Update thumb chord key positions to match where Bksp, Del, Ins, Esc, Enter, Tab & Space currently sit on L0">
+                🔄 Sync Chords to L0
+              </button>
+              <button id="btn-add-combo" type="button" class="text-xs font-semibold px-2.5 py-1 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30 transition">
+                + Add Combo
+              </button>
+            </div>
+          </div>
+          <div id="combos-fw-banner" class="text-[10.5px] leading-snug px-2.5 py-1.5 rounded border border-amber-500/35 bg-amber-500/10 text-amber-200">
+            ⚡ Live WebSerial sync writes <code>combos.map</code> (L0 + L8 Win + L9 CapsWord) on Bazecor 2026+ Neuron firmware (<code>v1.10+</code>). Stock <code>Defy v2.3.0</code> lacks hardware <code>CombosDygma</code> — update Neuron firmware in Bazecor or flash custom <code>EngrammerDefy.ino</code>.
           </div>
 
           <!-- INLINE COMBO / CHORD EDITOR -->
@@ -715,7 +734,14 @@
               <input id="cfg-nat-scroll" type="checkbox" checked class="accent-amber-500" />
               <span>NATURAL_SCROLLING</span>
             </label>
+            <label class="col-span-2 flex items-center gap-2 p-2 rounded border border-emerald-500/35 bg-emerald-500/10 cursor-pointer" title="Glove80 ZMK &thumb quick-tap-ms = 200: double-tap then hold Bksp/Del/Space/Tab/Enter/Esc within 200ms in custom .ino firmware to auto-repeat the tap key instead of holding the layer">
+              <input id="cfg-quick-tap" type="checkbox" checked class="accent-emerald-400" />
+              <span><b>QUICK_TAP_REPEAT (200ms)</b> — Glove80 double-tap + hold auto-repeat for Del / Bksp / Space</span>
+            </label>
           </div>
+          <p class="text-[10.5px] leading-snug text-[var(--app-muted-foreground)] px-1">
+            💡 <b>Delete / Backspace Repeat:</b> Custom <code>EngrammerDefy.ino</code> supports Glove80 single-key <b>double-tap + hold (200ms)</b> on all thumb Layer-Tap keys. On stock Neuron <code>v2.3.0</code> (which lacks Qukey quick-tap repeat), hold <code>Del (L2)</code> or <code>Bksp (L3)</code> and hold the adjacent thumb key (or <code>L04</code>/<code>L14</code>) for native OS auto-repeat.
+          </p>
         </div>
 
         <!-- TAB 3: LIVE C++ / JSON CODE EXPORT -->
@@ -1366,7 +1392,7 @@
           kp("_"), mac("Undo", "Cmd+Z"), mac("Redo", "Cmd+S+Z"), mac("FindPrv", "Cmd+S+G"), mac("FindNxt", "Cmd+G"),
           kp(","), kp("("), trns(), kp(")"), kp("@"),
 
-          trns(), trns(), trns(),
+          kp("Bksp"), trns(), kp("Del"),
           kp("="), kp("KP_."), kp("KP_0", "#ef4444")
         ],
 
@@ -1387,7 +1413,7 @@
           mac("QuickOpn", "Cmd+P"), mac("Undo", "Cmd+Z"), mac("Redo", "Cmd+S+Z"), mac("FindPrv", "Cmd+S+G"), mac("FindNxt", "Cmd+G"),
           kp("Opt+S+Rt"), mac("Find", "Cmd+F"), mac("FindPrv", "Cmd+S+G"), mac("FindNxt", "Cmd+G"), mac("Replace", "Opt+Cmd+F"),
 
-          trns(), trns(), trns(),
+          trns(), kp("Del"), kp("Bksp"),
           mac("SelAll", "Cmd+A"), mac("SelLine", "Line"), mac("SelWord", "Word")
         ],
 
@@ -1438,14 +1464,14 @@
           mac("OS_TOGG", "Mac/Win", "#10b981"), mac("OS_MAC", "CAGS", "#10b981"), mac("OS_WIN", "GACS", "#10b981"), mac("BatLvl", "LED%", "#10b981"), mac("BT_PAIR", "Pair/1-5", "#06b6d4"), mac("RF_MODE", "RF/Lens", "#10b981"), mac("EngySt", "Energy", "#10b981"),
           trns(), trns(), trns(), trns(), trns(), trns(), mac("OS_TOGG", "Mac/Win", "#10b981"),
 
-          trns(), kp("RGB_SPI"), kp("RGB_SAI"), kp("RGB_HUI"), kp("RGB_VAI"), kp("RGB_MOD"), trns(),
-          trns(), kp("RGB_MOD"), kp("RGB_VAI"), kp("RGB_HUI"), kp("RGB_SAI"), kp("RGB_SPI"), trns(),
+          trns(), kp("LED Next"), kp("LED Prev"), kp("LED Togg"), kp("BriUp"), trns(), trns(),
+          trns(), trns(), kp("BriUp"), kp("LED Togg"), kp("LED Prev"), kp("LED Next"), trns(),
 
-          trns(), kp("RGB_SPD"), kp("RGB_SAD"), kp("RGB_HUD"), kp("RGB_VAD"), kp("RGB_MOD"), trns(),
-          trns(), kp("RGB_MOD"), kp("RGB_VAD"), kp("RGB_HUD"), kp("RGB_SAD"), kp("RGB_SPD"), trns(),
+          trns(), trns(), trns(), trns(), kp("BriDn"), trns(), trns(),
+          trns(), trns(), kp("BriDn"), trns(), trns(), trns(), trns(),
 
-          trns(), trns(), kp("App"), kp("PrtSc"), kp("Pause"), kp("RGB_TOG"),
-          kp("RGB_TOG"), kp("ScrlLk"), kp("NumLk"), kp("Caps"), mac("LockScr", "Ctrl+Cmd+Q"), kp("Sleep"),
+          trns(), trns(), kp("App"), kp("PrtSc"), kp("Pause"), trns(),
+          trns(), kp("ScrlLk"), kp("NumLk"), kp("Caps"), mac("LockScr", "Ctrl+Cmd+Q"), kp("Sleep"),
 
           trns(), trns(), trns(), trns(), kp("Sleep"),
           trns(), trns(), trns(), trns(), kp("Power"),
@@ -1572,7 +1598,7 @@
     // 5. STATE MANAGEMENT (LAYERS, UNDERGLOW, PALETTE, CLIPBOARD, SWAP/COPY)
     // =========================================================================
     const STORAGE_KEY = "dygma_defy_engrammer_v5";
-    const SCHEMA_VERSION = 2;
+    const SCHEMA_VERSION = 3;
 
     // Bazecor's 16-Swatch Default RGB Palette (matching user screenshot)
     const DEFAULT_RGB_PALETTE = [
@@ -1592,6 +1618,7 @@
     let selectedSwatchIdx = 4; // Default to Cyan/Teal (#2dd4bf)
     let paintMode = false;
     let isPaintingDrag = false;
+    let didPaintDuringDrag = false;
 
     let currentLayer = 0;
     let selectedKeyIndex = 29; // Default to 'A' (L21)
@@ -1636,6 +1663,100 @@
       }
     }
 
+    function isLayerAllEmptyOrTrans(lyr) {
+      return !Array.isArray(lyr) || lyr.every((b) => !b || b.type === "trans" || b.type === "none");
+    }
+
+    function doesLayoutUseCapsWord() {
+      const inKeys =
+        Array.isArray(layers) &&
+        layers.some(
+          (lyr, idx) =>
+            idx !== 9 &&
+            Array.isArray(lyr) &&
+            lyr.some((b) => b && (b.tap === "CW_TOGG" || b.hold === "CapsWord"))
+        );
+      const inCombos =
+        Array.isArray(combos) &&
+        combos.some((c) => c && /CW_TOGG|Caps\s*-?\s*Word/i.test(String(c.action || "")));
+      return inKeys || inCombos;
+    }
+
+    function populateThumbRepeatCompanions(layersArr) {
+      if (!Array.isArray(layersArr) || !Array.isArray(layersArr[0])) return;
+      const base = layersArr[0];
+      const bkspIdx = base.findIndex((b, idx) => idx >= 54 && b && b.tap === "Bksp");
+      const delIdx = base.findIndex((b, idx) => idx >= 54 && b && b.tap === "Del");
+
+      // On L2 (held via Del thumb), put repeatable plain Del & Bksp on adjacent transparent thumb slots
+      if (Array.isArray(layersArr[2]) && layersArr[2].length === 70) {
+        if (bkspIdx >= 54 && bkspIdx !== delIdx && layersArr[2][bkspIdx].type === "trans") {
+          layersArr[2][bkspIdx] = kp("Del");
+        }
+        const alt2 = delIdx === 65 ? 66 : delIdx === 57 ? 55 : 64;
+        if (alt2 !== delIdx && alt2 !== bkspIdx && layersArr[2][alt2] && layersArr[2][alt2].type === "trans") {
+          layersArr[2][alt2] = kp("Bksp");
+        }
+      }
+
+      // On L3 (held via Bksp thumb), put repeatable plain Bksp & Del on adjacent transparent thumb slots
+      if (Array.isArray(layersArr[3]) && layersArr[3].length === 70) {
+        if (delIdx >= 54 && delIdx !== bkspIdx && layersArr[3][delIdx].type === "trans") {
+          layersArr[3][delIdx] = kp("Bksp");
+        }
+        const alt3 = bkspIdx === 64 ? 66 : bkspIdx === 56 ? 55 : 65;
+        if (alt3 !== bkspIdx && alt3 !== delIdx && layersArr[3][alt3] && layersArr[3][alt3].type === "trans") {
+          layersArr[3][alt3] = kp("Del");
+        }
+      }
+    }
+
+    function syncCombosToCurrentL0(showToast = false) {
+      if (!Array.isArray(layers) || !Array.isArray(layers[0]) || !Array.isArray(combos)) return 0;
+      const base = layers[0];
+      const findIdByTap = (tapName, preferLeft = null) => {
+        const idx = base.findIndex((b, i) => {
+          if (!b || b.tap !== tapName) return false;
+          if (preferLeft === true) return KEY_POSITIONS[i].x < 600;
+          if (preferLeft === false) return KEY_POSITIONS[i].x >= 600;
+          return true;
+        });
+        return idx >= 0 ? KEY_POSITIONS[idx].id : null;
+      };
+      const defaultThumbRoleMap = {
+        LTU0: findIdByTap("Bksp", true),
+        LTU1: findIdByTap("Del", true),
+        LTU2: findIdByTap("Ins", true) || findIdByTap("OSM", true),
+        LTU3: findIdByTap("Esc", true),
+        RTU0: findIdByTap("Space", false),
+        RTU1: findIdByTap("Tab", false),
+        RTU2: findIdByTap("Ins", false) || findIdByTap("OSM", false),
+        RTU3: findIdByTap("Enter", false)
+      };
+      let updated = 0;
+      combos.forEach((c) => {
+        if (!c || !Array.isArray(c.keys)) return;
+        const nextKeys = c.keys.map((kId) => defaultThumbRoleMap[kId] || kId);
+        const dedup = [...new Set(nextKeys)];
+        if (dedup.length >= 2 && dedup.join(",") !== c.keys.join(",")) {
+          c.keys = dedup;
+          updated++;
+        }
+      });
+      if (showToast) {
+        saveState(
+          true,
+          updated > 0
+            ? `Synced ${updated} chord(s) to your current L0 key positions!`
+            : "All chords already match your L0 key positions!"
+        );
+        renderCombosList();
+        renderKeyboardStage();
+        updateCodePreview();
+      }
+      return updated;
+    }
+
     // Keep L8 (Base Win) and L9 (CapsWord) automatically synchronized when L0 (Base Mac) keys are edited
     function onLayerKeysEdited(editedLayerIdx, keyIndices = null) {
       if (editedLayerIdx !== 0 || !Array.isArray(layers) || !Array.isArray(layers[0])) return;
@@ -1650,8 +1771,9 @@
           layers[8] = deriveWindowsLayerFromMacBase(layers[0]);
         }
       }
-      if (layers[9] && isCapsWordLayerMeta(LAYERS_META[9])) {
+      if (layers[9] && (isCapsWordLayerMeta(LAYERS_META[9]) || isLayerAllEmptyOrTrans(layers[9]))) {
         layers[9] = generateCapsWordLayerFromBase(layers[0]);
+        LAYERS_META[9] = { ...DEFAULT_LAYERS_META[9] };
       }
     }
 
@@ -1682,10 +1804,10 @@
         // Save automatic pre-migration snapshot so user data is always recoverable
         const rawSnaps = localStorage.getItem("dygma_defy_engrammer_snapshots_v1");
         const snaps = rawSnaps ? JSON.parse(rawSnaps) : [];
-        if (Array.isArray(snaps) && !snaps.some((s) => s && s.id === "snap_pre_v2_migration")) {
+        if (Array.isArray(snaps) && !snaps.some((s) => s && s.id === "snap_pre_v3_migration")) {
           snaps.unshift({
-            id: "snap_pre_v2_migration",
-            name: "Auto-Backup (Before v2 CapsWord & OS Fix)",
+            id: "snap_pre_v3_migration",
+            name: "Auto-Backup (Before v3 Combos, CapsWord, Morph & RGB Fix)",
             savedAt: new Date().toLocaleString(),
             layers: JSON.parse(JSON.stringify(layers)),
             layersMeta: JSON.parse(JSON.stringify(LAYERS_META)),
@@ -1741,8 +1863,8 @@
         });
       }
 
-      // Heal L6 wireless row if it had 5x duplicate BT_PAIR from pulled L6[8..12]
-      if (Array.isArray(layers[6])) {
+      // Heal L6 wireless row & deduplicate redundant QMK RGB_SPI/RGB_SAI/RGB_HUI keys into distinct Dygma hardware keys
+      if (Array.isArray(layers[6]) && layers[6].length === 70) {
         if ([8, 9, 10, 11, 12].every((i) => layers[6][i] && layers[6][i].tap === "BT_PAIR")) {
           [8, 9, 10, 11, 12].forEach((i) => {
             layers[6][i] = trns();
@@ -1750,6 +1872,20 @@
         }
         if (layers[6][0] && layers[6][1] && layers[6][1].tap === "TO(0)") {
           layers[6][1] = mac("OS_MAC", "CAGS", "#10b981");
+        }
+        // Replace legacy QMK RGB_* aliases that all mapped to 17152/17153 with distinct Defy hardware keys
+        const hasRedundantRgbRow =
+          layers[6].some((b) => b && (b.tap === "RGB_HUI" || b.tap === "RGB_SAI" || b.tap === "RGB_SPI")) ||
+          (layers[6][15] && layers[6][16] && layers[6][17] &&
+           layers[6][15].tap === "LED Next" && layers[6][16].tap === "LED Next" && layers[6][17].tap === "LED Next");
+        if (hasRedundantRgbRow) {
+          const rgbSlots = [15, 16, 17, 18, 19, 22, 23, 24, 25, 26, 29, 30, 31, 32, 33, 36, 37, 38, 39, 40, 47, 48];
+          rgbSlots.forEach((sIdx) => {
+            const curTap = layers[6][sIdx] ? layers[6][sIdx].tap : "";
+            if (/^(RGB_|LED Next|LED Prev|LED Togg|BriUp|BriDn)$/.test(curTap)) {
+              layers[6][sIdx] = defaults[6][sIdx];
+            }
+          });
         }
       }
 
@@ -1793,10 +1929,19 @@
         LAYERS_META[8] = { ...DEFAULT_LAYERS_META[8] };
         if (!underglowLayers[8]) underglowLayers[8] = createDefaultUnderglowMap("#38bdf8");
       }
-      if (layers.length >= 12 || l9LooksLegacyPlain || !layers[9]) {
+      if (layers.length >= 12 || l9LooksLegacyPlain || !layers[9] || isLayerAllEmptyOrTrans(layers[9])) {
         layers[9] = generateCapsWordLayerFromBase(layers[0]);
         LAYERS_META[9] = { ...DEFAULT_LAYERS_META[9] };
         if (!underglowLayers[9]) underglowLayers[9] = createDefaultUnderglowMap("#a855f7");
+      }
+
+      // 5. Populate repeatable Del/Bksp companion thumb slots on L2/L3 and sync untouched default thumb chords to L0
+      populateThumbRepeatCompanions(layers);
+      const combosMatchFactoryIds =
+        Array.isArray(combos) &&
+        combos.some((c) => c && Array.isArray(c.keys) && c.keys[0] === "LTU0" && c.keys[1] === "LTU1");
+      if (combosMatchFactoryIds) {
+        syncCombosToCurrentL0(false);
       }
 
       if (layers.length > 10) {
@@ -2187,7 +2332,7 @@
       const isSecondaryLayer = layerIndex > 0 && !isWinBaseLayerMeta(LAYERS_META[layerIndex]);
       const highlightLayerActive = Boolean(deviceSettings.highlightLayerChange) && isSecondaryLayer;
 
-      // 1. Render 106 Authentic Bazecor Outer Underglow Segments
+      // 1. Render 106 Authentic Bazecor Outer Underglow Segments (with 18px wide invisible hit-stroke for easy painting)
       if (showUnderglow && typeof DEFY_UNDERGLOW_STRIPS !== "undefined") {
         html += `<g class="underglow-layer">`;
         DEFY_UNDERGLOW_STRIPS.forEach((s) => {
@@ -2196,10 +2341,9 @@
           const glowOp = (0.6 * ugBrScale).toFixed(2);
           const fillOp = Math.max(0.18, ugBrScale).toFixed(2);
           html += `<g class="svg-ug-segment cursor-pointer" data-ug-id="${s.id}" transform="translate(${s.x}, ${s.y})">`;
-          if (!isOff) {
-            html += `<path d="${s.d}" fill="${c}" fill-opacity="${glowOp}" filter="url(#ug-glow-${layerIndex})" />`;
-          }
-          html += `<path d="${s.d}" fill="${isOff ? "#0f172a" : c}" fill-opacity="${isOff ? "1" : fillOp}" stroke="rgba(255,255,255,0.28)" stroke-width="1" />`;
+          html += `<path class="ug-hit-path" d="${s.d}" fill="transparent" stroke="transparent" stroke-width="18" stroke-linecap="round" stroke-linejoin="round" pointer-events="all" />`;
+          html += `<path class="ug-glow-path" d="${s.d}" fill="${isOff ? "none" : c}" fill-opacity="${isOff ? "0" : glowOp}" filter="url(#ug-glow-${layerIndex})" pointer-events="none" />`;
+          html += `<path class="ug-core-path" d="${s.d}" fill="${isOff ? "#0f172a" : c}" fill-opacity="${isOff ? "1" : fillOp}" stroke="rgba(255,255,255,0.28)" stroke-width="1" pointer-events="none" />`;
           html += `</g>`;
         });
         html += `</g>`;
@@ -2336,17 +2480,29 @@
       svg.innerHTML = html;
 
       if (isInteractive) {
-        // Underglow Segment Click / Drag-Paint
+        // Underglow Segment Click / Smooth Drag-Paint (in-place DOM update during drag, flushed on mouseup)
         svg.querySelectorAll(".svg-ug-segment").forEach((ug) => {
           const paintSegment = () => {
             const id = Number(ug.getAttribute("data-ug-id"));
             if (!underglowLayers[currentLayer]) underglowLayers[currentLayer] = createDefaultUnderglowMap();
-            underglowLayers[currentLayer][id] = rgbPalette[selectedSwatchIdx];
-            saveState();
-            renderKeyboardStage();
+            const hex = rgbPalette[selectedSwatchIdx];
+            underglowLayers[currentLayer][id] = hex;
+            const off = isOffColor(hex) || ugBrScale <= 0.01;
+            const core = ug.querySelector(".ug-core-path");
+            const glow = ug.querySelector(".ug-glow-path");
+            if (core) {
+              core.setAttribute("fill", off ? "#0f172a" : hex);
+              core.setAttribute("fill-opacity", off ? "1" : Math.max(0.18, ugBrScale).toFixed(2));
+            }
+            if (glow) {
+              glow.setAttribute("fill", off ? "none" : hex);
+              glow.setAttribute("fill-opacity", off ? "0" : (0.6 * ugBrScale).toFixed(2));
+            }
+            didPaintDuringDrag = true;
           };
           ug.addEventListener("mousedown", (ev) => {
             ev.preventDefault();
+            ev.stopPropagation();
             isPaintingDrag = true;
             paintSegment();
           });
@@ -2358,23 +2514,24 @@
         // Key Click, Paint, Copy-To, Swap-With, and Drag-and-Drop Swap/Copy
         svg.querySelectorAll(".svg-key-group").forEach((g) => {
           const idx = parseInt(g.getAttribute("data-key-idx"), 10);
+          const paintKeyInPlace = () => {
+            const hex = rgbPalette[selectedSwatchIdx];
+            layers[currentLayer][idx].color = hex;
+            g.style.filter = isOffColor(hex) ? "brightness(0.55)" : `drop-shadow(0 0 8px ${hex})`;
+            didPaintDuringDrag = true;
+          };
 
           g.addEventListener("mousedown", () => {
             draggedKeyIdx = idx;
             if (paintMode) {
               isPaintingDrag = true;
-              layers[currentLayer][idx].color = rgbPalette[selectedSwatchIdx];
-              saveState();
-              renderKeyboardStage();
-              renderInspector();
+              paintKeyInPlace();
             }
           });
 
           g.addEventListener("mouseenter", () => {
             if (paintMode && isPaintingDrag) {
-              layers[currentLayer][idx].color = rgbPalette[selectedSwatchIdx];
-              saveState();
-              renderKeyboardStage();
+              paintKeyInPlace();
             }
           });
 
@@ -2455,8 +2612,15 @@
     }
 
     window.addEventListener("mouseup", () => {
+      const shouldFlushPaint = isPaintingDrag && didPaintDuringDrag;
       isPaintingDrag = false;
+      didPaintDuringDrag = false;
       draggedKeyIdx = null;
+      if (shouldFlushPaint) {
+        saveState();
+        renderKeyboardStage();
+        renderInspector();
+      }
     });
 
     function renderKeyboardStage() {
@@ -2513,7 +2677,7 @@
         wrapSec.classList.remove("hidden");
         sel.classList.add("hidden");
         customShiftInput.classList.remove("hidden");
-        lblSec.textContent = type === "morph" ? "Shifted Output (Shift + Tap)" : "Shifted / Hold Symbol";
+        lblSec.textContent = "Hold Symbol (Stock) / Shift+Tap (.ino)";
         customShiftInput.value = currentHold || "<";
       } else if (type === "mt" || type === "osm") {
         wrapSec.classList.remove("hidden");
@@ -2563,6 +2727,40 @@
 
       const colorEl = document.getElementById("edit-key-color");
       colorEl.value = getKeyAccentColor(pos, binding);
+
+      const cwHelper = document.getElementById("insp-capsword-helper");
+      const cwMsg = document.getElementById("insp-capsword-msg");
+      const cwBtn = document.getElementById("btn-convert-capsword");
+      if (cwHelper && cwMsg && cwBtn) {
+        if (binding.tap === "Caps") {
+          cwHelper.classList.remove("hidden");
+          cwHelper.classList.add("flex");
+          cwMsg.innerHTML = `⚠️ Mapped to standard <b>CapsLock (#57)</b>. Want auto-terminating <b>Caps-Word</b> instead?`;
+          cwBtn.textContent = "⇄ Convert to CW_TOGG (Caps-Word)";
+          cwBtn.onclick = () => {
+            layers[currentLayer][selectedKeyIndex] = mac("CW_TOGG", "CapsWord", "#a855f7");
+            onLayerKeysEdited(currentLayer, [selectedKeyIndex]);
+            saveState(true, `Converted [${pos.id}] from CapsLock (#57) to CW_TOGG (Caps-Word)!`);
+            renderKeyboardStage();
+            renderInspector();
+          };
+        } else if (binding.tap === "CW_TOGG") {
+          cwHelper.classList.remove("hidden");
+          cwHelper.classList.add("flex");
+          cwMsg.innerHTML = `✓ <b>CW_TOGG (Caps-Word)</b> active: auto-shifts <code>A–Z</code> &amp; <code>-</code> → <code>_</code>, and exits automatically on <code>Space</code> or punctuation.`;
+          cwBtn.textContent = "⇄ Switch to Plain CapsLock";
+          cwBtn.onclick = () => {
+            layers[currentLayer][selectedKeyIndex] = kp("Caps");
+            onLayerKeysEdited(currentLayer, [selectedKeyIndex]);
+            saveState(true, `Switched [${pos.id}] to standard CapsLock (#57).`);
+            renderKeyboardStage();
+            renderInspector();
+          };
+        } else {
+          cwHelper.classList.add("hidden");
+          cwHelper.classList.remove("flex");
+        }
+      }
 
       const jumpBtn = document.getElementById("btn-jump-layer");
       if (binding.type === "lt" || binding.type === "mo" || binding.type === "to" || binding.type === "osl") {
@@ -3291,8 +3489,9 @@
         });
       });
       out += ");\n\n// Shift-Morph (Tap vs. Shift+Tap) Table (Sunaku Parang & Custom Morphs)\n";
-      out += "// M(M_DUAL_LPRN_LABK): Tap '(' [KC_LPRN], Shift+Tap '<' [KC_LABK]\n";
-      out += "// M(M_DUAL_RPRN_RABK): Tap ')' [KC_RPRN], Shift+Tap '>' [KC_RABK]\n";
+      out += "// M(M_DUAL_LPRN_LABK): Tap '(' [KC_LPRN], Shift+Tap or Hold '<' [KC_LABK]\n";
+      out += "// M(M_DUAL_RPRN_RABK): Tap ')' [KC_RPRN], Shift+Tap or Hold '>' [KC_RABK]\n";
+      out += "// QUICK_TAP_REPEAT (QUICK_TAP_REPEAT_MS = 200): Double-tap + hold thumb LT keys (Bksp/Del/Space/Tab/Enter/Esc/Ins) within 200ms to auto-repeat!\n";
       layers.forEach((lyr, lIdx) => {
         lyr.forEach((b, kIdx) => {
           if ((b.type === "morph" || b.type === "dual") && !(b.tap === "(" && b.hold === "<") && !(b.tap === ")" && b.hold === ">")) {
@@ -3325,6 +3524,8 @@
       const thm = document.getElementById("cfg-thumb-forg").checked;
       const sft = document.getElementById("cfg-shift-forg").checked;
       const nat = document.getElementById("cfg-nat-scroll").checked;
+      const qtrEl = document.getElementById("cfg-quick-tap");
+      const qtr = !qtrEl || qtrEl.checked;
 
       const brKeyW = Math.round(((deviceSettings.ledBrightnessKeyWired ?? 100) / 100) * 255);
       const brUgW = Math.round(((deviceSettings.ledBrightnessUgWired ?? 100) / 100) * 255);
@@ -3339,7 +3540,9 @@
         `${spc ? "" : "//"}#define SPACE_FORGIVENESS\n` +
         `${thm ? "" : "//"}#define THUMB_FORGIVENESS\n` +
         `${sft ? "" : "//"}#define SHIFT_FORGIVENESS\n` +
-        `${nat ? "" : "//"}#define NATURAL_SCROLLING\n\n` +
+        `${nat ? "" : "//"}#define NATURAL_SCROLLING\n` +
+        `${qtr ? "" : "//"}#define QUICK_TAP_REPEAT\n` +
+        `constexpr uint16_t QUICK_TAP_REPEAT_MS = 200; // Glove80 ZMK &thumb quick-tap-ms = <200>\n\n` +
         `// Dygma Defy Wireless, Bluetooth & Bazecor Device Settings\n` +
         `${deviceSettings.trueSleep ? "" : "//"}#define TRUE_SLEEP_ENABLED\n` +
         `#define TRUE_SLEEP_TIMEOUT_S            ${deviceSettings.trueSleepTimeSec ?? 1800}\n` +
@@ -3384,6 +3587,7 @@
     // 9. EVENT LISTENERS & INITIALIZATION
     // =========================================================================
     document.getElementById("btn-add-combo").onclick = () => openComboEditor(null);
+    document.getElementById("btn-sync-combos-l0").onclick = () => syncCombosToCurrentL0(true);
     document.getElementById("btn-cancel-combo").onclick = closeComboEditor;
     document.getElementById("btn-save-combo").onclick = saveComboFromEditor;
     document.getElementById("btn-pick-combo-keys").onclick = () => {
@@ -3451,6 +3655,12 @@
       e.target.className = paintMode
         ? "px-2.5 py-1 rounded-md border border-amber-400 bg-amber-500 text-black font-bold transition"
         : "px-2.5 py-1 rounded-md border border-[var(--app-border)] bg-[var(--app-background)] hover:border-amber-400 transition font-medium";
+      if (paintMode && !showUnderglow) {
+        showUnderglow = true;
+        const ugToggle = document.getElementById("toggle-underglow");
+        if (ugToggle) ugToggle.checked = true;
+        renderKeyboardStage();
+      }
     };
 
     document.getElementById("apply-keys-color-scope").onchange = (e) => {
@@ -3624,8 +3834,9 @@
     });
 
     document.getElementById("code-export-mode").onchange = updateCodePreview;
-    ["cfg-os", "cfg-diff", "cfg-space-forg", "cfg-thumb-forg", "cfg-shift-forg", "cfg-nat-scroll"].forEach((id) => {
-      document.getElementById(id).onchange = updateCodePreview;
+    ["cfg-os", "cfg-diff", "cfg-space-forg", "cfg-thumb-forg", "cfg-shift-forg", "cfg-nat-scroll", "cfg-quick-tap"].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.onchange = updateCodePreview;
     });
 
     const CRC32_TABLE = (() => {
@@ -3837,7 +4048,8 @@
                 cmdMap["superkeys.map"] || "",
                 cmdMap["macros.map"] || "",
                 storedSuperMeta,
-                neuronLayersMeta
+                neuronLayersMeta,
+                cmdMap["combos.map"] || ""
               );
               renderWirelessAndDeviceTab();
               return;
@@ -4588,7 +4800,7 @@
             if (mIdx >= 0) return 53852 + mIdx;
           }
         }
-        if (tapStr === "OS_WIN" && b.type !== "mt" && b.type !== "lt" && b.type !== "dual") {
+        if (tapStr === "OS_WIN" && b.type !== "mt" && b.type !== "lt" && b.type !== "dual" && b.type !== "morph") {
           // TAP(MoveToLayer(0)) + TAP(LockLayer(winLayerIdx)) -> sets active_layers_ = [0, 8] so OS_TOGG always toggles cleanly!
           const mIdx = macroAlloc.getOrCreate([5, 68, 84, 5, 68, winLayerIdx]);
           if (mIdx >= 0) return 53852 + mIdx;
@@ -4610,7 +4822,7 @@
         cwLayerIdx,
         supportsNativeCapsWord
       );
-      if (aliasCode !== undefined && b.type !== "mt" && b.type !== "lt" && b.type !== "dual") {
+      if (aliasCode !== undefined && b.type !== "mt" && b.type !== "lt" && b.type !== "dual" && b.type !== "morph") {
         return aliasCode;
       }
 
@@ -4670,7 +4882,7 @@
         }
         return baseTap;
       }
-      if (b.type === "dual" && baseTap > 0 && superkeyAlloc) {
+      if ((b.type === "dual" || b.type === "morph") && baseTap > 0 && superkeyAlloc) {
         const holdStr = String(b.hold || "").trim();
         const holdCode =
           FOCUS_HID_CODES[holdStr] !== undefined
@@ -4886,6 +5098,196 @@
       return false;
     }
 
+    function hasExplicitDynamicMacroInLayers(maxLayers = 10) {
+      for (let lIdx = 0; lIdx < Math.min(layers.length, maxLayers); lIdx++) {
+        const lyr = layers[lIdx];
+        if (!Array.isArray(lyr)) continue;
+        for (const b of lyr) {
+          if (b && /^MACRO\s+\d+$/i.test(String(b.tap || "").trim())) return true;
+        }
+      }
+      return false;
+    }
+
+    // Encode CombosDygma.cpp Focus wire format: <count> <32 * [pos0..pos5, layer, flags, action]> = 289 ints
+    function comboActionToFocusCode(
+      actionStr,
+      maxLayers = 10,
+      winLayerIdx = 8,
+      cwLayerIdx = 9,
+      supportsNativeCapsWord = false,
+      macroAlloc = null
+    ) {
+      const s = String(actionStr || "").trim();
+      if (!s) return 0;
+      const clampLyr = (v) => Math.max(0, Math.min(maxLayers - 1, parseInt(v, 10) || 0));
+      const clampedWin = clampLyr(winLayerIdx);
+      const clampedCw = clampLyr(cwLayerIdx);
+
+      if (/CW_TOGG|Caps\s*-?\s*Word/i.test(s)) {
+        return supportsNativeCapsWord ? 54371 : 17408 + clampedCw;
+      }
+      if (/^Caps(?:Lock)?$/i.test(s)) return 57;
+      if (/^Ctrl\s*\+\s*(?:Left)?Shift$/i.test(s)) return 256 + 225;
+      if (/^Alt\s*\+\s*Tab$/i.test(s)) return 512 + 43;
+      if (/^Ctrl\s*\+\s*Tab$/i.test(s)) return 256 + 43;
+      if (/^(?:GUI|Cmd|Win)\s*\+\s*Tab$/i.test(s)) return 4096 + 43;
+      if (/^Hyper\b/i.test(s)) return 256 + 512 + 4096 + 225;
+      if (/^Meh\b/i.test(s)) return 256 + 512 + 225;
+      if (/^OS_TOGG\b/i.test(s)) return 17408 + clampedWin;
+      if (/^OS_MAC\b/i.test(s)) return 17492;
+      if (/^OS_WIN\b/i.test(s)) {
+        if (macroAlloc) {
+          const mIdx = macroAlloc.getOrCreate([5, 68, 84, 5, 68, clampedWin]);
+          if (mIdx >= 0) return 53852 + mIdx;
+        }
+        return 17492 + clampedWin;
+      }
+      const toM = /^TO\(\s*(\d+)\s*\)/i.exec(s);
+      if (toM) return 17492 + clampLyr(toM[1]);
+      const tgM = /^TG\(\s*(\d+)\s*\)/i.exec(s);
+      if (tgM) return 17408 + clampLyr(tgM[1]);
+      const moM = /^MO\(\s*(\d+)\s*\)/i.exec(s);
+      if (moM) return 17450 + clampLyr(moM[1]);
+      const oslM = /^OSL\(\s*(\d+)\s*\)/i.exec(s);
+      if (oslM) return 49161 + Math.min(7, clampLyr(oslM[1]));
+
+      const headToken = s.split(/\s*[—\-]\s*/)[0].trim();
+      return bindingToFocusCode(
+        kp(headToken),
+        maxLayers,
+        null,
+        macroAlloc,
+        { winLayerIdx: clampedWin, cwLayerIdx: clampedCw, supportsNativeCapsWord }
+      );
+    }
+
+    function serializeFocusCombos(
+      combosArr,
+      maxLayers = 10,
+      winLayerIdx = 8,
+      cwLayerIdx = 9,
+      supportsNativeCapsWord = false,
+      macroAlloc = null
+    ) {
+      const MAX_HW_COMBOS = 32;
+      const validCombos = [];
+      (Array.isArray(combosArr) ? combosArr : []).forEach((c) => {
+        if (!c || !Array.isArray(c.keys) || c.keys.length < 2) return;
+        const posNums = [];
+        c.keys.slice(0, 6).forEach((kId) => {
+          const posObj = KEY_POSITIONS.find((p) => p.id === kId);
+          if (posObj) {
+            const mIdx = getMatrixIndexFromAddr(posObj.addr);
+            if (mIdx >= 0 && mIdx < 80 && !posNums.includes(mIdx)) posNums.push(mIdx);
+          }
+        });
+        if (posNums.length < 2) return;
+        const actCode = comboActionToFocusCode(
+          c.action,
+          maxLayers,
+          winLayerIdx,
+          cwLayerIdx,
+          supportsNativeCapsWord,
+          macroAlloc
+        );
+        if (!actCode || actCode <= 0) return;
+        const isCw = /CW_TOGG|Caps\s*-?\s*Word/i.test(String(c.action || ""));
+        validCombos.push({ posNums, actCode, isCw });
+      });
+
+      const entries = [];
+      const pushEntry = (posNums, layerNum, actCode) => {
+        if (entries.length >= MAX_HW_COMBOS || layerNum < 0 || layerNum >= maxLayers) return;
+        const padded = [255, 255, 255, 255, 255, 255];
+        posNums.slice(0, 6).forEach((p, idx) => {
+          padded[idx] = p;
+        });
+        entries.push([...padded, layerNum, 1, actCode]);
+      };
+
+      // Priority 1: L0 (Base Mac) for all chords
+      validCombos.forEach((vc) => pushEntry(vc.posNums, 0, vc.actCode));
+      // Priority 2: L8 (Base Win) so chords work identically in Windows/Linux GACS mode
+      if (winLayerIdx > 0 && winLayerIdx < maxLayers) {
+        validCombos.forEach((vc) => pushEntry(vc.posNums, winLayerIdx, vc.actCode));
+      }
+      // Priority 3: L9 (CapsWord) for CW_TOGG chords so pressing the chord again toggles Caps-Word off
+      if (!supportsNativeCapsWord && cwLayerIdx > 0 && cwLayerIdx < maxLayers && cwLayerIdx !== winLayerIdx) {
+        validCombos.filter((vc) => vc.isCw).forEach((vc) => pushEntry(vc.posNums, cwLayerIdx, vc.actCode));
+      }
+
+      const count = entries.length;
+      const flat = [count];
+      for (let i = 0; i < MAX_HW_COMBOS; i++) {
+        if (i < count) {
+          flat.push(...entries[i]);
+        } else {
+          flat.push(255, 255, 255, 255, 255, 255, 0, 0, 0);
+        }
+      }
+      return { payload: flat.join(" "), count };
+    }
+
+    function parseFocusCombosRaw(raw, macrosList = deviceMacros, decodeOpts = {}) {
+      const cleaned = String(raw || "").trim();
+      if (!cleaned) return [];
+      const nums = cleaned.split(/\s+/).map(Number).filter(Number.isFinite);
+      if (nums.length < 10) return [];
+      const count = Math.max(0, Math.min(32, nums[0] || 0));
+      const seen = new Set();
+      const out = [];
+      for (let i = 0; i < count; i++) {
+        const base = 1 + i * 9;
+        if (base + 8 >= nums.length) break;
+        const posArr = nums.slice(base, base + 6).filter((p) => p >= 0 && p < 80);
+        const flags = nums[base + 7];
+        const actCode = nums[base + 8];
+        if ((flags & 1) === 0 || posArr.length < 2 || actCode <= 0) continue;
+        const keys = posArr
+          .map((mIdx) => {
+            const p = KEY_POSITIONS.find((kpObj) => getMatrixIndexFromAddr(kpObj.addr) === mIdx);
+            return p ? p.id : null;
+          })
+          .filter(Boolean);
+        if (keys.length < 2) continue;
+
+        let actionLabel = "";
+        if (actCode === 54371 || (decodeOpts.hasCapsWordLayer && actCode === 17408 + decodeOpts.cwLayerIdx)) {
+          actionLabel = "CW_TOGG (Caps-Word)";
+        } else if (actCode === 57) {
+          actionLabel = "CapsLock";
+        } else if (actCode === 256 + 225) {
+          actionLabel = "Ctrl + LeftShift";
+        } else if (actCode === 512 + 43) {
+          actionLabel = "Alt + Tab";
+        } else if (actCode === 256 + 43) {
+          actionLabel = "Ctrl + Tab";
+        } else if (actCode === 4096 + 43) {
+          actionLabel = "GUI + Tab";
+        } else if (actCode === 256 + 512 + 4096 + 225) {
+          actionLabel = "Hyper (Ctrl+Alt+Gui+Shift)";
+        } else if (actCode === 256 + 512 + 225) {
+          actionLabel = "Meh (Ctrl+Alt+Shift)";
+        } else if (decodeOpts.hasWinBaseLayer && actCode === 17408 + decodeOpts.winLayerIdx) {
+          actionLabel = "OS_TOGG — Mac/Win Base";
+        } else {
+          const b = focusCodeToBinding(actCode, deviceSuperkeys, macrosList, decodeOpts);
+          actionLabel = b && b.tap ? b.tap : `#${actCode}`;
+        }
+
+        const sig = `${keys.join("+")}::${actionLabel}`;
+        if (seen.has(sig)) continue;
+        seen.add(sig);
+        out.push({
+          keys,
+          label: typeof buildAutoComboLabel === "function" ? buildAutoComboLabel(keys) : keys.join(" + "),
+          action: actionLabel
+        });
+      }
+      return out;
+    }
+
     function buildFocusKeymapAndSuperkeys(
       targetTokenCount = 800,
       existingKmNums = null,
@@ -4894,14 +5296,17 @@
       supportsNativeCapsWord = false
     ) {
       const maxLayers = Math.max(1, Math.floor(targetTokenCount / 80));
-      const baseList =
-        Array.isArray(deviceSuperkeys) && deviceSuperkeys.length > 0
+      const keepExplicitSuperkeys = hasExplicitSuperkeyMacroInLayers(maxLayers);
+      const baseList = keepExplicitSuperkeys
+        ? Array.isArray(deviceSuperkeys) && deviceSuperkeys.length > 0
           ? JSON.parse(JSON.stringify(deviceSuperkeys))
-          : hasExplicitSuperkeyMacroInLayers(maxLayers) && Array.isArray(fallbackSuperkeys)
+          : Array.isArray(fallbackSuperkeys)
           ? JSON.parse(JSON.stringify(fallbackSuperkeys))
-          : [];
+          : []
+        : [];
 
-      const baseMacros = parseFocusMacrosRaw(existingMacrosRaw);
+      const keepExplicitMacros = hasExplicitDynamicMacroInLayers(maxLayers);
+      const baseMacros = keepExplicitMacros ? parseFocusMacrosRaw(existingMacrosRaw) : [];
       const countMacroBytes = () =>
         baseMacros.reduce((sum, m) => sum + (Array.isArray(m.steps) ? m.steps.length + 1 : 0), 1);
 
@@ -4954,13 +5359,19 @@
       let foundCwIdx = LAYERS_META.findIndex((m, idx) => idx > 0 && idx < maxLayers && isCapsWordLayerMeta(m));
       const cwLayerIdx = foundCwIdx >= 0 ? foundCwIdx : Math.min(9, maxLayers - 1);
 
-      // Refresh CapsWord hardware layer from current L0 so word-breaking & shifted keys always match L0
+      // Refresh CapsWord hardware layer from current L0 even if L9 was previously pulled as "Empty"
       if (!supportsNativeCapsWord && cwLayerIdx > 0 && cwLayerIdx < maxLayers && Array.isArray(layers[0])) {
-        if (!layers[cwLayerIdx] || isCapsWordLayerMeta(LAYERS_META[cwLayerIdx])) {
+        if (
+          !layers[cwLayerIdx] ||
+          isCapsWordLayerMeta(LAYERS_META[cwLayerIdx]) ||
+          isLayerAllEmptyOrTrans(layers[cwLayerIdx])
+        ) {
           layers[cwLayerIdx] = generateCapsWordLayerFromBase(layers[0]);
-          if (!LAYERS_META[cwLayerIdx]) {
-            LAYERS_META[cwLayerIdx] = { ...DEFAULT_LAYERS_META[9], id: cwLayerIdx, short: `L${cwLayerIdx}: CapsWord` };
-          }
+          LAYERS_META[cwLayerIdx] = {
+            ...DEFAULT_LAYERS_META[9],
+            id: cwLayerIdx,
+            short: `L${cwLayerIdx}: CapsWord`
+          };
         }
       }
 
@@ -4988,12 +5399,23 @@
         tokens.push(...matrix80);
       }
 
+      const builtCombos = serializeFocusCombos(
+        combos,
+        maxLayers,
+        winLayerIdx,
+        cwLayerIdx,
+        supportsNativeCapsWord,
+        macroAlloc
+      );
+
       return {
         keymapPayload: tokens.slice(0, targetTokenCount).join(" "),
         superkeysPayload: serializeFocusSuperkeys(baseList),
         superkeysList: baseList,
         macrosPayload: serializeFocusMacros(baseMacros),
         macrosList: baseMacros,
+        combosPayload: builtCombos.payload,
+        combosCount: builtCombos.count,
         winLayerIdx,
         cwLayerIdx
       };
@@ -5041,6 +5463,11 @@
         const ugMax = Math.min(176, ledsPerLayer);
         for (let sId = 70; sId < ugMax; sId++) {
           layerLeds[sId] = nearestPaletteIndex(ug[sId] || "#0f172a");
+        }
+        if (ledsPerLayer >= 178) {
+          const neuronColor = ug[176] || ug[175] || ug[70] || "#0f172a";
+          layerLeds[176] = nearestPaletteIndex(neuronColor);
+          layerLeds[177] = nearestPaletteIndex(ug[177] || neuronColor);
         }
         leds.push(...layerLeds);
       }
@@ -5321,9 +5748,21 @@
       }
       try {
         appendSerialLog("=== Pushing Superkeys, Macros, Keymap, Palette, Colormap & Device Settings to Dygma Defy ===");
-        // Probe firmware capabilities (Defy v2.3.0 uses L9 CapsWord + macros.map; v2.4+ supports capsword.enabled)
+        // Probe firmware capabilities (Defy v2.3.0 uses L9 CapsWord + macros.map; 2026+ Neuron adds capsword.enabled & combos.map)
         const helpRaw = await sendFocusCommand("help", 3000);
         const supportsNativeCapsWord = /\bcapsword\.enabled\b/.test(helpRaw || "");
+        const supportsNativeCombos = /\bcombos\.map\b/.test(helpRaw || "");
+
+        const combosBanner = document.getElementById("combos-fw-banner");
+        if (combosBanner) {
+          if (supportsNativeCombos) {
+            combosBanner.className = "text-[10.5px] leading-snug px-2.5 py-1.5 rounded border border-emerald-500/40 bg-emerald-500/10 text-emerald-200";
+            combosBanner.innerHTML = `✅ Connected Neuron firmware supports hardware <code>combos.map</code> — chords sync live to L0 + L8 (Win) + L9 (CapsWord)!`;
+          } else {
+            combosBanner.className = "text-[10.5px] leading-snug px-2.5 py-1.5 rounded border border-rose-500/40 bg-rose-500/10 text-rose-200";
+            combosBanner.innerHTML = `⚠️ Connected Neuron firmware (<code>Defy v2.3.0</code>) does not include Dygma's <code>CombosDygma</code> plugin (<code>combos.map</code> absent from Focus <code>help</code>). Update Neuron firmware via Bazecor (<code>v1.10+</code> / 2026+) or flash custom <code>EngrammerDefy.ino</code> to enable hardware chords.`;
+          }
+        }
 
         // Query existing Neuron EEPROM slice lengths first so we NEVER overflow EEPROM bounds!
         const existingKmRaw = await sendFocusCommand("keymap.custom", 4500);
@@ -5371,6 +5810,15 @@
         await sendFocusCommand("settings.defaultLayer 0");
         if (supportsNativeCapsWord) {
           await sendFocusCommand("capsword.enabled 1");
+        }
+        // CombosDygma.cpp validates comboPositionsAllowed against EEPROMKeymap, so write combos.map AFTER keymap.custom!
+        if (supportsNativeCombos) {
+          await sendFocusCommand("combos.window 50");
+          await sendFocusCommand("combos.idleTime 100");
+          await sendFocusCommand(`combos.map ${built.combosPayload}`, 4500);
+          appendSerialLog(`[Combos] Synced ${built.combosCount} hardware combo entries across L0/L${built.winLayerIdx}/L${built.cwLayerIdx}.`);
+        } else if (Array.isArray(combos) && combos.length > 0) {
+          appendSerialLog("[Combos Notice] Connected Neuron firmware (v2.3.0) lacks Focus 'combos.map'. Update Defy firmware in Bazecor (v1.10+/2026+) or flash EngrammerDefy.ino for hardware chords.");
         }
         await sendFocusCommand(`colormap.map ${serializeFocusColormap(cmTokenCount, maxDeviceLayers, existingCmNums)}`, 5000);
         await sendFocusCommand(`palette ${serializeFocusPalette()}`, 3000);
@@ -5497,7 +5945,8 @@
       superRaw = "",
       macrosRaw = "",
       storedSuperMeta = [],
-      neuronLayersMeta = []
+      neuronLayersMeta = [],
+      combosRaw = ""
     ) {
       const nums = String(kmRaw || "").trim().split(/\s+/).map(Number).filter(Number.isFinite);
       if (nums.length < 80) return 0;
@@ -5612,6 +6061,11 @@
         LAYERS_META.push(inferPulledLayerMeta(newLayers[l], l, metaItem && metaItem.name ? metaItem.name : ""));
       }
       if (currentLayer >= numLayers) currentLayer = 0;
+      const pulledCombos = parseFocusCombosRaw(combosRaw, deviceMacros, decodeOpts);
+      if (pulledCombos.length > 0) {
+        combos = pulledCombos;
+        renderCombosList();
+      }
       syncLayersHeldKeysFromBase();
 
       renderRgbPaletteBar();
@@ -5660,11 +6114,14 @@
             kmRaw = `${defRaw.trim()} ${kmRaw.trim()}`.trim();
           }
         }
+        const helpRaw = await sendFocusCommand("help", 3000);
+        const supportsNativeCombos = /\bcombos\.map\b/.test(helpRaw || "");
         const superRaw = await sendFocusCommand("superkeys.map", 3500);
         const macrosRaw = await sendFocusCommand("macros.map", 4500);
+        const combosRaw = supportsNativeCombos ? await sendFocusCommand("combos.map", 3500) : "";
         const palRaw = await sendFocusCommand("palette", 3000);
         const cmRaw = await sendFocusCommand("colormap.map", 4500);
-        const pulledCount = applyPulledFocusData(kmRaw, palRaw, cmRaw, superRaw, macrosRaw);
+        const pulledCount = applyPulledFocusData(kmRaw, palRaw, cmRaw, superRaw, macrosRaw, [], [], combosRaw);
         if (!pulledCount) {
           appendSerialLog("[Pull Warning] Neuron returned fewer than 80 keymap tokens.");
         }
