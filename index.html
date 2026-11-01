@@ -673,7 +673,7 @@
             </div>
           </div>
           <div id="combos-fw-banner" class="text-[10.5px] leading-snug px-3 py-2 rounded-lg studio-subcard text-slate-300 flex flex-wrap items-center justify-between gap-2">
-            <span>⚡ <b class="text-emerald-300">Wireless Custom FW (<code>v2.4.0-engrammer.3</code>):</b> Native <b>OS Toggle (Mac/Win)</b>, <b>OSM Tap=1-Shot / Hold=Regular</b>, <b>Per-Finger Hold %</b>, <b>Bilateral HRMs</b> &amp; <b>Selection/Switchers</b>.</span>
+            <span>⚡ <b class="text-emerald-300">Wireless Custom FW (<code>v2.4.0-engrammer.4</code>):</b> Native <b>OS Toggle (Mac/Win)</b>, <b>OSM Tap=1-Shot / Hold=Regular</b>, <b>Per-Finger Hold %</b>, <b>Bilateral HRMs</b> &amp; <b>Selection/Switchers</b>.</span>
             <a id="link-download-custom-fw-combos" href="./Defy_Wireless_Engrammer_v2.4.0_Custom_FW.zip" download="Defy_Wireless_Engrammer_v2.4.0_Custom_FW.zip" class="shrink-0 btn-studio btn-studio-primary text-[10.5px] py-1 px-2.5">⬇ Custom FW (.zip)</a>
           </div>
 
@@ -1088,7 +1088,7 @@
             <div class="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <div class="font-bold text-[11px] uppercase tracking-wider text-amber-300">⚡ Glove80 Hardware HRM &amp; Thumb Engine</div>
-                <div class="text-[10px] text-[var(--app-muted-foreground)]">Synced live via Focus <code>engrammer.config</code> &amp; <code>qukeys.holdTimeout</code> on <code>v2.4.0-engrammer.3</code></div>
+                <div class="text-[10px] text-[var(--app-muted-foreground)]">Synced live via Focus <code>engrammer.config</code> &amp; <code>qukeys.holdTimeout</code> on <code>v2.4.0-engrammer.4</code></div>
               </div>
               <div class="flex items-center gap-1.5">
                 <button id="btn-reset-engrammer-config" type="button" class="btn-studio btn-studio-subtle text-[10.5px] py-0.5 px-2" title="Restore Sunaku Glove80 v52 recommended defaults">
@@ -1208,9 +1208,9 @@
               <div class="p-2 rounded border border-[var(--app-border)] bg-[var(--app-card)]">
                 <div class="flex items-center justify-between text-[10px] font-mono uppercase text-[var(--app-muted-foreground)]">
                   <span>Sticky OSM Timeout</span>
-                  <span id="lbl-eg-osm-timeout" class="text-cyan-300 font-bold">500 ms</span>
+                  <span id="lbl-eg-osm-timeout" class="text-cyan-300 font-bold">2500 ms</span>
                 </div>
-                <input id="eg-osm-timeout-ms" type="range" min="200" max="2000" step="50" value="500" class="w-full mt-1 accent-cyan-400 cursor-pointer" />
+                <input id="eg-osm-timeout-ms" type="range" min="200" max="5000" step="100" value="2500" class="w-full mt-1 accent-cyan-400 cursor-pointer" />
               </div>
             </div>
 
@@ -1335,7 +1335,7 @@
               </span>
             </h2>
             <p class="text-[11px] text-[var(--app-muted-foreground)]">
-              WebSerial Focus Protocol (`0x35ef:0x0010/0x0012`) • Wireless Engrammer Custom Firmware (`v2.4.0-engrammer.3`)
+              WebSerial Focus Protocol (`0x35ef:0x0010/0x0012`) • Wireless Engrammer Custom Firmware (`v2.4.0-engrammer.4`)
             </p>
           </div>
         </div>
@@ -1365,7 +1365,7 @@
           <div class="p-3.5 studio-subcard flex flex-wrap items-center justify-between gap-3">
             <div class="space-y-1 max-w-xl">
               <div class="font-bold text-emerald-300 text-xs">
-                🚀 Step 0 (One-Time): Install Wireless Engrammer Custom Firmware (`v2.4.0-engrammer.3`)
+                🚀 Step 0 (One-Time): Install Wireless Engrammer Custom Firmware (`v2.4.0-engrammer.4`)
               </div>
               <p class="text-[11px] text-[var(--app-muted-foreground)] leading-relaxed">
                 Brings full Glove80 ZMK parity to your Wireless Neuron (<code>nRF52833</code>): <b>Deterministic <code>OS_TOGG</code> / <code>OS_MAC</code> / <code>OS_WIN</code></b>, <b>Release-Safe OS Shortcut Translation</b>, <b>Tap=1-Shot / Hold=Regular <code>OSM</code></b>, <b>Adjustable Per-Finger Hold Scaling</b>, <b>Bilateral Home-Row Mods</b>, <b>Streak Cooldown</b>, <b>Selection Primitives</b>, and <b>Sustained Switcher Chords</b>. Unzip, connect Neuron + halves via USB, and select the unzipped folder in <b>Bazecor → Firmware Update → ⋮ Custom Firmware</b>.
@@ -2256,7 +2256,7 @@
       retroShift: false,        // Focus engrammer.config[8] bit 0
       retroThumb: false,        // Focus engrammer.config[8] bit 1
       quickTapMs: 200,          // Focus engrammer.config[9] & qukeys.quickTapTimeout
-      oneshotTimeoutMs: 500,    // Focus engrammer.config[10]
+      oneshotTimeoutMs: 2500,   // Focus engrammer.config[10] (matches stock 2500ms OneShot window)
       oneshotQuickRel: true,    // Focus engrammer.config[11]
       osShortcuts: true         // Focus engrammer.config[12]
     };
@@ -2289,7 +2289,7 @@
     // 5. STATE MANAGEMENT (LAYERS, UNDERGLOW, PALETTE, CLIPBOARD, SWAP/COPY)
     // =========================================================================
     const STORAGE_KEY = "dygma_defy_engrammer_v5";
-    const SCHEMA_VERSION = 6;
+    const SCHEMA_VERSION = 7;
 
     // Bazecor's 16-Swatch Default Hardware RGBW Palette (stored on Neuron EEPROM)
     const DEFAULT_RGB_PALETTE = [
@@ -2978,6 +2978,15 @@
         underglowLayers = underglowLayers.slice(0, 10);
       }
       if (currentLayer >= layers.length) currentLayer = 0;
+
+      // 7. Schema v7: Upgrade legacy 500ms oneshotTimeoutMs to stock 2500ms OneShot window
+      if (!parsed || !parsed.schemaVersion || parsed.schemaVersion < 7) {
+        if (deviceSettings && deviceSettings.engrammerConfig) {
+          if (Number(deviceSettings.engrammerConfig.oneshotTimeoutMs) <= 500) {
+            deviceSettings.engrammerConfig.oneshotTimeoutMs = 2500;
+          }
+        }
+      }
       return true;
     }
 
@@ -5374,7 +5383,7 @@
         `constexpr uint16_t HRM_STREAK_DECAY_MS  = ${eg.hrmStreakMs ?? 150};\n` +
         `constexpr uint16_t SHIFT_STREAK_DECAY_MS = ${eg.shiftStreakMs ?? 80};\n` +
         `constexpr uint16_t QUICK_TAP_REPEAT_MS  = ${eg.quickTapMs ?? 200}; // Glove80 ZMK &thumb quick-tap-ms\n` +
-        `constexpr uint16_t ONESHOT_TIMEOUT_MS   = ${eg.oneshotTimeoutMs ?? 500};\n\n` +
+        `constexpr uint16_t ONESHOT_TIMEOUT_MS   = ${eg.oneshotTimeoutMs ?? 2500};\n\n` +
         `// Dygma Defy Wireless, Bluetooth & Bazecor Device Settings\n` +
         `${deviceSettings.trueSleep ? "" : "//"}#define TRUE_SLEEP_ENABLED\n` +
         `#define TRUE_SLEEP_TIMEOUT_S            ${deviceSettings.trueSleepTimeSec ?? 1800}\n` +
@@ -6425,7 +6434,7 @@
       const hrmStreak = Math.max(0, Math.min(1000, Number(eg.hrmStreakMs ?? 150)));
       const sftStreak = Math.max(0, Math.min(1000, Number(eg.shiftStreakMs ?? 80)));
       const quickTap = Math.max(0, Math.min(1000, Number(eg.quickTapMs ?? 200)));
-      const osmTimeout = Math.max(100, Math.min(5000, Number(eg.oneshotTimeoutMs ?? 500)));
+      const osmTimeout = Math.max(100, Math.min(5000, Number(eg.oneshotTimeoutMs ?? 2500)));
 
       const setChk = (id, v) => {
         const el = document.getElementById(id);
@@ -6511,7 +6520,7 @@
       eg.balancedThumbs = Boolean(document.getElementById("eg-balanced-thumbs")?.checked);
       eg.oneshotQuickRel = Boolean(document.getElementById("eg-osm-quick-rel")?.checked);
       eg.quickTapMs = Number(document.getElementById("eg-quick-tap-ms")?.value ?? 200);
-      eg.oneshotTimeoutMs = Number(document.getElementById("eg-osm-timeout-ms")?.value ?? 500);
+      eg.oneshotTimeoutMs = Number(document.getElementById("eg-osm-timeout-ms")?.value ?? 2500);
       eg.osShortcuts = Boolean(document.getElementById("eg-os-shortcuts")?.checked);
       eg.retroShift = Boolean(document.getElementById("eg-retro-shift")?.checked);
       eg.retroThumb = Boolean(document.getElementById("eg-retro-thumb")?.checked);
@@ -6555,7 +6564,7 @@
             const isV3 = curEg.trim().split(/\s+/).filter(Boolean).length >= 13;
             await sendFocusCommand(`engrammer.config ${serializeEngrammerConfig(winIdx, isV3)}`);
           } else {
-            appendSerialLog("[Tuning Notice] Connected firmware lacks 'engrammer.config' — applied base qukeys.holdTimeout; flash v2.4.0-engrammer.3 for per-finger scaling & bilateral HRMs.");
+            appendSerialLog("[Tuning Notice] Connected firmware lacks 'engrammer.config' — applied base qukeys.holdTimeout; flash v2.4.0-engrammer.4 for per-finger scaling & bilateral HRMs.");
           }
           await sendFocusCommand(`superkeys.holdstart ${holdMs}`);
           await sendFocusCommand("superkeys.overlap 80");
@@ -8513,7 +8522,7 @@
           eg.balancedThumbs ? 1 : 0,
           retroMask,
           clamp(eg.quickTapMs, 0, 1000, 200),
-          clamp(eg.oneshotTimeoutMs, 100, 5000, 500),
+          clamp(eg.oneshotTimeoutMs, 100, 5000, 2500),
           eg.oneshotQuickRel ? 1 : 0,
           eg.osShortcuts ? 1 : 0,
           clamp(winLayerIdx, 0, 15, 8)
@@ -8530,7 +8539,7 @@
         eg.balancedThumbs ? 1 : 0,
         retroMask,
         clamp(eg.quickTapMs, 0, 1000, 200),
-        clamp(eg.oneshotTimeoutMs, 100, 5000, 500),
+        clamp(eg.oneshotTimeoutMs, 100, 5000, 2500),
         eg.oneshotQuickRel ? 1 : 0,
         eg.osShortcuts ? 1 : 0,
         clamp(winLayerIdx, 0, 15, 8)
@@ -9228,6 +9237,8 @@
           const supportsNativeShiftMorph = /\bshiftmorph\.enabled\b/.test(helpRaw || "");
           const supportsNativeQuickTap = /\bqukeys\.quickTapTimeout\b/.test(helpRaw || "");
           const supportsNativeEngrammer = /\bengrammer\.config\b/.test(helpRaw || "");
+          const fwVerStr = (await sendFocusCommand("version")).trim();
+          const isEngrammerV4Plus = /engrammer\.([4-9]|\d{2,})/i.test(fwVerStr);
           let supportsEngrammerV3 = false;
           if (supportsNativeEngrammer) {
             const curEg = await sendFocusCommand("engrammer.config");
@@ -9236,15 +9247,18 @@
 
           const combosBanner = document.getElementById("combos-fw-banner");
           if (combosBanner) {
-            if (supportsNativeCombos && supportsNativeShiftMorph && supportsEngrammerV3) {
+            if (supportsNativeCombos && supportsNativeShiftMorph && supportsEngrammerV3 && isEngrammerV4Plus) {
               combosBanner.className = "studio-subcard p-2.5 text-[11px] leading-relaxed text-[var(--app-muted-foreground)]";
-              combosBanner.innerHTML = `<span class="text-emerald-300 font-semibold">Engrammer Custom FW v2.4.0-engrammer.3 Active:</span> Hardware <code>Combos</code>, <code>Native OS_TOGG</code>, <code>OSM Hold=Mod</code>, <code>Per-Finger Hold %</code>, <code>Bilateral HRMs</code>, <code>Caps-Word</code>, <code>Shift-Morph</code> &amp; <code>Release-Safe OS Remap</code> online.`;
+              combosBanner.innerHTML = `<span class="text-emerald-300 font-semibold">Engrammer Custom FW v2.4.0-engrammer.4 Active:</span> Hardware <code>Combos</code>, <code>Native OS_TOGG</code>, <code>Crisp OSM Tap/Hold</code>, <code>Per-Finger Hold %</code>, <code>Bilateral HRMs</code>, <code>Caps-Word</code>, <code>Shift-Morph</code> &amp; <code>Release-Safe OS Remap</code> online.`;
+            } else if (supportsNativeCombos && supportsNativeShiftMorph && supportsEngrammerV3) {
+              combosBanner.className = "studio-subcard p-2.5 text-[11px] leading-relaxed text-[var(--app-muted-foreground)]";
+              combosBanner.innerHTML = `<span class="text-amber-300 font-semibold">Engrammer Custom FW v2.4.0-engrammer.3 Detected:</span> Upgrade to <a href="./Defy_Wireless_Engrammer_v2.4.0_Custom_FW.zip" download="Defy_Wireless_Engrammer_v2.4.0_Custom_FW.zip" class="text-cyan-300 underline font-semibold">v2.4.0-engrammer.4 (.zip)</a> for stock-grade <code>OSM(Shift)</code> tap-to-1shot &amp; hold-to-shift rollover + HRM ordering fixes.`;
             } else if (supportsNativeCombos && supportsNativeShiftMorph && supportsNativeEngrammer) {
               combosBanner.className = "studio-subcard p-2.5 text-[11px] leading-relaxed text-[var(--app-muted-foreground)]";
-              combosBanner.innerHTML = `<span class="text-amber-300 font-semibold">Engrammer Custom FW v2.4.0-engrammer.2 Detected:</span> Upgrade to <a href="./Defy_Wireless_Engrammer_v2.4.0_Custom_FW.zip" download="Defy_Wireless_Engrammer_v2.4.0_Custom_FW.zip" class="text-cyan-300 underline font-semibold">v2.4.0-engrammer.3 (.zip)</a> for deterministic <code>OS_TOGG</code>, <code>OSM Hold = Regular Mod</code>, release-safe Paste/OS shortcuts &amp; per-finger hold % scaling.`;
+              combosBanner.innerHTML = `<span class="text-amber-300 font-semibold">Engrammer Custom FW v2.4.0-engrammer.2 Detected:</span> Upgrade to <a href="./Defy_Wireless_Engrammer_v2.4.0_Custom_FW.zip" download="Defy_Wireless_Engrammer_v2.4.0_Custom_FW.zip" class="text-cyan-300 underline font-semibold">v2.4.0-engrammer.4 (.zip)</a> for deterministic <code>OS_TOGG</code>, crisp <code>OSM</code> tap/hold, release-safe Paste/OS shortcuts &amp; per-finger hold % scaling.`;
             } else if (supportsNativeCombos && supportsNativeShiftMorph) {
               combosBanner.className = "studio-subcard p-2.5 text-[11px] leading-relaxed text-[var(--app-muted-foreground)]";
-              combosBanner.innerHTML = `<span class="text-amber-300 font-semibold">Engrammer Custom FW v2.4.0-engrammer.1 Detected:</span> Upgrade to <a href="./Defy_Wireless_Engrammer_v2.4.0_Custom_FW.zip" download="Defy_Wireless_Engrammer_v2.4.0_Custom_FW.zip" class="text-cyan-300 underline font-semibold">v2.4.0-engrammer.3 (.zip)</a> to unlock Native OS_TOGG, Bilateral HRMs, Per-Finger Hold %, OSM Hold=Mod &amp; App/Tab/Win Switchers.`;
+              combosBanner.innerHTML = `<span class="text-amber-300 font-semibold">Engrammer Custom FW v2.4.0-engrammer.1 Detected:</span> Upgrade to <a href="./Defy_Wireless_Engrammer_v2.4.0_Custom_FW.zip" download="Defy_Wireless_Engrammer_v2.4.0_Custom_FW.zip" class="text-cyan-300 underline font-semibold">v2.4.0-engrammer.4 (.zip)</a> to unlock Native OS_TOGG, Bilateral HRMs, Per-Finger Hold %, crisp OSM Tap/Hold &amp; App/Tab/Win Switchers.`;
             } else if (supportsNativeCombos) {
               combosBanner.className = "studio-subcard p-2.5 text-[11px] leading-relaxed text-[var(--app-muted-foreground)]";
               combosBanner.innerHTML = `<span class="text-emerald-300 font-semibold">Hardware Combos Supported:</span> Chords sync live via <code>combos.map</code> across L0, L8 (Win) &amp; L9 (Typing).`;
@@ -9286,7 +9300,7 @@
           rawMacrosMap = built.macrosPayload;
 
           appendSerialLog(
-            `[Safety Check] Neuron EEPROM: ${maxDeviceLayers} layers (${kmTokenCount} keycodes, ${cmTokenCount} LEDs, ${built.superkeysList.length} superkeys, ${built.macrosList.length} macros, CapsWord=${supportsNativeCapsWord ? "native-54371" : `L${built.cwLayerIdx}-layer`}, ShiftMorph=${supportsNativeShiftMorph ? "native" : "superkey"}, Engrammer=${supportsEngrammerV3 ? "v2.4.0-engrammer.3" : supportsNativeEngrammer ? "v2.4.0-engrammer.2" : "fallback"}).`
+            `[Safety Check] Neuron EEPROM: ${maxDeviceLayers} layers (${kmTokenCount} keycodes, ${cmTokenCount} LEDs, ${built.superkeysList.length} superkeys, ${built.macrosList.length} macros, CapsWord=${supportsNativeCapsWord ? "native-54371" : `L${built.cwLayerIdx}-layer`}, ShiftMorph=${supportsNativeShiftMorph ? "native" : "superkey"}, Engrammer=${isEngrammerV4Plus ? "v2.4.0-engrammer.4" : supportsEngrammerV3 ? "v2.4.0-engrammer.3" : supportsNativeEngrammer ? "v2.4.0-engrammer.2" : "fallback"}).`
           );
           if (layers.length > maxDeviceLayers) {
             appendSerialLog(`[Note] Stock Neuron EEPROM stores ${maxDeviceLayers} layers (L0..L${maxDeviceLayers - 1}); layers L${maxDeviceLayers}+ require custom firmware.`);
