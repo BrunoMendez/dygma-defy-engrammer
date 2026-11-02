@@ -738,9 +738,9 @@ const macro_t *macroAction(uint8_t macro_id, KeyEvent &event) {
 
     // ST_MACRO_4 / 7 / 10 / 13: Select Word (Alt+Shift+Left -> Alt+Shift+Right)
     case M_SELECT_WORD:
-      return is_mac ? MACRO(D(LeftAlt), D(LeftShift), T(LeftArrow), U(LeftShift), U(LeftAlt), W(100),
+      return is_mac ? MACRO(D(LeftAlt), T(LeftArrow), U(LeftAlt), W(20),
                             D(LeftAlt), D(LeftShift), T(RightArrow), U(LeftShift), U(LeftAlt))
-                    : MACRO(D(LeftControl), D(LeftShift), T(LeftArrow), U(LeftShift), U(LeftControl), W(100),
+                    : MACRO(D(LeftControl), T(LeftArrow), U(LeftControl), W(20),
                             D(LeftControl), D(LeftShift), T(RightArrow), U(LeftShift), U(LeftControl));
 
     // OS Mode & Base Layer Switching
@@ -799,11 +799,11 @@ const macro_t *macroAction(uint8_t macro_id, KeyEvent &event) {
 
     case M_FIND_NEXT:
       return is_mac ? MACRO(D(LeftGui), T(G), U(LeftGui))
-                    : MACRO(D(LeftControl), T(G), U(LeftControl));
+                    : MACRO(T(F3));
 
     case M_FIND_PREV:
       return is_mac ? MACRO(D(LeftGui), D(LeftShift), T(G), U(LeftShift), U(LeftGui))
-                    : MACRO(D(LeftControl), D(LeftShift), T(G), U(LeftShift), U(LeftControl));
+                    : MACRO(D(LeftShift), T(F3), U(LeftShift));
 
     case M_FIND_REPLACE:
       return is_mac ? MACRO(D(LeftAlt), D(LeftGui), T(F), U(LeftGui), U(LeftAlt))
